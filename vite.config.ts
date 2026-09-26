@@ -10,7 +10,14 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     watch: {
-      ignored: ['**/src-tauri/**'],
+      ignored: [
+        '**/src-tauri/**',
+        '**/target/**',
+        '**/playlists/**',
+        '**/*.m3u',
+        '**/*.dll',
+        '**/*.exe',
+      ],
     },
   },
 })
