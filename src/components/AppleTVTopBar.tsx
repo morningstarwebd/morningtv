@@ -28,10 +28,9 @@ export const AppleTVTopBar: React.FC = () => {
 		openSettings,
 		openShortcuts,
 		channels,
-		resetPlaylist,
+		isSyncing,
+		syncCloudStreams,
 	} = useAppStore();
-
-	const [isSyncing, setIsSyncing] = useState(false);
 
 	const allUrls = activeChannel
 		? [activeChannel.url, ...(activeChannel.fallback_urls || [])]
@@ -198,11 +197,7 @@ export const AppleTVTopBar: React.FC = () => {
 
 				{/* Cloud Stream Sync Button */}
 				<button
-					onClick={async () => {
-						setIsSyncing(true);
-						await resetPlaylist();
-						setIsSyncing(false);
-					}}
+					onClick={syncCloudStreams}
 					disabled={isSyncing}
 					className="p-2 rounded-full bg-black/60 hover:bg-black/85 text-zinc-400 hover:text-cyan-400 border border-white/10 backdrop-blur-2xl transition-all cursor-pointer shadow-xl disabled:opacity-50"
 					title="Sync Latest Channels from GitHub (R)"

@@ -113,6 +113,8 @@ interface AppState {
 	setReconnectCountdown: (countdown: number | null) => void;
 	markChannelDead: (channelId: string) => void;
 	toggleNormalizeAudio: () => void;
+	isSyncing: boolean;
+	syncCloudStreams: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -159,6 +161,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 	settings: null,
 	toast: null,
 	isVerifyingStreams: false,
+	isSyncing: false,
 
 	init: async () => {
 		try {
@@ -442,6 +445,30 @@ export const useAppStore = create<AppState>((set, get) => ({
 			get().showToast("✅ Restored default starter channels!", false);
 		} catch (err) {
 			get().showToast(`Failed to reset playlist: ${err}`, true);
+		}
+	},
+
+	syncCloudStreams: async () => {
+		try {
+			set({ isSyncing: true });
+			get().showToast("☁️ Fetching latest cloud streams from GitHub...", false);
+			const channels = await invoke<Channel[]>("reset_playlist");
+			const categories = await invoke<string[]>("get_categories");
+			const settings = await invoke<AppSettings>("get_settings");
+			set({
+				channels,
+				categories: categories.length > 0 ? categories : ["All", "Favorites"],
+				activeCategory: "All",
+				settings,
+				isSyncing: false,
+			});
+			get().showToast(
+				`✅ Synced ${channels.length.toLocaleString()} channels from GitHub!`,
+				false,
+			);
+		} catch (err) {
+			set({ isSyncing: false });
+			get().showToast(`Failed to sync from GitHub: ${err}`, true);
 		}
 	},
 

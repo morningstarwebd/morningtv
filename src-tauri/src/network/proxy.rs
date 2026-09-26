@@ -53,6 +53,15 @@ impl StreamProxy {
         });
     }
 
+    fn respond_empty_cors(request: tiny_http::Request, status: u16) {
+        let res = Response::empty(StatusCode(status))
+            .with_header(Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap())
+            .with_header(Header::from_bytes(&b"Access-Control-Allow-Methods"[..], &b"GET, POST, OPTIONS, HEAD"[..]).unwrap())
+            .with_header(Header::from_bytes(&b"Access-Control-Allow-Headers"[..], &b"*"[..]).unwrap())
+            .with_header(Header::from_bytes(&b"Access-Control-Expose-Headers"[..], &b"*"[..]).unwrap());
+        let _ = request.respond(res);
+    }
+
     fn handle_request(request: tiny_http::Request, req_url: &str, client: &reqwest::blocking::Client) {
         // Extract "url=" query parameter
         let target_url = match req_url.find("url=") {
@@ -60,13 +69,13 @@ impl StreamProxy {
                 let query = &req_url[idx + 4..];
                 let decoded = urlencoding_decode(query);
                 if decoded.is_empty() {
-                    let _ = request.respond(Response::empty(StatusCode(400)));
+                    Self::respond_empty_cors(request, 400);
                     return;
                 }
                 decoded
             }
             None => {
-                let _ = request.respond(Response::empty(StatusCode(404)));
+                Self::respond_empty_cors(request, 404);
                 return;
             }
         };
@@ -82,7 +91,7 @@ impl StreamProxy {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("Stream proxy fetch error for {}: {}", target_url, e);
-                let _ = request.respond(Response::empty(StatusCode(502)));
+                Self::respond_empty_cors(request, 502);
                 return;
             }
         };
@@ -97,7 +106,7 @@ impl StreamProxy {
         let bytes = match upstream_res.bytes() {
             Ok(b) => b,
             Err(_) => {
-                let _ = request.respond(Response::empty(StatusCode(502)));
+                Self::respond_empty_cors(request, 502);
                 return;
             }
         };
