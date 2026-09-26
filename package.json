@@ -1,19 +1,37 @@
 {
-  "name": "morningtv-streams",
+  "name": "morningtv",
   "version": "1.0.0",
-  "description": "MorningTV - Automated Cloud Stream Sentinel & Verified Master Playlists",
+  "private": true,
   "type": "module",
   "scripts": {
-    "sync": "node scripts/sync_and_heal.mjs"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "sync": "node scripts/sync_and_heal.mjs",
+    "lint": "eslint src && biome check src",
+    "preview": "vite preview"
   },
-  "keywords": [
-    "iptv",
-    "morningtv",
-    "m3u",
-    "live-streams",
-    "hls",
-    "stream-verifier"
-  ],
-  "author": "MorningTV Team",
-  "license": "MIT"
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/api": "^2.11.1",
+    "hls.js": "^1.7.3",
+    "lucide-react": "^1.47.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwindcss": "^4.3.3",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.14",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.3",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "knip": "^6.37.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.70.1",
+    "vite": "^8.3.0"
+  }
 }
