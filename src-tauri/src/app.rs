@@ -55,14 +55,8 @@ impl AppState {
         let mut channels = match fetcher.load(source).await {
             Ok(ch) if !ch.is_empty() => ch,
             _ => {
-                if let Ok(ch) = fetcher.load("assets/channels.m3u").await {
-                    if !ch.is_empty() {
-                        ch
-                    } else {
-                        fetcher.load("../assets/channels.m3u").await.unwrap_or_default()
-                    }
-                } else if let Ok(ch) = fetcher.load("../assets/channels.m3u").await {
-                    ch
+                if source != crate::config::defaults::DEFAULT_PLAYLIST_URL {
+                    fetcher.load(crate::config::defaults::DEFAULT_PLAYLIST_URL).await.unwrap_or_default()
                 } else {
                     Vec::new()
                 }

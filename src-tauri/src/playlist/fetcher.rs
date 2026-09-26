@@ -5,8 +5,6 @@ use crate::playlist::parser::M3uParser;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-pub const BUILTIN_DEFAULT_CHANNELS: &str = include_str!("../../../assets/channels.m3u");
-
 pub struct PlaylistFetcher {
     client: ResilientHttpClient,
 }
@@ -45,19 +43,21 @@ impl PlaylistFetcher {
                     }
                 }
             }
-        } else if source == "assets/channels.m3u" || source == "default" {
-            let path = Path::new(source);
-            if path.exists() {
-                fs::read_to_string(path).unwrap_or_else(|_| BUILTIN_DEFAULT_CHANNELS.to_string())
-            } else {
-                BUILTIN_DEFAULT_CHANNELS.to_string()
-            }
         } else {
             let path = Path::new(source);
             if path.exists() {
                 fs::read_to_string(path).map_err(|e| PlaylistError::FileNotFound(e.to_string()))?
             } else {
-                BUILTIN_DEFAULT_CHANNELS.to_string()
+                let cache_file = Self::cache_path();
+                if cache_file.exists() {
+                    fs::read_to_string(&cache_file)
+                        .map_err(|err| PlaylistError::FileNotFound(err.to_string()))?
+                } else {
+                    return Err(PlaylistError::FileNotFound(format!(
+                        "Playlist not found: {}",
+                        source
+                    )));
+                }
             }
         };
 

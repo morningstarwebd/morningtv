@@ -39,8 +39,11 @@ export const SettingsDialog: React.FC = () => {
 
 	if (!isSettingsOpen) return null;
 
+	const DEFAULT_PLAYLIST_URL =
+		"https://raw.githubusercontent.com/morningstarwebd/morningtv/main/playlists/morningtv_all.m3u";
+
 	const isCustomPlaylist =
-		settings?.playlist_url && settings.playlist_url !== "assets/channels.m3u";
+		settings?.playlist_url && settings.playlist_url !== DEFAULT_PLAYLIST_URL;
 
 	const handleSave = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -242,7 +245,7 @@ export const SettingsDialog: React.FC = () => {
 									onClick={async () => {
 										setIsResetting(true);
 										await resetPlaylist();
-										setPlaylistUrl("assets/channels.m3u");
+										setPlaylistUrl(DEFAULT_PLAYLIST_URL);
 										setIsResetting(false);
 									}}
 									disabled={isResetting || isSaving}
