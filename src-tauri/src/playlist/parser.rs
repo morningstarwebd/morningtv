@@ -63,7 +63,8 @@ impl M3uParser {
             } else if !line.starts_with('#') && in_channel {
                 let url = line.to_string();
                 if url.starts_with("http://") || url.starts_with("https://") || url.starts_with("rtmp://") {
-                    let key = current_name.to_lowercase();
+                    // Index by URL to preserve each distinct channel stream
+                    let key = url.clone();
                     
                     // Auto-infer provider if not set
                     let provider = current_provider.clone().or_else(|| {

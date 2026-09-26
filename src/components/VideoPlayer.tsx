@@ -94,6 +94,43 @@ export const VideoPlayer: React.FC = () => {
 		}
 	}, [isPlaying]);
 
+	// Keep screen awake while playing (prevents Windows sleep / screen timeout when watching from afar)
+	useEffect(() => {
+		let sentinel: any = null;
+
+		const requestWakeLock = async () => {
+			if ("wakeLock" in navigator && isPlaying) {
+				try {
+					sentinel = await (navigator as any).wakeLock.request("screen");
+				} catch (err) {
+					console.warn("Screen Wake Lock error:", err);
+				}
+			}
+		};
+
+		if (isPlaying) {
+			requestWakeLock();
+		} else if (sentinel) {
+			sentinel.release().catch(() => {});
+			sentinel = null;
+		}
+
+		const handleVisibilityChange = () => {
+			if (document.visibilityState === "visible" && isPlaying) {
+				requestWakeLock();
+			}
+		};
+
+		document.addEventListener("visibilitychange", handleVisibilityChange);
+
+		return () => {
+			document.removeEventListener("visibilitychange", handleVisibilityChange);
+			if (sentinel) {
+				sentinel.release().catch(() => {});
+			}
+		};
+	}, [isPlaying]);
+
 	// Reset retry counter and watchdog metrics whenever active channel changes
 	useEffect(() => {
 		retryCountRef.current = 0;
