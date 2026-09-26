@@ -1,8 +1,8 @@
 import {
-	Loader2,
+	Cloud,
+	RefreshCw,
 	RotateCcw,
 	Save,
-	ShieldCheck,
 	Sparkles,
 	Volume2,
 	X,
@@ -18,11 +18,11 @@ export const SettingsDialog: React.FC = () => {
 		settings,
 		ambientGlow,
 		normalizeAudio,
-		isVerifyingStreams,
+		isSyncing,
 		closeSettings,
 		updatePlaylist,
 		resetPlaylist,
-		verifyAndCleanChannels,
+		syncCloudStreams,
 		toggleAmbientGlow,
 		toggleNormalizeAudio,
 	} = useAppStore();
@@ -125,41 +125,34 @@ export const SettingsDialog: React.FC = () => {
 						</p>
 					</div>
 
-					{/* Smart Stream Verifier & Link Healer */}
+					{/* Cloud Sentinel Sync */}
 					<div className="p-3.5 rounded-2xl bg-gradient-to-r from-cyan-950/40 via-blue-950/30 to-indigo-950/30 border border-cyan-500/20 flex items-center justify-between gap-3">
 						<div className="flex items-center gap-2.5">
 							<div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 flex items-center justify-center shrink-0">
-								<ShieldCheck className="w-4 h-4" />
+								<Cloud className="w-4 h-4" />
 							</div>
 							<div>
 								<div className="text-xs font-bold text-white flex items-center gap-1.5">
-									<span>Smart Stream Verifier</span>
+									<span>Cloud Sentinel Sync</span>
 									<span className="text-[9px] px-1.5 py-0.2 rounded-full bg-cyan-500/20 text-cyan-300 font-mono font-bold">
-										Actual Probe
+										Instant
 									</span>
 								</div>
 								<p className="text-[10px] text-zinc-400 mt-0.5">
-									Deep byte inspection: drops dead streams & heals changed links
+									Sync 7,200+ verified channels directly from cloud repository
 								</p>
 							</div>
 						</div>
 						<button
 							type="button"
-							onClick={verifyAndCleanChannels}
-							disabled={isVerifyingStreams}
+							onClick={syncCloudStreams}
+							disabled={isSyncing}
 							className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/20 shrink-0"
 						>
-							{isVerifyingStreams ? (
-								<>
-									<Loader2 className="w-3.5 h-3.5 animate-spin" />
-									<span>Verifying...</span>
-								</>
-							) : (
-								<>
-									<Sparkles className="w-3.5 h-3.5" />
-									<span>Clean & Heal</span>
-								</>
-							)}
+							<RefreshCw
+								className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
+							/>
+							<span>{isSyncing ? "Syncing..." : "Sync Cloud"}</span>
 						</button>
 					</div>
 
