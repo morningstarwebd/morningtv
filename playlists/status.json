@@ -1,29 +1,33 @@
 {
-  "updated_at": "2026-09-26T16:54:25.687Z",
+  "updated_at": "2026-09-26T18:40:25.505Z",
   "engine": "MorningTV Multi-Provider Sentinel 2.0",
-  "total_raw_scanned": 10236,
-  "unique_candidates": 9200,
-  "verified_playable": 6492,
-  "fast_cdn_channels": 6331,
-  "community_playable": 161,
-  "dead_purged": 2708,
-  "mirrors_healed": 9,
+  "total_raw_scanned": 10654,
+  "unique_candidates": 9227,
+  "verified_playable": 7263,
+  "fast_cdn_channels": 7083,
+  "community_playable": 180,
+  "dead_purged": 1964,
+  "mirrors_healed": 11,
   "providers": {
+    "IPTV-Org Hindi": 28,
+    "IPTV-Org Bengali": 42,
+    "IPTV-Org": 213,
+    "IPTV-Org Bangladesh": 4,
     "Samsung TV Plus": 786,
+    "Free-TV": 1993,
+    "IPTV-Org India": 665,
     "Pluto TV": 431,
     "Plex": 2869,
-    "Roku": 232,
-    "Free-TV": 2013,
-    "IPTV-Org": 161
+    "Roku": 232
   },
   "categories": {
-    "all": 6492,
-    "india": 148,
-    "news": 463,
-    "sports": 282,
-    "movies": 325,
-    "entertainment": 5195,
-    "kids": 87,
-    "music": 140
+    "all": 7263,
+    "india": 283,
+    "news": 725,
+    "sports": 310,
+    "movies": 389,
+    "entertainment": 5539,
+    "kids": 99,
+    "music": 201
   }
 }
