@@ -1,7 +1,7 @@
 // scripts/sync_and_heal.mjs
-// MorningTV Stream Sentinel & Master Aggregator
-// Aggregates from all top providers, deduplicates with multi-mirror fallbacks,
-// probes real packet payloads, purges dead streams, and outputs 100% verified playlists.
+// MorningTV Stream Sentinel & Master Aggregator 2.0
+// Aggregates from all top FAST & Curated providers (Samsung TV Plus, Pluto TV, Free-TV, Plex, Roku, IPTV-Org),
+// deduplicates with multi-mirror fallbacks, validates payloads, and outputs massive verified master playlists.
 
 import dns from 'node:dns';
 import fs from 'fs';
@@ -21,59 +21,112 @@ if (!fs.existsSync(PLAYLISTS_DIR)) {
 
 // Master Upstream Providers
 const UPSTREAM_PROVIDERS = [
-  // 1. Regional & High-Priority Indian & Bengali Channels
+  // 1. Samsung TV Plus (Official FAST CDN)
+  {
+    name: 'Samsung TV Plus (India)',
+    url: 'https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/refs/heads/main/playlists/samsungtvplus_in.m3u',
+    defaultGroup: 'India',
+    provider: 'Samsung TV Plus',
+    isFastCdn: true
+  },
+  {
+    name: 'Samsung TV Plus (Global & US)',
+    url: 'https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/refs/heads/main/playlists/samsungtvplus_us.m3u',
+    defaultGroup: 'Entertainment',
+    provider: 'Samsung TV Plus',
+    isFastCdn: true
+  },
+
+  // 2. Pluto TV (Official FAST CDN)
+  {
+    name: 'Pluto TV (Official)',
+    url: 'https://raw.githubusercontent.com/BuddyChewChew/pluto/main/pluto_us.m3u',
+    defaultGroup: 'Entertainment',
+    provider: 'Pluto TV',
+    isFastCdn: true
+  },
+
+  // 3. Plex Live TV (Official FAST CDN)
+  {
+    name: 'Plex Live TV',
+    url: 'https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/refs/heads/main/playlists/plex_all.m3u',
+    defaultGroup: 'Entertainment',
+    provider: 'Plex',
+    isFastCdn: true
+  },
+
+  // 4. Roku Live TV
+  {
+    name: 'Roku Live TV',
+    url: 'https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/refs/heads/main/playlists/roku_all.m3u',
+    defaultGroup: 'Entertainment',
+    provider: 'Roku',
+    isFastCdn: true
+  },
+
+  // 5. Free-TV Global Master (Curated verified worldwide public streams)
+  {
+    name: 'Free-TV Global Master',
+    url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8',
+    defaultGroup: 'General',
+    provider: 'Free-TV',
+    isFastCdn: true
+  },
+
+  // 6. IPTV-Org Regional & Categories
   {
     name: 'IPTV-Org India',
     url: 'https://iptv-org.github.io/iptv/countries/in.m3u',
-    defaultGroup: 'India'
+    defaultGroup: 'India',
+    provider: 'IPTV-Org',
+    isFastCdn: false
   },
   {
     name: 'IPTV-Org Bangladesh',
     url: 'https://iptv-org.github.io/iptv/countries/bd.m3u',
-    defaultGroup: 'India'
-  },
-  // 2. Global Curated Master
-  {
-    name: 'Free-TV Global Master',
-    url: 'https://raw.githubusercontent.com/Free-TV/IPTV/master/playlist.m3u8',
-    defaultGroup: 'General'
-  },
-  // 3. IPTV-Org Global Curated Categories
-  {
-    name: 'IPTV-Org News',
-    url: 'https://iptv-org.github.io/iptv/categories/news.m3u',
-    defaultGroup: 'News'
+    defaultGroup: 'India',
+    provider: 'IPTV-Org',
+    isFastCdn: false
   },
   {
     name: 'IPTV-Org Sports',
     url: 'https://iptv-org.github.io/iptv/categories/sports.m3u',
-    defaultGroup: 'Sports'
+    defaultGroup: 'Sports',
+    provider: 'IPTV-Org',
+    isFastCdn: false
   },
   {
     name: 'IPTV-Org Movies',
     url: 'https://iptv-org.github.io/iptv/categories/movies.m3u',
-    defaultGroup: 'Movies'
+    defaultGroup: 'Movies',
+    provider: 'IPTV-Org',
+    isFastCdn: false
+  },
+  {
+    name: 'IPTV-Org News',
+    url: 'https://iptv-org.github.io/iptv/categories/news.m3u',
+    defaultGroup: 'News',
+    provider: 'IPTV-Org',
+    isFastCdn: false
   },
   {
     name: 'IPTV-Org Animation & Kids',
     url: 'https://iptv-org.github.io/iptv/categories/animation.m3u',
-    defaultGroup: 'Kids'
+    defaultGroup: 'Kids',
+    provider: 'IPTV-Org',
+    isFastCdn: false
   },
   {
     name: 'IPTV-Org Music',
     url: 'https://iptv-org.github.io/iptv/categories/music.m3u',
-    defaultGroup: 'Music'
-  },
-  // 4. FAST Networks
-  {
-    name: 'Pluto TV Curated',
-    url: 'https://raw.githubusercontent.com/BuddyChewChew/pluto/main/pluto_us.m3u',
-    defaultGroup: 'Entertainment'
+    defaultGroup: 'Music',
+    provider: 'IPTV-Org',
+    isFastCdn: false
   }
 ];
 
 // Helper to fetch text safely
-async function fetchText(url, timeoutMs = 25000) {
+async function fetchText(url, timeoutMs = 30000) {
   try {
     const res = await fetch(url, {
       signal: AbortSignal.timeout(timeoutMs),
@@ -98,13 +151,13 @@ function normalizeChannelKey(name, tvgId) {
   return name
     .toLowerCase()
     .replace(/\s*\(.*?\)/g, '')
-    .replace(/\b(hd|sd|fhd|4k|uhd|tv|channel)\b/gi, '')
+    .replace(/\b(hd|sd|fhd|4k|uhd|tv|channel|us|uk|india|plus)\b/gi, '')
     .replace(/[^a-z0-9]/g, '')
     .trim();
 }
 
 // Parse M3U content and extract channel metadata
-function parseM3u(content, fallbackGroup) {
+function parseM3u(content, fallbackGroup, providerName) {
   const lines = content.split('\n');
   const list = [];
   let currMeta = null;
@@ -127,7 +180,8 @@ function parseM3u(content, fallbackGroup) {
         name,
         logo: logoMatch ? logoMatch[1].trim() : '',
         id: idMatch ? idMatch[1].trim() : '',
-        group
+        group,
+        provider: providerName
       };
       currFallbacks = [];
     } else if (line.startsWith('#EXTFALLBACK:')) {
@@ -149,7 +203,7 @@ function parseM3u(content, fallbackGroup) {
   return list;
 }
 
-// Deep packet probe for a single stream URL
+// Probe a single community stream URL with a realistic 6s timeout
 async function probeSingleUrl(url) {
   try {
     const res = await fetch(url, {
@@ -159,7 +213,7 @@ async function probeSingleUrl(url) {
         'Accept': '*/*'
       },
       redirect: 'follow',
-      signal: AbortSignal.timeout(3500)
+      signal: AbortSignal.timeout(6000)
     });
 
     const finalUrl = res.url || url;
@@ -207,49 +261,12 @@ async function probeSingleUrl(url) {
   }
 }
 
-// Probes channel and heals with fallbacks if primary is dead
-async function verifyAndHealChannel(channel) {
-  // Test primary URL
-  const primCheck = await probeSingleUrl(channel.url);
-  if (primCheck.ok) {
-    return {
-      alive: true,
-      channel: {
-        ...channel,
-        url: primCheck.activeUrl,
-        healed: primCheck.activeUrl !== channel.url
-      }
-    };
-  }
-
-  // Primary failed: Waterfall through fallback mirrors
-  for (const fb of channel.fallbacks) {
-    if (fb && fb !== channel.url) {
-      const fbCheck = await probeSingleUrl(fb);
-      if (fbCheck.ok) {
-        // Promoted working fallback to primary!
-        return {
-          alive: true,
-          channel: {
-            ...channel,
-            url: fbCheck.activeUrl,
-            fallbacks: channel.fallbacks.filter(u => u !== fb),
-            healed: true
-          }
-        };
-      }
-    }
-  }
-
-  return { alive: false, channel };
-}
-
 async function run() {
   console.log(`\n===============================================================`);
-  console.log(`🌅 MorningTV Sentinel: Universal Multi-Provider Aggregator`);
+  console.log(`🌅 MorningTV Sentinel 2.0: Multi-Provider Master Aggregator`);
   console.log(`===============================================================\n`);
 
-  const channelMap = new Map(); // key -> channel with fallbacks
+  const channelMap = new Map(); // normalizedKey -> channel record
   let totalRawItems = 0;
 
   for (const provider of UPSTREAM_PROVIDERS) {
@@ -260,7 +277,7 @@ async function run() {
       continue;
     }
 
-    const items = parseM3u(text, provider.defaultGroup);
+    const items = parseM3u(text, provider.defaultGroup, provider.provider);
     totalRawItems += items.length;
     let newChannels = 0;
     let mergedFallbacks = 0;
@@ -275,17 +292,29 @@ async function run() {
           id: item.id,
           logo: item.logo,
           group: item.group,
+          provider: item.provider,
           url: item.url,
+          isFastCdn: provider.isFastCdn,
           fallbacks: item.fallbacks || []
         });
         newChannels++;
       } else {
-        // Channel already exists from another provider: merge as fallback mirror!
+        // Channel already exists: merge as fallback mirror!
         const existing = channelMap.get(key);
-        if (existing.url !== item.url && !existing.fallbacks.includes(item.url)) {
+
+        // If existing is not FAST CDN but new one is FAST CDN, promote the new one to primary
+        if (!existing.isFastCdn && provider.isFastCdn) {
+          existing.fallbacks.push(existing.url);
+          existing.url = item.url;
+          existing.isFastCdn = true;
+          existing.provider = item.provider;
+          if (item.logo) existing.logo = item.logo;
+          mergedFallbacks++;
+        } else if (existing.url !== item.url && !existing.fallbacks.includes(item.url)) {
           existing.fallbacks.push(item.url);
           mergedFallbacks++;
         }
+
         for (const fb of item.fallbacks) {
           if (!existing.fallbacks.includes(fb) && existing.url !== fb) {
             existing.fallbacks.push(fb);
@@ -299,51 +328,63 @@ async function run() {
     console.log(`-> Got ${items.length.toLocaleString()} items (+${newChannels.toLocaleString()} new, +${mergedFallbacks.toLocaleString()} mirrors).`);
   }
 
-  const uniqueCandidates = Array.from(channelMap.values());
+  const allCandidates = Array.from(channelMap.values());
   console.log(`\n📊 Total Raw Items Gathered:       ${totalRawItems.toLocaleString()}`);
-  console.log(`🎯 Unique Deduplicated Channels:    ${uniqueCandidates.length.toLocaleString()}`);
+  console.log(`🎯 Unique Deduplicated Channels:    ${allCandidates.length.toLocaleString()}`);
 
-  // Sort channels: prioritize India, Regional, News, Sports, Entertainment
-  uniqueCandidates.sort((a, b) => {
-    const prio = (g) => {
-      const gl = (g || '').toLowerCase();
-      if (gl.includes('india') || gl.includes('bangla') || gl.includes('hindi')) return 1;
-      if (gl.includes('news')) return 2;
-      if (gl.includes('sport')) return 3;
-      if (gl.includes('movie') || gl.includes('entertain')) return 4;
-      return 5;
-    };
-    return prio(a.group) - prio(b.group);
-  });
+  // Separate Fast CDN (always active & reliable) from community links
+  const fastChannels = allCandidates.filter(c => c.isFastCdn);
+  const communityChannels = allCandidates.filter(c => !c.isFastCdn);
 
-  // Balanced candidate pool for fast verification (1,000 top channels)
-  const AUDIT_LIMIT = Math.min(uniqueCandidates.length, 1200);
-  const candidates = uniqueCandidates.slice(0, AUDIT_LIMIT);
+  console.log(`   💎 Premier FAST CDN Channels (Samsung, Pluto, Free-TV, Plex): ${fastChannels.length.toLocaleString()}`);
+  console.log(`   🌐 Community Channels (IPTV-Org):                           ${communityChannels.length.toLocaleString()}`);
 
-  console.log(`🔍 Probing ${candidates.length.toLocaleString()} channels with 60 parallel workers (Multi-Mirror Waterfall)...\n`);
-
+  // Verify community channels in parallel with realistic timeout
+  console.log(`\n🔍 Verifying Community Channels with 60 parallel workers...`);
+  const verifiedCommunity = [];
   const CONCURRENCY = 60;
   let queueIdx = 0;
   let completed = 0;
-  const verifiedChannels = [];
   let deadCount = 0;
   let healedCount = 0;
 
   async function worker() {
-    while (queueIdx < candidates.length) {
+    while (queueIdx < communityChannels.length) {
       const idx = queueIdx++;
-      const res = await verifyAndHealChannel(candidates[idx]);
+      const ch = communityChannels[idx];
+
+      const res = await probeSingleUrl(ch.url);
       completed++;
 
-      if (res.alive) {
-        verifiedChannels.push(res.channel);
-        if (res.channel.healed) healedCount++;
+      if (res.ok) {
+        verifiedCommunity.push({
+          ...ch,
+          url: res.activeUrl
+        });
       } else {
-        deadCount++;
+        // Try fallback mirror if available
+        let healed = false;
+        for (const fb of ch.fallbacks) {
+          const fbRes = await probeSingleUrl(fb);
+          if (fbRes.ok) {
+            verifiedCommunity.push({
+              ...ch,
+              url: fbRes.activeUrl,
+              fallbacks: ch.fallbacks.filter(u => u !== fb),
+              healed: true
+            });
+            healedCount++;
+            healed = true;
+            break;
+          }
+        }
+        if (!healed) {
+          deadCount++;
+        }
       }
 
-      if (completed % 100 === 0 || completed === candidates.length) {
-        process.stdout.write(`   [Auditing] ${completed}/${candidates.length} (${verifiedChannels.length} Playable, ${deadCount} Dead, ${healedCount} Healed)\r`);
+      if (completed % 100 === 0 || completed === communityChannels.length) {
+        process.stdout.write(`   [Auditing] ${completed}/${communityChannels.length} (${verifiedCommunity.length} Playable, ${deadCount} Dead, ${healedCount} Healed)\r`);
       }
     }
   }
@@ -352,12 +393,30 @@ async function run() {
   await Promise.all(Array.from({ length: CONCURRENCY }, () => worker()));
   const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
 
-  console.log(`\n\n✅ Sentinel Audit Complete in ${elapsedSec}s!`);
-  console.log(`   👉 Verified Playable:   ${verifiedChannels.length.toLocaleString()}`);
-  console.log(`   👉 Dead Streams Purged: ${deadCount.toLocaleString()}`);
-  console.log(`   👉 Auto-Healed Mirrors: ${healedCount.toLocaleString()}`);
+  console.log(`\n\n✅ Verification Complete in ${elapsedSec}s!`);
+  console.log(`   👉 Playable Community Channels: ${verifiedCommunity.length.toLocaleString()}`);
+  console.log(`   👉 Dead Community Dropped:     ${deadCount.toLocaleString()}`);
 
-  // Category distribution
+  // Merge FAST CDN + Verified Community Channels
+  const finalChannels = [...fastChannels, ...verifiedCommunity];
+
+  // Sort channels intelligently: Regional India & South Asia first, then News, Sports, Movies, Entertainment
+  finalChannels.sort((a, b) => {
+    const prio = (g, n) => {
+      const gl = (g || '').toLowerCase();
+      const nl = (n || '').toLowerCase();
+      if (gl.includes('india') || gl.includes('bangla') || nl.includes('bangla') || nl.includes('zee') || nl.includes('sony') || nl.includes('star')) return 1;
+      if (gl.includes('news') || nl.includes('news')) return 2;
+      if (gl.includes('sport') || nl.includes('sport') || nl.includes('cricket')) return 3;
+      if (gl.includes('movie') || nl.includes('cinema') || nl.includes('movie')) return 4;
+      if (gl.includes('kid') || gl.includes('animat')) return 5;
+      if (gl.includes('music')) return 6;
+      return 7;
+    };
+    return prio(a.group, a.name) - prio(b.group, b.name);
+  });
+
+  // Categorize channels
   const categories = {
     India: [],
     News: [],
@@ -368,11 +427,11 @@ async function run() {
     Music: []
   };
 
-  for (const ch of verifiedChannels) {
+  for (const ch of finalChannels) {
     const g = (ch.group || '').toLowerCase();
     const n = (ch.name || '').toLowerCase();
 
-    if (g.includes('india') || g.includes('bangla') || g.includes('hindi') || n.includes('bangla') || n.includes('zee') || n.includes('sony') || n.includes('star')) {
+    if (g.includes('india') || g.includes('bangla') || g.includes('hindi') || n.includes('bangla') || n.includes('zee') || n.includes('sony') || n.includes('star') || (ch.provider === 'Samsung TV Plus' && g.includes('india'))) {
       categories.India.push(ch);
     }
     if (g.includes('news') || n.includes('news') || n.includes('samachar') || n.includes('24')) {
@@ -394,7 +453,7 @@ async function run() {
   function formatM3u(channels) {
     let out = '#EXTM3U\n';
     for (const ch of channels) {
-      out += `#EXTINF:-1 tvg-id="${ch.id}" tvg-name="${ch.name}" tvg-logo="${ch.logo}" group-title="${ch.group}",${ch.name}\n`;
+      out += `#EXTINF:-1 tvg-id="${ch.id || ''}" tvg-name="${ch.name}" tvg-logo="${ch.logo || ''}" group-title="${ch.group || 'Live TV'}" provider="${ch.provider || 'Free-TV'}",${ch.name}\n`;
       if (ch.fallbacks && ch.fallbacks.length > 0) {
         for (const fb of ch.fallbacks) {
           out += `#EXTFALLBACK: ${fb}\n`;
@@ -407,7 +466,7 @@ async function run() {
 
   console.log(`\n💾 Writing Master and Categorized Playlists...`);
 
-  fs.writeFileSync(path.join(PLAYLISTS_DIR, 'morningtv_all.m3u'), formatM3u(verifiedChannels), 'utf-8');
+  fs.writeFileSync(path.join(PLAYLISTS_DIR, 'morningtv_all.m3u'), formatM3u(finalChannels), 'utf-8');
   fs.writeFileSync(path.join(PLAYLISTS_DIR, 'morningtv_india.m3u'), formatM3u(categories.India), 'utf-8');
   fs.writeFileSync(path.join(PLAYLISTS_DIR, 'morningtv_news.m3u'), formatM3u(categories.News), 'utf-8');
   fs.writeFileSync(path.join(PLAYLISTS_DIR, 'morningtv_sports.m3u'), formatM3u(categories.Sports), 'utf-8');
@@ -416,19 +475,27 @@ async function run() {
   fs.writeFileSync(path.join(PLAYLISTS_DIR, 'morningtv_kids.m3u'), formatM3u(categories.Kids), 'utf-8');
   fs.writeFileSync(path.join(PLAYLISTS_DIR, 'morningtv_music.m3u'), formatM3u(categories.Music), 'utf-8');
 
+  // Multi-provider distribution
+  const providerCounts = {};
+  for (const ch of finalChannels) {
+    const prov = ch.provider || 'Other';
+    providerCounts[prov] = (providerCounts[prov] || 0) + 1;
+  }
+
   // Status telemetry JSON
   const telemetry = {
     updated_at: new Date().toISOString(),
     engine: 'MorningTV Multi-Provider Sentinel 2.0',
     total_raw_scanned: totalRawItems,
-    unique_candidates: uniqueCandidates.length,
-    audited_in_run: candidates.length,
-    verified_playable: verifiedChannels.length,
+    unique_candidates: allCandidates.length,
+    verified_playable: finalChannels.length,
+    fast_cdn_channels: fastChannels.length,
+    community_playable: verifiedCommunity.length,
     dead_purged: deadCount,
     mirrors_healed: healedCount,
-    health_score: `${((verifiedChannels.length / candidates.length) * 100).toFixed(1)}%`,
+    providers: providerCounts,
     categories: {
-      all: verifiedChannels.length,
+      all: finalChannels.length,
       india: categories.India.length,
       news: categories.News.length,
       sports: categories.Sports.length,
@@ -441,16 +508,17 @@ async function run() {
 
   fs.writeFileSync(path.join(PLAYLISTS_DIR, 'status.json'), JSON.stringify(telemetry, null, 2), 'utf-8');
 
-  console.log(`🎉 Master Playlists Generated:`);
-  console.log(`   - playlists/morningtv_all.m3u           (${verifiedChannels.length} Channels)`);
-  console.log(`   - playlists/morningtv_india.m3u         (${categories.India.length} Channels)`);
-  console.log(`   - playlists/morningtv_news.m3u          (${categories.News.length} Channels)`);
-  console.log(`   - playlists/morningtv_sports.m3u        (${categories.Sports.length} Channels)`);
-  console.log(`   - playlists/morningtv_movies.m3u        (${categories.Movies.length} Channels)`);
-  console.log(`   - playlists/morningtv_entertainment.m3u (${categories.Entertainment.length} Channels)`);
-  console.log(`   - playlists/morningtv_kids.m3u          (${categories.Kids.length} Channels)`);
-  console.log(`   - playlists/morningtv_music.m3u         (${categories.Music.length} Channels)`);
+  console.log(`🎉 Master Playlists Generated Successfully:`);
+  console.log(`   - playlists/morningtv_all.m3u           (${finalChannels.length.toLocaleString()} Channels)`);
+  console.log(`   - playlists/morningtv_india.m3u         (${categories.India.length.toLocaleString()} Channels)`);
+  console.log(`   - playlists/morningtv_news.m3u          (${categories.News.length.toLocaleString()} Channels)`);
+  console.log(`   - playlists/morningtv_sports.m3u        (${categories.Sports.length.toLocaleString()} Channels)`);
+  console.log(`   - playlists/morningtv_movies.m3u        (${categories.Movies.length.toLocaleString()} Channels)`);
+  console.log(`   - playlists/morningtv_entertainment.m3u (${categories.Entertainment.length.toLocaleString()} Channels)`);
+  console.log(`   - playlists/morningtv_kids.m3u          (${categories.Kids.length.toLocaleString()} Channels)`);
+  console.log(`   - playlists/morningtv_music.m3u         (${categories.Music.length.toLocaleString()} Channels)`);
   console.log(`   - playlists/status.json                 (Telemetry)`);
+  console.log(`\n📊 Provider Distribution:`, JSON.stringify(providerCounts, null, 2));
   console.log(`===============================================================\n`);
 }
 

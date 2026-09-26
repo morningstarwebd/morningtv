@@ -71,7 +71,11 @@ impl M3uParser {
                         if u.contains("pluto.tv") {
                             Some("Pluto TV".to_string())
                         } else if u.contains("samsung") {
-                            Some("Samsung TV".to_string())
+                            Some("Samsung TV Plus".to_string())
+                        } else if u.contains("plex") {
+                            Some("Plex".to_string())
+                        } else if u.contains("roku") {
+                            Some("Roku".to_string())
                         } else if u.contains("free-tv") {
                             Some("Free-TV".to_string())
                         } else if u.contains("amazeyourself") || u.contains("cloudplay") || u.contains("sonyliv") {

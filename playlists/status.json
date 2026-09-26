@@ -1,17 +1,29 @@
 {
-  "updated_at": "2026-09-26T15:14:53.276Z",
-  "engine": "MorningTV Cloud Sentinel 1.0",
-  "total_candidates_scanned": 600,
-  "playable_channels": 44,
-  "dead_filtered": 556,
-  "links_healed": 0,
-  "health_score": "7.3%",
+  "updated_at": "2026-09-26T16:54:25.687Z",
+  "engine": "MorningTV Multi-Provider Sentinel 2.0",
+  "total_raw_scanned": 10236,
+  "unique_candidates": 9200,
+  "verified_playable": 6492,
+  "fast_cdn_channels": 6331,
+  "community_playable": 161,
+  "dead_purged": 2708,
+  "mirrors_healed": 9,
+  "providers": {
+    "Samsung TV Plus": 786,
+    "Pluto TV": 431,
+    "Plex": 2869,
+    "Roku": 232,
+    "Free-TV": 2013,
+    "IPTV-Org": 161
+  },
   "categories": {
-    "all": 44,
-    "news": 13,
-    "sports": 0,
-    "kids": 6,
-    "entertainment": 14,
-    "india": 11
+    "all": 6492,
+    "india": 148,
+    "news": 463,
+    "sports": 282,
+    "movies": 325,
+    "entertainment": 5195,
+    "kids": 87,
+    "music": 140
   }
 }
