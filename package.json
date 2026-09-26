@@ -1,0 +1,19 @@
+{
+  "name": "morningtv-streams",
+  "version": "1.0.0",
+  "description": "MorningTV - Automated Cloud Stream Sentinel & Verified Master Playlists",
+  "type": "module",
+  "scripts": {
+    "sync": "node scripts/sync_and_heal.mjs"
+  },
+  "keywords": [
+    "iptv",
+    "morningtv",
+    "m3u",
+    "live-streams",
+    "hls",
+    "stream-verifier"
+  ],
+  "author": "MorningTV Team",
+  "license": "MIT"
+}
