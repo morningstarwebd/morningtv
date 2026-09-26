@@ -23,10 +23,10 @@ impl StreamProxy {
                 }
             };
 
-    let client = Arc::new(
+            let client = Arc::new(
                 reqwest::blocking::Client::builder()
-                    .timeout(std::time::Duration::from_secs(20))
-                    .connect_timeout(std::time::Duration::from_secs(8))
+                    .timeout(std::time::Duration::from_secs(10))
+                    .connect_timeout(std::time::Duration::from_secs(3))
                     .danger_accept_invalid_certs(true)
                     .build()
                     .unwrap_or_default(),

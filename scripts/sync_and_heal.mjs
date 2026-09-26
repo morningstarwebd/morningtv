@@ -144,6 +144,25 @@ const UPSTREAM_PROVIDERS = [
 
 // Curated verified backup mirrors for critical regional channels
 const KNOWN_BACKUP_MIRRORS = {
+  colors: [
+    'https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8'
+  ],
+  colorshd: [
+    'https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8'
+  ],
+  colorsbangla: [
+    'http://103.165.93.31:8095/colorsBangla/index.m3u8',
+    'https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8'
+  ],
+  colorscineplex: [
+    'https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/gb/YuppTV/ColorsCineplexUK.m3u8'
+  ],
+  sonyentertainment: [
+    'https://cloudplay-sonyliv.pages.dev/sethd.m3u8'
+  ],
+  sonyaath: [
+    'https://cloudplay-sonyliv.pages.dev/aath.m3u8'
+  ],
   zeebangla: [
     'https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/ZeeBanglaHD.m3u8',
     'https://live-bangla.akamaized.net/liveabr/playlist.m3u8'
@@ -151,13 +170,6 @@ const KNOWN_BACKUP_MIRRORS = {
   starjalsha: [
     'https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starjalsha.smil/chunklist_b1928000.m3u8',
     'http://cdn98.com/play/live.php?mac=00:1A:79:99:54:11&stream=225805&extension=ts&play_token=o1cczsG9wV'
-  ],
-  colorsbangla: [
-    'http://103.165.93.31:8095/colorsBangla/index.m3u8',
-    'https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8'
-  ],
-  sonyaath: [
-    'https://cloudplay-sonyliv.pages.dev/aath.m3u8'
   ],
   zee24ghanta: [
     'https://tvsen6.aynaott.com/DpPnXP9r/index.m3u8',
@@ -281,13 +293,20 @@ function parseM3u(content, fallbackGroup, providerName, isVipProvider = false) {
       if (fbUrl) currFallbacks.push(fbUrl);
     } else if (line.startsWith('http://') || line.startsWith('https://')) {
       if (currMeta) {
+        let activeUrl = line;
         // Automatically inject backup mirrors for critical regional channels
         const norm = normalizeChannelKey(currMeta.name, currMeta.id);
         for (const [k, mirrors] of Object.entries(KNOWN_BACKUP_MIRRORS)) {
           if (norm.includes(k) || k.includes(norm)) {
             for (const m of mirrors) {
-              if (m !== line && !currFallbacks.includes(m)) {
-                currFallbacks.push(m);
+              if (m !== activeUrl && !currFallbacks.includes(m)) {
+                // If stream is a raw IP and mirror is a verified HTTPS CDN, promote CDN to primary!
+                if (/^http:\/\/\d+\.\d+\.\d+\.\d+/.test(activeUrl) && m.startsWith('https://')) {
+                  currFallbacks.push(activeUrl);
+                  activeUrl = m;
+                } else {
+                  currFallbacks.push(m);
+                }
               }
             }
           }
@@ -295,7 +314,7 @@ function parseM3u(content, fallbackGroup, providerName, isVipProvider = false) {
 
         list.push({
           ...currMeta,
-          url: line,
+          url: activeUrl,
           fallbacks: [...currFallbacks]
         });
         currMeta = null;
