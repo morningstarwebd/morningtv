@@ -28,7 +28,10 @@ export const AppleTVTopBar: React.FC = () => {
 		openSettings,
 		openShortcuts,
 		channels,
+		resetPlaylist,
 	} = useAppStore();
+
+	const [isSyncing, setIsSyncing] = useState(false);
 
 	const allUrls = activeChannel
 		? [activeChannel.url, ...(activeChannel.fallback_urls || [])]
@@ -87,7 +90,7 @@ export const AppleTVTopBar: React.FC = () => {
 						<Tv className="w-3 h-3 text-white" />
 					</div>
 					<span className="text-xs font-black tracking-wider text-white">
-						NovaTV
+						MorningTV
 					</span>
 					<span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping ml-1" />
 				</button>
@@ -191,6 +194,22 @@ export const AppleTVTopBar: React.FC = () => {
 					title="Keyboard Shortcuts (?)"
 				>
 					<HelpCircle className="w-3.5 h-3.5" />
+				</button>
+
+				{/* Cloud Stream Sync Button */}
+				<button
+					onClick={async () => {
+						setIsSyncing(true);
+						await resetPlaylist();
+						setIsSyncing(false);
+					}}
+					disabled={isSyncing}
+					className="p-2 rounded-full bg-black/60 hover:bg-black/85 text-zinc-400 hover:text-cyan-400 border border-white/10 backdrop-blur-2xl transition-all cursor-pointer shadow-xl disabled:opacity-50"
+					title="Sync Latest Channels from GitHub (R)"
+				>
+					<RefreshCw
+						className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-cyan-400" : ""}`}
+					/>
 				</button>
 
 				{/* Settings */}

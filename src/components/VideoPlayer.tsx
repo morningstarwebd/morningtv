@@ -791,7 +791,7 @@ export const VideoPlayer: React.FC = () => {
 						<Tv className="w-12 h-12 text-cyan-400" />
 					</div>
 					<h2 className="text-2xl font-black text-white mb-2 tracking-tight">
-						NovaTV 4K
+						MorningTV 4K
 					</h2>
 					<p className="text-xs text-zinc-400 leading-relaxed mb-6 max-w-sm">
 						Simplified, ultra-smooth Apple TV & Google TV live television player

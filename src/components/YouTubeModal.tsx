@@ -152,7 +152,7 @@ export const YouTubeModal: React.FC = () => {
 							</div>
 							<p className="text-[10px] text-zinc-400">
 								Watch YouTube live streams, channels & videos directly inside
-								NovaTV
+								MorningTV
 							</p>
 						</div>
 					</div>
@@ -214,7 +214,7 @@ export const YouTubeModal: React.FC = () => {
 					{/* Embedded Cinema Player Container */}
 					<div className="relative w-full aspect-video bg-black rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
 						<iframe
-							title="NovaTV YouTube Player"
+							title="MorningTV YouTube Player"
 							src={`https://www.youtube-nocookie.com/embed/${currentVideoId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1`}
 							className="w-full h-full border-0"
 							allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
