@@ -1,6 +1,6 @@
 [package]
 name = "morningtv"
-version = "1.0.1"
+version = "1.0.2"
 default-run = "morningtv"
 description = "MorningTV - Native Windows Live TV Player"
 authors = ["MorningTV Team"]

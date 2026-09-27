@@ -1,11 +1,11 @@
 {
-  "version": "1.0.1",
-  "notes": "• **YouTube-Style Dynamic Adaptive Buffering:** Intelligently scales forward buffer up to 30 seconds on broadband/5G networks to absorb ISP packet jitter and micro-disconnects.\n• **Predictive RAM Pre-Warming:** Native Rust Axum proxy pre-buffers neighbor channels (Next/Prev) into local RAM for instantaneous, sub-millisecond zapping.\n• **Zero-Blackout Visual Continuity:** Eliminates dead black screen during channel transitions with a frosted-glass ambient channel identity aura.\n• **Official MorningTV Vector Branding:** Stunning new high-definition SVG logo emblem integrated across app topbar, settings, and player displays.\n• **Deep Byte-Inspection Sentinel 3.0:** Ultra-fast multi-threaded Tokio auditing engine with auto-healing fallback mirror switching.\n• **Silent Auto-Adaptation:** Background quality scaling without intrusive toast popups.",
-  "pub_date": "2026-09-27T17:36:03.160Z",
+  "version": "1.0.2",
+  "notes": "• **Official MorningTV Vector Iconography:** Beautiful new high-definition brand logo integrated into Windows installer headers, app icon, taskbar, and desktop shortcuts.\n• **Complete Brand & Codebase Unification:** Purged all legacy NovaTV references, test update modes, and old virtual endpoints across Rust and TypeScript.\n• **YouTube-Style Dynamic Adaptive Buffering:** Intelligently scales forward buffer up to 30 seconds on broadband/5G networks to absorb ISP packet jitter and micro-disconnects.\n• **Predictive RAM Pre-Warming:** Native Rust Axum proxy pre-buffers neighbor channels (Next/Prev) into local RAM for instantaneous, sub-millisecond zapping.\n• **Zero-Blackout Visual Continuity:** Eliminates dead black screen during channel transitions with a frosted-glass ambient channel identity aura.\n• **Zero-Error Quality Assurance:** 100% clean ESLint, Biome, and TypeScript compiler validation.",
+  "pub_date": "2026-09-27T18:21:06.109Z",
   "platforms": {
     "windows-x86_64": {
-      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbVkzQ1RUUHU3R051ditTNGd1SE5GcUprV0hkZThDYWREaXBqbTFsdUxoTVlPU1BIanN3U1FsQi9uZTRFcjZuWjhKazJyS25XQVlNRTNvNSsycVMzb240TXFYQlpuWWdVPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwNTMwNDgzCWZpbGU6TW9ybmluZ1RWXzEuMC4xX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoxLjAuMQp3T0lONm15YTN5TWpkQmpPRS93ai9SNXN4VlMwdHE2c28yN1Q4UzcvQlpDRzVkZnNjdi9nWTNEUXhKbGtYN0IrN2hmc3RhUkFvUVZwVEdGaTBaT0NBQT09Cg==",
-      "url": "https://github.com/morningstarwebd/morningtv/releases/download/v1.0.1/MorningTV_1.0.1_x64-setup.exe"
+      "signature": "dW50cnVzdGVkIGNvbW1lbnQ6IHNpZ25hdHVyZSBmcm9tIHRhdXJpIHNlY3JldCBrZXkKUlVRbVkzQ1RUUHU3R0FmcHNZK3JEajdwYk53dmJST2lVS0tYSDJHYThvSTRLOFpZZldCdG9EanlxdVVDKzlobUZSbWVnSjhSRWFWNldXb0xtOFRzaUVyNStqT3o5WXM3NmdrPQp0cnVzdGVkIGNvbW1lbnQ6IHRpbWVzdGFtcDoxNzkwNTMzMjY2CWZpbGU6TW9ybmluZ1RWXzEuMC4yX3g2NC1zZXR1cC5leGUJdmVyc2lvbjoxLjAuMgpacStqL1NDS1orMG5ML3RYZGlrcWRLam9KU1N5R3NXQUgzREpTbHR4MXRodFprY3U1N3l1a0VEQWRIbWp0MG4veDJvZVljNWZiQjdZa3JQTWp6YjNBdz09Cg==",
+      "url": "https://github.com/morningstarwebd/morningtv/releases/download/v1.0.2/MorningTV_1.0.2_x64-setup.exe"
     }
   }
 }
