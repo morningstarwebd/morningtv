@@ -4,7 +4,7 @@
 use crate::config::AppSettings;
 use crate::domain::{Channel, ChannelId, QualityTier};
 use crate::error::AppResult;
-use crate::network::{AdaptiveBitrateController, BandwidthMonitor, ResilientHttpClient};
+use crate::network::ResilientHttpClient;
 use crate::playlist::{ChannelFilter, PlaylistFetcher};
 use crate::storage::{ChannelCacheRepository, Database, FavoritesRepository, HistoryRepository};
 use std::sync::Arc;
@@ -22,10 +22,6 @@ pub struct AppState {
     pub history_repo: HistoryRepository,
     pub channel_cache_repo: ChannelCacheRepository,
     pub last_synced_at: Option<String>,
-    pub bandwidth_monitor: BandwidthMonitor,
-    pub adaptive_controller: AdaptiveBitrateController,
-    pub sys_networks: Option<sysinfo::Networks>,
-    pub sys_network_last_tick: Option<std::time::Instant>,
 }
 
 pub type SharedAppState = Arc<Mutex<AppState>>;
@@ -50,10 +46,6 @@ impl AppState {
             history_repo,
             channel_cache_repo,
             last_synced_at: None,
-            bandwidth_monitor: BandwidthMonitor::new(),
-            adaptive_controller: AdaptiveBitrateController::new(),
-            sys_networks: Some(sysinfo::Networks::new_with_refreshed_list()),
-            sys_network_last_tick: Some(std::time::Instant::now()),
         })
     }
 

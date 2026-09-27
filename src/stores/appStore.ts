@@ -15,8 +15,35 @@ import { getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
 import { updaterService, type UpdateInfo, type UpdateStatus } from "../services/updaterService";
 
+function filterChannelsClient(
+	allChannels: Channel[],
+	activeCategory: string,
+	searchQuery: string,
+): Channel[] {
+	const q = searchQuery.trim().toLowerCase();
+	return allChannels.filter((ch) => {
+		if (activeCategory === "Favorites") {
+			if (!ch.is_favorite) return false;
+		} else if (activeCategory !== "All") {
+			const catMatches = ch.group
+				.split(/[;,]/)
+				.some((part) => part.trim().toLowerCase() === activeCategory.toLowerCase());
+			if (!catMatches) return false;
+		}
+
+		if (q) {
+			const nameMatch = ch.name.toLowerCase().includes(q);
+			const groupMatch = ch.group.toLowerCase().includes(q);
+			if (!nameMatch && !groupMatch) return false;
+		}
+
+		return true;
+	});
+}
+
 interface AppState {
 	// Channel & Playlist State
+	allChannels: Channel[];
 	channels: Channel[];
 	totalChannels: number;
 	categories: string[];
@@ -80,8 +107,8 @@ interface AppState {
 	nextChannel: () => Promise<void>;
 	prevChannel: () => Promise<void>;
 	toggleFavorite: (channelId: string) => Promise<void>;
-	setCategory: (category: string) => Promise<void>;
-	setSearchQuery: (query: string) => Promise<void>;
+	setCategory: (category: string) => void;
+	setSearchQuery: (query: string) => void;
 	togglePlayPause: () => void;
 	stopPlayback: () => void;
 	setVolume: (volume: number) => void;
@@ -163,6 +190,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+	allChannels: [],
 	channels: [],
 	totalChannels: 0,
 	categories: ["All", "Favorites"],
@@ -330,6 +358,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 			const providers = ["All", ...Array.from(provSet)];
 
 			set({
+				allChannels: channels,
 				channels,
 				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
@@ -431,36 +460,47 @@ export const useAppStore = create<AppState>((set, get) => ({
 	toggleFavorite: async (channelId: string) => {
 		try {
 			const isFav = await invoke<boolean>("toggle_favorite", { id: channelId });
-			set((state) => ({
-				channels: state.channels.map((ch) =>
+			set((state) => {
+				const updatedAll = state.allChannels.map((ch) =>
 					getChannelIdString(ch.id) === channelId
 						? { ...ch, is_favorite: isFav }
 						: ch,
-				),
-			}));
+				);
+				const updatedFiltered = filterChannelsClient(
+					updatedAll,
+					state.activeCategory,
+					state.searchQuery,
+				);
+				return {
+					allChannels: updatedAll,
+					channels: updatedFiltered,
+				};
+			});
 		} catch (err) {
 			console.error("Failed to toggle favorite:", err);
 		}
 	},
 
-	setCategory: async (category: string) => {
-		try {
-			set({ activeCategory: category });
-			const filtered = await invoke<Channel[]>("set_category", { category });
-			set({ channels: filtered });
-		} catch (err) {
-			console.error("Failed to set category:", err);
-		}
+	setCategory: (category: string) => {
+		set((state) => {
+			const filtered = filterChannelsClient(
+				state.allChannels,
+				category,
+				state.searchQuery,
+			);
+			return { activeCategory: category, channels: filtered };
+		});
 	},
 
-	setSearchQuery: async (query: string) => {
-		try {
-			set({ searchQuery: query });
-			const filtered = await invoke<Channel[]>("search_channels", { query });
-			set({ channels: filtered });
-		} catch (err) {
-			console.error("Failed to search channels:", err);
-		}
+	setSearchQuery: (query: string) => {
+		set((state) => {
+			const filtered = filterChannelsClient(
+				state.allChannels,
+				state.activeCategory,
+				query,
+			);
+			return { searchQuery: query, channels: filtered };
+		});
 	},
 
 	togglePlayPause: () => {
@@ -588,6 +628,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 			const channels = await invoke<Channel[]>("load_playlist", { url });
 			const categories = await invoke<string[]>("get_categories");
 			set({
+				allChannels: channels,
 				channels,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				activeCategory: "All",
@@ -606,6 +647,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 			const categories = await invoke<string[]>("get_categories");
 			const settings = await invoke<AppSettings>("get_settings");
 			set({
+				allChannels: channels,
 				channels,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				activeCategory: "All",
@@ -630,6 +672,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 			]);
 			const realCount = totalCount > 0 ? totalCount : channels.length;
 			set({
+				allChannels: channels,
 				channels,
 				totalChannels: realCount,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
@@ -661,12 +704,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 			});
 			const providers = ["All", ...Array.from(provSet)];
 
-			set({
-				channels,
+			set((state) => ({
+				allChannels: channels,
+				channels: filterChannelsClient(
+					channels,
+					state.activeCategory,
+					state.searchQuery,
+				),
 				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				providers: providers.length > 1 ? providers : ["All"],
-			});
+			}));
 		} catch (err) {
 			console.error("Failed to reload channels:", err);
 		}
@@ -685,12 +733,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 			});
 			const providers = ["All", ...Array.from(provSet)];
 
-			set({
-				channels,
+			set((state) => ({
+				allChannels: channels,
+				channels: filterChannelsClient(
+					channels,
+					state.activeCategory,
+					state.searchQuery,
+				),
 				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				providers: providers.length > 1 ? providers : ["All"],
-			});
+			}));
 			get().showToast(
 				`✅ Loaded ${channels.length.toLocaleString()} fresh channels!`,
 				false,

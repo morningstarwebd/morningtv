@@ -1,40 +1,27 @@
 // src/commands/telemetry.rs
-// Tauri IPC command handlers for bandwidth monitoring and adaptive bitrate
+// Isolated OS-level system network telemetry monitor via sysinfo (zero AppState mutex contention)
 
-use crate::app::SharedAppState;
-use crate::domain::{NetworkMetrics, QualityTier};
-use tauri::{AppHandle, Emitter, State};
+use std::sync::Mutex;
+use tauri::State;
 
-#[tauri::command]
-pub async fn record_metrics(
-    app_handle: AppHandle,
-    buffer_secs: f64,
-    bitrate_bps: f64,
-    state: State<'_, SharedAppState>,
-) -> Result<Option<QualityTier>, String> {
-    let mut guard = state.lock().await;
-    guard.bandwidth_monitor.update_buffer_state(buffer_secs);
-    if bitrate_bps > 0.0 {
-        guard.bandwidth_monitor.record_sample(bitrate_bps as usize / 8, 1.0);
-    }
-
-    let metrics = guard.bandwidth_monitor.get_metrics();
-    let auto_enabled = guard.settings.auto_adaptive_bitrate;
-    let recommendation = guard.adaptive_controller.evaluate_and_recommend(&metrics, auto_enabled);
-
-    if let Some(tier) = recommendation {
-        guard.settings.preferred_quality = tier;
-        let _ = guard.settings.save();
-        let _ = app_handle.emit("quality_tier_changed", tier);
-    }
-
-    Ok(recommendation)
+pub struct NetworkMonitorState {
+    networks: Mutex<sysinfo::Networks>,
+    last_tick: Mutex<std::time::Instant>,
 }
 
-#[tauri::command]
-pub async fn get_metrics(state: State<'_, SharedAppState>) -> Result<NetworkMetrics, String> {
-    let guard = state.lock().await;
-    Ok(guard.bandwidth_monitor.get_metrics())
+impl NetworkMonitorState {
+    pub fn new() -> Self {
+        Self {
+            networks: Mutex::new(sysinfo::Networks::new_with_refreshed_list()),
+            last_tick: Mutex::new(std::time::Instant::now()),
+        }
+    }
+}
+
+impl Default for NetworkMonitorState {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -49,24 +36,26 @@ pub struct SystemNetworkStats {
 
 #[tauri::command]
 pub async fn get_system_network_stats(
-    state: State<'_, SharedAppState>,
+    state: State<'_, NetworkMonitorState>,
 ) -> Result<SystemNetworkStats, String> {
-    let mut guard = state.lock().await;
     let now = std::time::Instant::now();
-
-    let elapsed = if let Some(last) = guard.sys_network_last_tick {
-        let dur = now.duration_since(last).as_secs_f64();
-        if dur > 0.05 { dur } else { 1.0 }
-    } else {
-        1.0
+    let elapsed = {
+        let mut last_guard = state.last_tick.lock().map_err(|e| e.to_string())?;
+        let dur = now.duration_since(*last_guard).as_secs_f64();
+        *last_guard = now;
+        if dur > 0.05 {
+            dur
+        } else {
+            1.0
+        }
     };
-    guard.sys_network_last_tick = Some(now);
 
     let mut total_rx = 0u64;
     let mut total_tx = 0u64;
     let mut primary_iface = "Wi-Fi / Ethernet".to_string();
 
-    if let Some(ref mut networks) = guard.sys_networks {
+    {
+        let mut networks = state.networks.lock().map_err(|e| e.to_string())?;
         networks.refresh(true);
         for (name, data) in networks.iter() {
             let rx = data.received();

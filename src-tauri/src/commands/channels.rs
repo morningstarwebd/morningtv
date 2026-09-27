@@ -15,15 +15,6 @@ pub async fn get_channels(state: State<'_, SharedAppState>) -> Result<Vec<Channe
     Ok(guard.filtered_channels.clone())
 }
 
-#[tauri::command]
-pub async fn get_all_channels(state: State<'_, SharedAppState>) -> Result<Vec<Channel>, String> {
-    let mut guard = state.lock().await;
-    if guard.all_channels.is_empty() {
-        let playlist_url = guard.settings.playlist_url.clone();
-        let _ = guard.load_playlist(&playlist_url).await;
-    }
-    Ok(guard.all_channels.clone())
-}
 
 #[tauri::command]
 pub async fn get_total_channel_count(state: State<'_, SharedAppState>) -> Result<usize, String> {

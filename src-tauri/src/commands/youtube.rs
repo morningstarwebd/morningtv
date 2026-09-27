@@ -347,18 +347,3 @@ pub async fn open_hotstar(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-#[tauri::command]
-pub async fn focus_main_window(app: AppHandle) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.unminimize();
-        let _ = window.set_focus();
-    }
-    if let Some(yt) = app.get_webview_window("youtube") {
-        let _ = yt.hide();
-    }
-    if let Some(hs) = app.get_webview_window("hotstar") {
-        let _ = hs.hide();
-    }
-    Ok(())
-}

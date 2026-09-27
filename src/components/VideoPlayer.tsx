@@ -1,11 +1,8 @@
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
 import Hls from "hls.js";
 import { ChevronRight, Loader2, RefreshCw, Tv } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
-import type { QualityTier } from "../types";
 import { audioBooster } from "../utils/audioBooster";
 import { formatBytesPerSec } from "../utils/speedFormatter";
 
@@ -577,37 +574,6 @@ export const VideoPlayer: React.FC = () => {
 		}
 	}, [selectedQualityLevel, is3GDataSaver]);
 
-	// Listen to Tauri quality tier recommendations
-	useEffect(() => {
-		let unlistenFn: (() => void) | null = null;
-		listen<QualityTier>("quality_tier_changed", (event) => {
-			const tier = event.payload;
-			setAbrTier(tier);
-			if (
-				selectedQualityLevel === -1 &&
-				hlsRef.current?.levels &&
-				hlsRef.current.levels.length > 0
-			) {
-				const tierToLevel: Record<QualityTier, number> = {
-					UltraLow: 0,
-					Low: Math.min(1, hlsRef.current.levels.length - 1),
-					Medium: -1,
-					High: -1,
-					Auto: -1,
-				};
-				const target = tierToLevel[tier] ?? -1;
-				if (hlsRef.current.currentLevel !== target) {
-					hlsRef.current.currentLevel = target;
-				}
-			}
-		}).then((fn) => {
-			unlistenFn = fn;
-		});
-
-		return () => {
-			if (unlistenFn) unlistenFn();
-		};
-	}, [selectedQualityLevel, setAbrTier]);
 
 	// Buffer, network telemetry, stall watchdog, and ABR evaluation loop
 	useEffect(() => {
@@ -785,39 +751,6 @@ export const VideoPlayer: React.FC = () => {
 						setStreamHealthStatus("critical");
 					}
 				}
-			}
-
-			try {
-				const recommendation = await invoke<QualityTier | null>(
-					"record_metrics",
-					{
-						bufferSecs,
-						bitrateBps,
-					},
-				);
-
-				if (recommendation) {
-					setAbrTier(recommendation);
-					if (
-						selectedQualityLevel === -1 &&
-						hlsRef.current?.levels &&
-						hlsRef.current.levels.length > 0
-					) {
-						const tierToLevel: Record<QualityTier, number> = {
-							UltraLow: 0,
-							Low: Math.min(1, hlsRef.current.levels.length - 1),
-							Medium: -1,
-							High: -1,
-							Auto: -1,
-						};
-						const targetLevel = tierToLevel[recommendation] ?? -1;
-						if (hlsRef.current.currentLevel !== targetLevel) {
-							hlsRef.current.currentLevel = targetLevel;
-						}
-					}
-				}
-			} catch {
-				// Ignored
 			}
 		}, 1000);
 

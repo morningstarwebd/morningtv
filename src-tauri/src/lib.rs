@@ -52,9 +52,9 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(state)
+        .manage(commands::NetworkMonitorState::new())
         .invoke_handler(tauri::generate_handler![
             commands::get_channels,
-            commands::get_all_channels,
             commands::get_total_channel_count,
             commands::get_categories,
             commands::select_channel,
@@ -65,12 +65,9 @@ pub fn run() {
             commands::get_settings,
             commands::save_settings,
             commands::cycle_quality,
-            commands::record_metrics,
-            commands::get_metrics,
             commands::get_system_network_stats,
             commands::open_youtube,
             commands::open_hotstar,
-            commands::focus_main_window,
             commands::reset_playlist,
             commands::force_refresh_channels,
             commands::check_playlist_update,

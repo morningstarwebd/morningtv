@@ -7,9 +7,6 @@ use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("Video Player Error: {0}")]
-    Player(#[from] PlayerError),
-
     #[error("Playlist Error: {0}")]
     Playlist(#[from] PlaylistError),
 
@@ -29,32 +26,6 @@ pub enum AppError {
     Io(#[from] std::io::Error),
 }
 
-#[derive(Error, Debug)]
-pub enum PlayerError {
-    #[error("libmpv initialization failed: {0}")]
-    MpvInit(String),
-
-    #[error("Failed to set mpv property '{property}': {reason}")]
-    PropertySet {
-        property: String,
-        reason: String,
-    },
-
-    #[error("Failed to execute mpv command '{command}': {reason}")]
-    CommandFailed {
-        command: String,
-        reason: String,
-    },
-
-    #[error("Win32 child window creation failed: code {0}")]
-    Win32WindowFailed(u32),
-
-    #[error("Invalid stream URL: {0}")]
-    InvalidUrl(String),
-
-    #[error("Playback aborted: {0}")]
-    PlaybackAborted(String),
-}
 
 #[derive(Error, Debug)]
 pub enum PlaylistError {
@@ -114,7 +85,6 @@ pub enum ConfigError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
-pub type PlayerResult<T> = Result<T, PlayerError>;
 pub type PlaylistResult<T> = Result<T, PlaylistError>;
 pub type NetworkResult<T> = Result<T, NetworkError>;
 pub type StorageResult<T> = Result<T, StorageError>;
