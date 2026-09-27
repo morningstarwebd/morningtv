@@ -10,18 +10,30 @@ import { SettingsDialog } from "./components/SettingsDialog";
 import { ShortcutsModal } from "./components/ShortcutsModal";
 import { StreamQualityPopover } from "./components/StreamQualityPopover";
 import { ToastBanner } from "./components/ToastBanner";
+import { UpdateModal } from "./components/UpdateModal";
 import { VideoPlayer } from "./components/VideoPlayer";
 import { YouTubeModal } from "./components/YouTubeModal";
 import { useBackgroundRefresh } from "./hooks/useBackgroundRefresh";
 import { useAppStore } from "./stores/appStore";
 
 const App: React.FC = () => {
-	const { init } = useAppStore();
+	const {
+		init,
+		updateInfo,
+		isUpdateModalOpen,
+		setUpdateModalOpen,
+		checkForUpdates,
+	} = useAppStore();
 	useBackgroundRefresh();
 
 	useEffect(() => {
 		init();
-	}, [init]);
+		// Silently check for app updates 3 seconds after launch
+		const timer = setTimeout(() => {
+			checkForUpdates(false);
+		}, 3000);
+		return () => clearTimeout(timer);
+	}, [init, checkForUpdates]);
 
 	return (
 		<div className="h-screen w-screen relative bg-black text-zinc-100 overflow-hidden select-none font-sans">
@@ -53,6 +65,13 @@ const App: React.FC = () => {
 
 			{/* Shortcuts Guide Modal */}
 			<ShortcutsModal />
+
+			{/* Native Software Update Modal */}
+			<UpdateModal
+				isOpen={isUpdateModalOpen}
+				updateInfo={updateInfo}
+				onClose={() => setUpdateModalOpen(false)}
+			/>
 		</div>
 	);
 };

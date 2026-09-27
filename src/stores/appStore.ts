@@ -13,6 +13,7 @@ import type {
 } from "../types";
 import { getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
+import { updaterService, type UpdateInfo } from "../services/updaterService";
 
 interface AppState {
 	// Channel & Playlist State
@@ -115,6 +116,13 @@ interface AppState {
 	syncCloudStreams: () => Promise<void>;
 	loadChannels: () => Promise<void>;
 	forceRefreshChannels: () => Promise<void>;
+
+	// App Updater State
+	updateInfo: UpdateInfo | null;
+	isUpdateModalOpen: boolean;
+	isCheckingUpdate: boolean;
+	setUpdateModalOpen: (open: boolean) => void;
+	checkForUpdates: (manual?: boolean) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -161,6 +169,33 @@ export const useAppStore = create<AppState>((set, get) => ({
 	settings: null,
 	toast: null,
 	isSyncing: false,
+	updateInfo: null,
+	isUpdateModalOpen: false,
+	isCheckingUpdate: false,
+	setUpdateModalOpen: (open: boolean) => set({ isUpdateModalOpen: open }),
+
+	checkForUpdates: async (manual = false) => {
+		set({ isCheckingUpdate: true });
+		try {
+			const res = await updaterService.checkForUpdate();
+			set({ isCheckingUpdate: false });
+			if (res.hasUpdate && res.info) {
+				set({ updateInfo: res.info, isUpdateModalOpen: true });
+			} else if (manual) {
+				if (res.error) {
+					get().showToast(`Update check failed: ${res.error}`, true);
+				} else {
+					get().showToast("🎉 MorningTV is completely up to date! (v1.0.0)");
+				}
+			}
+		} catch (e: unknown) {
+			set({ isCheckingUpdate: false });
+			if (manual) {
+				const msg = e instanceof Error ? e.message : String(e);
+				get().showToast(`Update check failed: ${msg}`, true);
+			}
+		}
+	},
 
 	init: async () => {
 		try {

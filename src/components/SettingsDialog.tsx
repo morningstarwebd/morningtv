@@ -25,6 +25,8 @@ export const SettingsDialog: React.FC = () => {
 		syncCloudStreams,
 		toggleAmbientGlow,
 		toggleNormalizeAudio,
+		isCheckingUpdate,
+		checkForUpdates,
 	} = useAppStore();
 
 	const [playlistUrl, setPlaylistUrl] = useState("");
@@ -227,6 +229,30 @@ export const SettingsDialog: React.FC = () => {
 							Deep 60s buffer cushion, 0.2s keyframe nudge, and auto-failover to
 							backup mirrors are enabled.
 						</div>
+					</div>
+
+					{/* Software Update Card */}
+					<div className="p-3.5 bg-zinc-900/60 border border-white/10 rounded-2xl flex items-center justify-between">
+						<div className="flex flex-col gap-0.5">
+							<div className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+								<span>MorningTV Desktop</span>
+								<span className="px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold">
+									v1.0.0
+								</span>
+							</div>
+							<div className="text-[10px] text-zinc-400">
+								Supports Windows 10 & 11 (64-bit)
+							</div>
+						</div>
+						<button
+							type="button"
+							onClick={() => checkForUpdates(true)}
+							disabled={isCheckingUpdate}
+							className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer disabled:opacity-50"
+						>
+							<RefreshCw className={`w-3.5 h-3.5 ${isCheckingUpdate ? "animate-spin text-cyan-400" : ""}`} />
+							<span>{isCheckingUpdate ? "Checking..." : "Check Updates"}</span>
+						</button>
 					</div>
 
 					{/* Action Buttons */}

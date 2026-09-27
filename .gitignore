@@ -28,6 +28,7 @@ dist-ssr
 target/
 src-tauri/target/
 src-tauri/gen/
+build_dist/
 *.dll
 *.exe
 deps/
@@ -37,3 +38,8 @@ wsa/
 *.vhdx
 *.7z
 *.img
+
+# Secrets & Private Keys
+*.key
+scripts/*.key
+

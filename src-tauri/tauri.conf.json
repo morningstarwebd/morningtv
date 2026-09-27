@@ -39,12 +39,30 @@
       "icons/icon.ico"
     ],
     "resources": [],
+    "licenseFile": "../assets/LICENSE.txt",
+    "category": "Entertainment",
     "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
       "nsis": {
         "installerIcon": "icons/icon.ico",
+        "template": "../assets/morningtv-installer.nsi",
+        "installerHooks": "../assets/installer-hooks.nsh",
         "installMode": "currentUser",
         "displayLanguageSelector": false
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDE4QkJGQjRDOTM3MDYzMjYKUldRbVkzQ1RUUHU3R1BlRk5JMy8rMEtxVVhCT2R0c3BySVpDZVlteXJ0bXJuSUxnN2lHV0JBNkMK",
+      "windows": {
+        "installMode": "passive"
+      },
+      "endpoints": [
+        "https://github.com/morningstarwebd/morningtv/releases/latest/download/latest.json"
+      ]
     }
   }
 }
