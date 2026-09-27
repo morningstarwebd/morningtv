@@ -41,7 +41,6 @@ export const SettingsDialog: React.FC = () => {
 		updateInfo,
 		updateStatus,
 		updateProgress,
-		triggerVirtualUpdate,
 		startDownloadUpdate,
 		dismissUpdate,
 		relaunchApp,
@@ -660,22 +659,6 @@ export const SettingsDialog: React.FC = () => {
 												</span>
 											</button>
 										</div>
-
-										{/* Test Virtual Update Trigger */}
-										<div className="pt-2.5 border-t border-white/5 flex items-center justify-between gap-2">
-											<span className="text-[11px] text-zinc-400">
-												Want to preview how the update flow looks?
-											</span>
-											<button
-												type="button"
-												onClick={triggerVirtualUpdate}
-												className="text-xs text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5 font-bold cursor-pointer hover:underline px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 transition-all shrink-0"
-												title="Simulates a new update release so you can test the changelog, download and restart flow"
-											>
-												<Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-												<span>Test Virtual Update (v1.1.0 Preview)</span>
-											</button>
-										</div>
 									</div>
 								) : (
 									/* Expanded Update Showcase Card (Shows What's New & Download) */
@@ -694,11 +677,6 @@ export const SettingsDialog: React.FC = () => {
 														<span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-bold font-mono shrink-0">
 															v{updateInfo?.version || "1.1.0"} Available
 														</span>
-														{updateInfo?.isVirtual && (
-															<span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold font-mono shrink-0">
-																TEST MODE
-															</span>
-														)}
 													</div>
 													<p className="text-[11px] text-zinc-300 mt-0.5 truncate">
 														A new verified version is ready with performance and channel improvements

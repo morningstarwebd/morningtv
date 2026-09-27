@@ -14,6 +14,7 @@
     "sync:node": "node scripts/sync_and_heal.mjs",
     "sentinel:rust": "cargo run --release --manifest-path src-tauri/Cargo.toml --bin sentinel",
     "dist": "node scripts/build-installer.js",
+    "release": "node scripts/one-click-release.js --publish",
     "lint": "eslint src && biome check src",
     "preview": "vite preview"
   },
