@@ -12,10 +12,12 @@ import { StreamQualityPopover } from "./components/StreamQualityPopover";
 import { ToastBanner } from "./components/ToastBanner";
 import { VideoPlayer } from "./components/VideoPlayer";
 import { YouTubeModal } from "./components/YouTubeModal";
+import { useBackgroundRefresh } from "./hooks/useBackgroundRefresh";
 import { useAppStore } from "./stores/appStore";
 
 const App: React.FC = () => {
 	const { init } = useAppStore();
+	useBackgroundRefresh();
 
 	useEffect(() => {
 		init();

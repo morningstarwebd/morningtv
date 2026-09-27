@@ -6,7 +6,7 @@ use crate::domain::{Channel, ChannelId, QualityTier};
 use crate::error::AppResult;
 use crate::network::{AdaptiveBitrateController, BandwidthMonitor, ResilientHttpClient};
 use crate::playlist::{ChannelFilter, PlaylistFetcher};
-use crate::storage::{Database, FavoritesRepository, HistoryRepository};
+use crate::storage::{ChannelCacheRepository, Database, FavoritesRepository, HistoryRepository};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -20,6 +20,8 @@ pub struct AppState {
     pub active_channel_id: Option<String>,
     pub favorites_repo: FavoritesRepository,
     pub history_repo: HistoryRepository,
+    pub channel_cache_repo: ChannelCacheRepository,
+    pub last_synced_at: Option<String>,
     pub bandwidth_monitor: BandwidthMonitor,
     pub adaptive_controller: AdaptiveBitrateController,
 }
@@ -31,7 +33,8 @@ impl AppState {
         let settings = AppSettings::load();
         let db = Database::open().unwrap_or_else(|_| Database::open_in_memory().unwrap());
         let favorites_repo = FavoritesRepository::new(db.clone());
-        let history_repo = HistoryRepository::new(db);
+        let history_repo = HistoryRepository::new(db.clone());
+        let channel_cache_repo = ChannelCacheRepository::new(db);
 
         Ok(Self {
             settings,
@@ -43,12 +46,36 @@ impl AppState {
             active_channel_id: None,
             favorites_repo,
             history_repo,
+            channel_cache_repo,
+            last_synced_at: None,
             bandwidth_monitor: BandwidthMonitor::new(),
             adaptive_controller: AdaptiveBitrateController::new(),
         })
     }
 
     pub async fn load_playlist(&mut self, source: &str) -> AppResult<()> {
+        // ── STEP A: SQLite cache check ──
+        let cache_max_age = 6 * 3600; // 6 hours in seconds
+
+        if self.channel_cache_repo.is_fresh(cache_max_age) {
+            if let Ok(cached) = self.channel_cache_repo.load_all() {
+                if !cached.is_empty() {
+                    // Loaded from cache — populate favorites
+                    let mut channels = cached;
+                    if let Ok(fav_ids) = self.favorites_repo.get_all_ids() {
+                        for ch in &mut channels {
+                            ch.is_favorite = fav_ids.contains(&ch.id.0);
+                        }
+                    }
+                    self.categories = ChannelFilter::extract_categories(&channels);
+                    self.all_channels = channels;
+                    self.refresh_filtered_channels();
+                    return Ok(()); // ✅ Cache hit — network call bypassed
+                }
+            }
+        }
+
+        // ── STEP B: Cache miss — fetch from GitHub / source ──
         let client = ResilientHttpClient::new()?;
         let fetcher = PlaylistFetcher::new(client);
 
@@ -56,7 +83,10 @@ impl AppState {
             Ok(ch) if !ch.is_empty() => ch,
             _ => {
                 if source != crate::config::defaults::DEFAULT_PLAYLIST_URL {
-                    fetcher.load(crate::config::defaults::DEFAULT_PLAYLIST_URL).await.unwrap_or_default()
+                    fetcher
+                        .load(crate::config::defaults::DEFAULT_PLAYLIST_URL)
+                        .await
+                        .unwrap_or_default()
                 } else {
                     Vec::new()
                 }
@@ -64,17 +94,19 @@ impl AppState {
         };
 
         // Populate favorites state
-        if let Ok(favorite_ids) = self.favorites_repo.get_all_ids() {
+        if let Ok(fav_ids) = self.favorites_repo.get_all_ids() {
             for ch in &mut channels {
-                if favorite_ids.contains(&ch.id.0) {
-                    ch.is_favorite = true;
-                }
+                ch.is_favorite = fav_ids.contains(&ch.id.0);
             }
         }
 
         self.categories = ChannelFilter::extract_categories(&channels);
         self.all_channels = channels;
         self.refresh_filtered_channels();
+
+        // ── STEP C: Save to SQLite cache ──
+        let _ = self.channel_cache_repo.save_all(&self.all_channels);
+
         Ok(())
     }
 

@@ -75,6 +75,7 @@ pub async fn reset_playlist(state: State<'_, SharedAppState>) -> Result<Vec<Chan
     }
     {
         let mut guard = state.lock().await;
+        let _ = guard.channel_cache_repo.clear();
         guard.settings.playlist_url = default_url.clone();
         let _ = guard.settings.save();
     }
@@ -84,71 +85,90 @@ pub async fn reset_playlist(state: State<'_, SharedAppState>) -> Result<Vec<Chan
     Ok(guard.filtered_channels.clone())
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct VerificationSummary {
-    pub total_scanned: usize,
-    pub alive_channels: usize,
-    pub dead_channels_removed: usize,
-    pub links_auto_updated: usize,
-}
 
 #[tauri::command]
-pub async fn verify_and_clean_channels(
+pub async fn force_refresh_channels(
     state: State<'_, SharedAppState>,
-) -> Result<VerificationSummary, String> {
-    let channels_to_verify = {
+) -> Result<Vec<Channel>, String> {
+    let mut guard = state.lock().await;
+
+    // Cache clear করো, তারপর fresh fetch
+    let _ = guard.channel_cache_repo.clear(); // cache wipe
+    let url = guard.settings.playlist_url.clone();
+    guard.load_playlist(&url).await.map_err(|e| e.to_string())?;
+
+    Ok(guard.filtered_channels.clone())
+}
+
+/// status.json check করে — update আছে কিনা বলে
+#[tauri::command]
+pub async fn check_playlist_update(
+    state: State<'_, SharedAppState>,
+) -> Result<bool, String> {
+    let last_synced = {
         let guard = state.lock().await;
-        guard.all_channels.clone()
+        guard.last_synced_at.clone()
     };
 
-    let total = channels_to_verify.len();
-    if total == 0 {
-        return Ok(VerificationSummary {
-            total_scanned: 0,
-            alive_channels: 0,
-            dead_channels_removed: 0,
-            links_auto_updated: 0,
-        });
+    // status.json নামাও
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(5))
+        .build()
+        .map_err(|e| e.to_string())?;
+
+    let resp = client
+        .get(crate::config::defaults::STATUS_JSON_URL)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+
+    let remote_updated_at = json["updated_at"]
+        .as_str()
+        .unwrap_or("")
+        .to_string();
+
+    if remote_updated_at.is_empty() {
+        return Ok(false);
     }
 
-    let validator = crate::playlist::StreamValidator::new();
-    let (alive, dead_count, updated_count) = validator.verify_channels_parallel(channels_to_verify, 35).await;
+    // আগে কখনো sync হয়নি, বা remote টা newer
+    let has_update = match &last_synced {
+        None => true,
+        Some(prev) => remote_updated_at > *prev, // ISO8601 string compare
+    };
 
+    Ok(has_update)
+}
+
+/// Silently fresh playlist fetch করে, SQLite + memory update করে
+#[tauri::command]
+pub async fn background_refresh_playlist(
+    state: State<'_, SharedAppState>,
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    let url = {
+        let guard = state.lock().await;
+        guard.settings.playlist_url.clone()
+    };
+
+    // Cache clear করে fresh load করো
     {
         let mut guard = state.lock().await;
-        guard.all_channels = alive.clone();
-        guard.categories = crate::playlist::ChannelFilter::extract_categories(&alive);
-        guard.refresh_filtered_channels();
+        let _ = guard.channel_cache_repo.clear();
+        guard.load_playlist(&url).await.map_err(|e| e.to_string())?;
 
-        // Update local cache with verified alive channels
-        let cache_file = crate::playlist::PlaylistFetcher::cache_path();
-        if let Some(parent) = cache_file.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-        let mut m3u_text = String::from("#EXTM3U\n");
-        for ch in &alive {
-            m3u_text.push_str(&format!(
-                "#EXTINF:-1 tvg-logo=\"{}\" group-title=\"{}\",{}\n{}\n",
-                ch.logo.as_deref().unwrap_or(""),
-                ch.group,
-                ch.name,
-                ch.url
-            ));
-        }
-        let _ = std::fs::write(cache_file, m3u_text);
+        // updated_at save করো
+        guard.last_synced_at = Some(chrono::Utc::now().to_rfc3339());
     }
 
-    Ok(VerificationSummary {
-        total_scanned: total,
-        alive_channels: alive.len(),
-        dead_channels_removed: dead_count,
-        links_auto_updated: updated_count,
-    })
+    // Frontend-কে জানাও
+    use tauri::Emitter;
+    app_handle
+        .emit("playlist_updated", ())
+        .map_err(|e| e.to_string())?;
+
+    Ok(())
 }
 
-#[tauri::command]
-pub async fn check_stream_alive(url: String) -> Result<bool, String> {
-    let validator = crate::playlist::StreamValidator::new();
-    let res = validator.verify_stream_actual(&url).await;
-    Ok(res.is_alive && res.is_actual_stream)
-}

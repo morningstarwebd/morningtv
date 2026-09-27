@@ -39,9 +39,9 @@ impl Database {
 
     fn db_path() -> PathBuf {
         if let Ok(appdata) = std::env::var("APPDATA") {
-            PathBuf::from(appdata).join(APP_NAME).join("novatv.db")
+            PathBuf::from(appdata).join(APP_NAME).join("morningtv.db")
         } else {
-            PathBuf::from("novatv.db")
+            PathBuf::from("morningtv.db")
         }
     }
 
@@ -61,6 +61,23 @@ impl Database {
                 channel_url TEXT NOT NULL,
                 last_played DATETIME DEFAULT CURRENT_TIMESTAMP
             );
+
+            CREATE TABLE IF NOT EXISTS channels_cache (
+                id          TEXT    PRIMARY KEY,
+                name        TEXT    NOT NULL,
+                url         TEXT    NOT NULL,
+                group_title TEXT    NOT NULL DEFAULT 'General',
+                logo        TEXT,
+                fallbacks   TEXT    NOT NULL DEFAULT '[]',
+                provider    TEXT,
+                cached_at   INTEGER NOT NULL
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_cache_group
+                ON channels_cache(group_title);
+
+            CREATE INDEX IF NOT EXISTS idx_cache_time
+                ON channels_cache(cached_at);
             ",
         )
         .map_err(StorageError::Sqlite)?;

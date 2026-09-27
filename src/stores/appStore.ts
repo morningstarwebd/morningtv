@@ -57,11 +57,9 @@ interface AppState {
 	ambientGlow: boolean;
 	settings: AppSettings | null;
 	toast: { message: string; isError: boolean } | null;
-	isVerifyingStreams: boolean;
 
 	// Actions
 	init: () => Promise<void>;
-	verifyAndCleanChannels: () => Promise<void>;
 	selectChannel: (channel: Channel) => Promise<void>;
 	selectChannelByIndex: (index: number) => Promise<void>;
 	nextChannel: () => Promise<void>;
@@ -115,6 +113,8 @@ interface AppState {
 	toggleNormalizeAudio: () => void;
 	isSyncing: boolean;
 	syncCloudStreams: () => Promise<void>;
+	loadChannels: () => Promise<void>;
+	forceRefreshChannels: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -160,7 +160,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 	ambientGlow: true,
 	settings: null,
 	toast: null,
-	isVerifyingStreams: false,
 	isSyncing: false,
 
 	init: async () => {
@@ -472,35 +471,52 @@ export const useAppStore = create<AppState>((set, get) => ({
 		}
 	},
 
-	verifyAndCleanChannels: async () => {
-		set({ isVerifyingStreams: true });
-		get().showToast("🔍 Running deep actual stream verification...", false);
+	loadChannels: async () => {
 		try {
-			const summary = await invoke<{
-				total_scanned: number;
-				alive_channels: number;
-				dead_channels_removed: number;
-				links_auto_updated: number;
-			}>("verify_and_clean_channels");
-
 			const [channels, categories] = await Promise.all([
 				invoke<Channel[]>("get_channels"),
 				invoke<string[]>("get_categories"),
 			]);
 
+			const provSet = new Set<string>();
+			channels.forEach((c) => {
+				if (c.provider) provSet.add(c.provider);
+			});
+			const providers = ["All", ...Array.from(provSet)];
+
 			set({
 				channels,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
-				isVerifyingStreams: false,
+				providers: providers.length > 1 ? providers : ["All"],
 			});
+		} catch (err) {
+			console.error("Failed to reload channels:", err);
+		}
+	},
 
+	forceRefreshChannels: async () => {
+		try {
+			get().showToast("🔄 Refreshing channels cache...", false);
+			const channels = await invoke<Channel[]>("force_refresh_channels");
+			const categories = await invoke<string[]>("get_categories");
+
+			const provSet = new Set<string>();
+			channels.forEach((c) => {
+				if (c.provider) provSet.add(c.provider);
+			});
+			const providers = ["All", ...Array.from(provSet)];
+
+			set({
+				channels,
+				categories: categories.length > 0 ? categories : ["All", "Favorites"],
+				providers: providers.length > 1 ? providers : ["All"],
+			});
 			get().showToast(
-				`✅ Verified! ${summary.dead_channels_removed} dead removed, ${summary.links_auto_updated} links updated. ${summary.alive_channels} playable channels ready.`,
+				`✅ Loaded ${channels.length.toLocaleString()} fresh channels!`,
 				false,
 			);
 		} catch (err) {
-			set({ isVerifyingStreams: false });
-			get().showToast(`Verification failed: ${err}`, true);
+			get().showToast(`Failed to refresh channels: ${err}`, true);
 		}
 	},
 

@@ -66,9 +66,10 @@ pub fn run() {
             commands::open_youtube,
             commands::open_hotstar,
             commands::focus_main_window,
-            commands::check_stream_alive,
             commands::reset_playlist,
-            commands::verify_and_clean_channels,
+            commands::force_refresh_channels,
+            commands::check_playlist_update,
+            commands::background_refresh_playlist,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

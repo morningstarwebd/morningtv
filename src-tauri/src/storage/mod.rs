@@ -4,7 +4,9 @@
 pub mod db;
 pub mod favorites;
 pub mod history;
+pub mod channel_cache;
 
 pub use db::Database;
 pub use favorites::FavoritesRepository;
 pub use history::HistoryRepository;
+pub use channel_cache::ChannelCacheRepository;

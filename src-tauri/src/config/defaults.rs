@@ -8,6 +8,7 @@ pub const APP_VERSION: &str = "1.0.0";
 
 // Default remote verified master IPTV playlist
 pub const DEFAULT_PLAYLIST_URL: &str = "https://raw.githubusercontent.com/morningstarwebd/morningtv/main/playlists/morningtv_all.m3u";
+pub const STATUS_JSON_URL: &str = "https://raw.githubusercontent.com/morningstarwebd/morningtv/main/playlists/status.json";
 
 // Low-Bandwidth MPV Defaults
 pub const DEFAULT_CACHE_SECS: u32 = 30;
