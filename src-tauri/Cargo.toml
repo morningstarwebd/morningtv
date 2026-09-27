@@ -11,10 +11,6 @@ rust-version = "1.77.2"
 name = "morningtv"
 path = "src/main.rs"
 
-[[bin]]
-name = "sentinel"
-path = "src/bin/sentinel.rs"
-
 [lib]
 name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
