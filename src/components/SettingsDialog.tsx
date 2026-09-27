@@ -151,24 +151,27 @@ export const SettingsDialog: React.FC = () => {
 	];
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl select-none p-3 sm:p-6 animate-in fade-in duration-200">
+		<div
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-sm select-none p-3 sm:p-6 animate-in fade-in duration-200"
+			onClick={closeSettings}
+		>
 			<div
-				className="w-full max-w-4xl min-h-[520px] max-h-[90vh] bg-[#090b14]/95 border border-white/10 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.95)] flex flex-col md:flex-row overflow-hidden"
+				className="w-[760px] max-w-[95vw] h-[510px] bg-[#060814]/55 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-col md:flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Left Sidebar Navigation */}
-				<div className="w-full md:w-64 bg-[#05070e]/85 border-b md:border-b-0 md:border-r border-white/5 p-4 sm:p-5 flex flex-col justify-between shrink-0">
+				<div className="w-full md:w-60 h-full bg-black/40 border-b md:border-b-0 md:border-r border-white/10 p-4 flex flex-col justify-between shrink-0 backdrop-blur-xl">
 					<div>
 						{/* App Branding */}
-						<div className="flex items-center gap-3 pb-5 mb-4 border-b border-white/5">
-							<div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20 shrink-0">
-								<Sliders className="w-4.5 h-4.5" />
+						<div className="flex items-center gap-2.5 pb-4 mb-3 border-b border-white/10">
+							<div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500/30 to-blue-600/40 border border-cyan-400/40 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20 shrink-0">
+								<Sliders className="w-4 h-4 text-cyan-300" />
 							</div>
 							<div>
-								<h2 className="text-sm font-black text-white tracking-wider uppercase">
+								<h2 className="text-xs font-black text-white tracking-wider uppercase">
 									MorningTV
 								</h2>
-								<p className="text-[11px] text-zinc-400 font-medium">
+								<p className="text-[10px] text-zinc-300 font-medium">
 									Player Preferences
 								</p>
 							</div>
@@ -184,15 +187,15 @@ export const SettingsDialog: React.FC = () => {
 										key={tab.id}
 										type="button"
 										onClick={() => setActiveTab(tab.id)}
-										className={`group flex items-center justify-between w-full p-2.5 rounded-2xl text-left transition-all cursor-pointer shrink-0 ${
+										className={`group flex items-center justify-between w-full p-2.5 rounded-xl text-left transition-all cursor-pointer shrink-0 ${
 											isActive
-												? "bg-blue-600 text-white shadow-lg shadow-blue-600/30"
-												: "text-zinc-400 hover:text-white hover:bg-white/[0.04]"
+												? "bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-md shadow-cyan-600/30 border border-cyan-400/30"
+												: "text-zinc-300 hover:text-white hover:bg-white/[0.08]"
 										}`}
 									>
-										<div className="flex items-center gap-2.5 min-w-0">
+										<div className="flex items-center gap-2 min-w-0">
 											<Icon
-												className={`w-4 h-4 shrink-0 transition-colors ${
+												className={`w-3.5 h-3.5 shrink-0 transition-colors ${
 													isActive ? "text-white" : "text-zinc-400 group-hover:text-white"
 												}`}
 											/>
@@ -201,8 +204,8 @@ export const SettingsDialog: React.FC = () => {
 													{tab.label}
 												</div>
 												<div
-													className={`text-[10px] hidden md:block truncate ${
-														isActive ? "text-blue-100" : "text-zinc-500"
+													className={`text-[9px] hidden md:block truncate ${
+														isActive ? "text-cyan-100" : "text-zinc-400"
 													}`}
 												>
 													{tab.desc}
@@ -212,7 +215,7 @@ export const SettingsDialog: React.FC = () => {
 
 										{tab.badge && (
 											<span
-												className={`ml-2 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+												className={`ml-1.5 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
 													isActive
 														? "bg-white/20 text-white"
 														: tab.badgeStyle || "bg-white/10 text-cyan-300"
@@ -228,33 +231,33 @@ export const SettingsDialog: React.FC = () => {
 					</div>
 
 					{/* Bottom System Info */}
-					<div className="hidden md:flex items-center justify-between pt-4 border-t border-white/5">
-						<div className="flex items-center gap-2">
-							<span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-							<span className="text-[11px] font-medium text-zinc-400">
+					<div className="hidden md:flex items-center justify-between pt-3 border-t border-white/10">
+						<div className="flex items-center gap-1.5">
+							<span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+							<span className="text-[10px] font-medium text-zinc-300">
 								MorningTV Desktop
 							</span>
 						</div>
-						<span className="text-[10px] font-mono text-zinc-500 font-bold">
+						<span className="text-[9px] font-mono text-zinc-400 font-bold">
 							v1.0.0
 						</span>
 					</div>
 				</div>
 
 				{/* Right Content Area */}
-				<div className="flex-1 p-5 sm:p-7 flex flex-col justify-between overflow-y-auto bg-[#0b0e1a]/40">
-					{/* Top Header of Active View */}
+				<div className="flex-1 h-full p-4 sm:p-5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
 					<div>
-						<div className="flex items-start justify-between pb-4 mb-5 border-b border-white/5">
+						{/* Top Header of Active View */}
+						<div className="flex items-start justify-between pb-2.5 mb-3 border-b border-white/10">
 							<div>
-								<h3 className="text-base font-extrabold text-white tracking-wide">
+								<h3 className="text-sm font-extrabold text-white tracking-wide">
 									{activeTab === "playlist" && "Playlist & Channels"}
 									{activeTab === "cinema" && "Cinema & Display"}
 									{activeTab === "audio" && "Sound & Acoustics"}
 									{activeTab === "cloud" && "Cloud Repository"}
 									{activeTab === "updates" && "Software Update"}
 								</h3>
-								<p className="text-xs text-zinc-400 mt-0.5">
+								<p className="text-[11px] text-zinc-300 mt-0.5">
 									{activeTab === "playlist" &&
 										"Manage your streaming links, index channels, and sync cloud lists"}
 									{activeTab === "cinema" &&
@@ -270,12 +273,15 @@ export const SettingsDialog: React.FC = () => {
 
 							<button
 								onClick={closeSettings}
-								className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer border border-transparent hover:border-white/10"
+								className="p-1 rounded-full text-zinc-400 hover:text-white bg-white/10 hover:bg-white/20 border border-white/10 transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
 								title="Close (Esc)"
 							>
 								<X className="w-4 h-4" />
 							</button>
 						</div>
+
+						{/* Content Container - Fixed 350px */}
+						<div className="h-[350px] overflow-y-auto pr-1 scrollbar-thin">
 
 						{/* TAB 1: PLAYLIST & CHANNELS */}
 						{activeTab === "playlist" && (
@@ -829,14 +835,15 @@ export const SettingsDialog: React.FC = () => {
 								)}
 							</div>
 						)}
+						</div>
 					</div>
 
 					{/* Modal Footer Controls */}
-					<div className="flex items-center justify-end pt-4 mt-6 border-t border-white/5">
+					<div className="pt-2.5 border-t border-white/10 flex items-center justify-end text-xs text-zinc-300">
 						<button
 							type="button"
 							onClick={closeSettings}
-							className="px-5 py-2 text-xs font-bold text-white bg-white/10 hover:bg-white/15 rounded-xl border border-white/10 transition-all cursor-pointer active:scale-95"
+							className="px-4 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs transition-all cursor-pointer border border-white/10 active:scale-95"
 						>
 							Done
 						</button>
