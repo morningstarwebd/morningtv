@@ -258,7 +258,7 @@ async function runRelease() {
     ].filter((f) => fs.existsSync(path.join(ROOT, f)));
 
     try {
-      runGit(['add', ...trackedFiles]);
+      runGit(['add', '-A']);
       runGit(['commit', '-m', `v${nextVersion}: Automated Production Release`]);
     } catch (e) {
       log('Git commit note: working tree clean or already committed.');
