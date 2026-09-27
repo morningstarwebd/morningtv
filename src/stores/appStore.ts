@@ -35,6 +35,18 @@ interface AppState {
 	isMuted: boolean;
 	bufferSecs: number;
 	networkSpeed: string;
+	nominalBitrate: string;
+	downloadBandwidth: string;
+	downloadSpeedFormatted: string; // e.g. "2.84 MB/s" (divided by 8, mobile style)
+	downloadSpeedMbps: string; // e.g. "22.7 Mbps"
+	streamBitrateFormatted: string; // e.g. "317.4 KB/s"
+	streamBitrateMbps: string; // e.g. "2.6 Mbps"
+	bandwidthCapacityFormatted: string; // e.g. "4.25 MB/s"
+	bandwidthCapacityMbps: string; // e.g. "34.0 Mbps"
+	currentFps: number;
+	droppedFrames: number;
+	totalFrames: number;
+	liveLatency: number;
 	currentQuality: QualityTier;
 	is3GDataSaver: boolean;
 	mirrorIndex: number;
@@ -91,6 +103,23 @@ interface AppState {
 	resetPlaylist: () => Promise<void>;
 	setBufferSecs: (secs: number) => void;
 	setNetworkSpeed: (speed: string) => void;
+	setTelemetryStats: (
+		stats: Partial<{
+			networkSpeed: string;
+			nominalBitrate: string;
+			downloadBandwidth: string;
+			downloadSpeedFormatted: string;
+			downloadSpeedMbps: string;
+			streamBitrateFormatted: string;
+			streamBitrateMbps: string;
+			bandwidthCapacityFormatted: string;
+			bandwidthCapacityMbps: string;
+			currentFps: number;
+			droppedFrames: number;
+			totalFrames: number;
+			liveLatency: number;
+		}>,
+	) => void;
 	showToast: (message: string, isError?: boolean) => void;
 	hideToast: () => void;
 	setMirrorIndex: (index: number) => void;
@@ -163,7 +192,19 @@ export const useAppStore = create<AppState>((set, get) => ({
 	soundBoost: 100,
 	isMuted: false,
 	bufferSecs: 0,
-	networkSpeed: "0 kbps",
+	networkSpeed: "0 KB/s",
+	nominalBitrate: "--",
+	downloadBandwidth: "--",
+	downloadSpeedFormatted: "0 KB/s",
+	downloadSpeedMbps: "0 Mbps",
+	streamBitrateFormatted: "0 KB/s",
+	streamBitrateMbps: "0 Mbps",
+	bandwidthCapacityFormatted: "--",
+	bandwidthCapacityMbps: "--",
+	currentFps: 0,
+	droppedFrames: 0,
+	totalFrames: 0,
+	liveLatency: 0,
 	currentQuality: "Auto",
 	is3GDataSaver: false, // Default to highest quality adaptive playback
 	mirrorIndex: 0,
@@ -326,6 +367,19 @@ export const useAppStore = create<AppState>((set, get) => ({
 			isPlaying: true,
 			isChannelLoading: true,
 			bufferSecs: 0,
+			networkSpeed: "0 KB/s",
+			nominalBitrate: "--",
+			downloadBandwidth: "--",
+			downloadSpeedFormatted: "0 KB/s",
+			downloadSpeedMbps: "0 Mbps",
+			streamBitrateFormatted: "0 KB/s",
+			streamBitrateMbps: "0 Mbps",
+			bandwidthCapacityFormatted: "--",
+			bandwidthCapacityMbps: "--",
+			currentFps: 0,
+			droppedFrames: 0,
+			totalFrames: 0,
+			liveLatency: 0,
 			stallCount: 0,
 			streamHealthStatus: "good",
 			reconnectCountdown: null,
@@ -422,7 +476,19 @@ export const useAppStore = create<AppState>((set, get) => ({
 			isPlaying: false,
 			activeChannel: null,
 			bufferSecs: 0,
-			networkSpeed: "0 kbps",
+			networkSpeed: "0 KB/s",
+			nominalBitrate: "--",
+			downloadBandwidth: "--",
+			downloadSpeedFormatted: "0 KB/s",
+			downloadSpeedMbps: "0 Mbps",
+			streamBitrateFormatted: "0 KB/s",
+			streamBitrateMbps: "0 Mbps",
+			bandwidthCapacityFormatted: "--",
+			bandwidthCapacityMbps: "--",
+			currentFps: 0,
+			droppedFrames: 0,
+			totalFrames: 0,
+			liveLatency: 0,
 		});
 	},
 
@@ -636,6 +702,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 	setBufferSecs: (secs: number) => set({ bufferSecs: secs }),
 	setNetworkSpeed: (speed: string) => set({ networkSpeed: speed }),
+	setTelemetryStats: (stats) => set((state) => ({ ...state, ...stats })),
 
 	showToast: (message: string, isError = false) => {
 		set({ toast: { message, isError } });

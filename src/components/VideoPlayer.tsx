@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import type { QualityTier } from "../types";
 import { audioBooster } from "../utils/audioBooster";
+import { formatBytesPerSec } from "../utils/speedFormatter";
 
 export const VideoPlayer: React.FC = () => {
 	const {
@@ -27,6 +28,7 @@ export const VideoPlayer: React.FC = () => {
 		setMirrorIndex,
 		setBufferSecs,
 		setNetworkSpeed,
+		setTelemetryStats,
 		setStreamHealthStatus,
 		incrementStallCount,
 		setAbrTier,
@@ -52,6 +54,12 @@ export const VideoPlayer: React.FC = () => {
 	const stallTicksRef = useRef<number>(0);
 	const stallRecoveryAttemptRef = useRef<number>(0);
 	const failedUrlsRef = useRef<Set<string>>(new Set());
+	const lastQualityRef = useRef<{ totalFrames: number; time: number } | null>(null);
+	const lastFragStatsRef = useRef<{
+		lastDownloadSpeed: number;
+		lastStreamBitrate: number;
+		lastDownloadTime: number;
+	} | null>(null);
 	const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const reconnectIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
 		null,
@@ -425,10 +433,75 @@ export const VideoPlayer: React.FC = () => {
 				setIsChannelLoading(false);
 				setStreamHealthStatus("good");
 			});
-			hls.on(Hls.Events.FRAG_LOADED, () => {
+			hls.on(Hls.Events.FRAG_LOADED, (_event, data: any) => {
 				setIsBuffering(false);
 				setIsChannelLoading(false);
 				setStreamHealthStatus("good");
+
+				try {
+					const frag = data?.frag;
+					if (frag) {
+						const payloadBytes = data?.payload?.byteLength || 0;
+						const statsBytes = frag.stats?.total || frag.stats?.loaded || 0;
+						const totalBytes = payloadBytes > 0 ? payloadBytes : statsBytes;
+						const durationSec = frag.duration > 0 ? frag.duration : 2.0;
+
+						const loadStart = frag.stats?.loading?.start || 0;
+						const loadEnd = frag.stats?.loading?.end || performance.now();
+						const loadDurationSec = Math.max(0.01, (loadEnd - loadStart) / 1000);
+
+						// 1. Actual instantaneous network download speed in Bytes/sec (divided by 8)
+						const downloadBytesSec = totalBytes / loadDurationSec;
+						const fmtDownload = formatBytesPerSec(downloadBytesSec);
+
+						// 2. Actual video segment bitrate in Bytes/sec (divided by 8)
+						const streamBytesSec = totalBytes > 0 ? totalBytes / durationSec : 0;
+
+						// 3. Network bandwidth capacity from Hls bandwidth estimate (bits / 8 = Bytes)
+						const bwEstimateBits = hls.bandwidthEstimate || 0;
+						const fmtCapacity = formatBytesPerSec(bwEstimateBits / 8);
+
+						// 4. Nominal manifest bitrate (bits / 8 = Bytes)
+						let nominalBitrateStr = "";
+						if (
+							hls.levels &&
+							hls.currentLevel >= 0 &&
+							hls.levels[hls.currentLevel]?.bitrate
+						) {
+							const nomBits = hls.levels[hls.currentLevel].bitrate;
+							const nomFmt = formatBytesPerSec(nomBits / 8);
+							nominalBitrateStr = `${nomFmt.formatted} (${nomFmt.mbps})`;
+						}
+
+						const activeStreamBytes =
+							streamBytesSec > 0
+								? streamBytesSec
+								: hls.levels?.[hls.currentLevel]?.bitrate
+									? hls.levels[hls.currentLevel].bitrate / 8
+									: 0;
+
+						lastFragStatsRef.current = {
+							lastDownloadSpeed: downloadBytesSec,
+							lastStreamBitrate: activeStreamBytes,
+							lastDownloadTime: performance.now(),
+						};
+
+						const finalStreamFmt = formatBytesPerSec(activeStreamBytes);
+
+						useAppStore.getState().setTelemetryStats({
+							networkSpeed: fmtDownload.formatted,
+							downloadSpeedFormatted: fmtDownload.formatted,
+							downloadSpeedMbps: fmtDownload.mbps,
+							streamBitrateFormatted: finalStreamFmt.formatted,
+							streamBitrateMbps: finalStreamFmt.mbps,
+							bandwidthCapacityFormatted: fmtCapacity.formatted,
+							bandwidthCapacityMbps: fmtCapacity.mbps,
+							nominalBitrate: nominalBitrateStr || "--",
+						});
+					}
+				} catch (err) {
+					console.warn("FRAG_LOADED telemetry calculation error:", err);
+				}
 			});
 			hls.on(Hls.Events.BUFFER_APPENDING, () => {
 				setIsBuffering(false);
@@ -558,17 +631,123 @@ export const VideoPlayer: React.FC = () => {
 
 			setBufferSecs(Math.round(bufferSecs * 10) / 10);
 
-			let bitrateBps = 0;
-			if (hlsRef.current?.levels && hlsRef.current.currentLevel >= 0) {
-				const level = hlsRef.current.levels[hlsRef.current.currentLevel];
-				if (level?.bitrate) {
-					bitrateBps = level.bitrate;
-					const kbps = Math.round(bitrateBps / 1000);
-					setNetworkSpeed(
-						kbps > 1000 ? `${(kbps / 1000).toFixed(1)} Mbps` : `${kbps} kbps`,
-					);
+			// 1. Hardware decoded resolution detection from live video element
+			if (video.videoWidth > 0 && video.videoHeight > 0) {
+				const detectedRes = `${video.videoHeight}p (${video.videoWidth}×${video.videoHeight})`;
+				if (useAppStore.getState().currentResolution !== detectedRes) {
+					useAppStore.getState().setCurrentResolution(detectedRes);
 				}
 			}
+
+			// 2. Decoded FPS & dropped frames from hardware media decoder
+			let currentFps = 0;
+			let droppedFrames = 0;
+			let totalFrames = 0;
+			if (typeof (video as any).getVideoPlaybackQuality === "function") {
+				const q = (video as any).getVideoPlaybackQuality();
+				droppedFrames = q.droppedVideoFrames || 0;
+				totalFrames = q.totalVideoFrames || 0;
+				const now = performance.now();
+				if (lastQualityRef.current) {
+					const deltaFrames = totalFrames - lastQualityRef.current.totalFrames;
+					const deltaTime = (now - lastQualityRef.current.time) / 1000;
+					if (deltaTime >= 0.8) {
+						currentFps = Math.max(0, Math.round(deltaFrames / deltaTime));
+						lastQualityRef.current = { totalFrames, time: now };
+					}
+				} else {
+					lastQualityRef.current = { totalFrames, time: now };
+				}
+			}
+
+			// 3. Live Edge Latency (in seconds)
+			let liveLatency = 0;
+			if (hlsRef.current?.liveSyncPosition && video.currentTime > 0) {
+				liveLatency = Math.max(
+					0,
+					Math.round((hlsRef.current.liveSyncPosition - video.currentTime) * 10) / 10,
+				);
+			} else if (
+				video.duration &&
+				isFinite(video.duration) &&
+				video.currentTime > 0
+			) {
+				liveLatency = Math.max(
+					0,
+					Math.round((video.duration - video.currentTime) * 10) / 10,
+				);
+			}
+
+			// 4. Nominal manifest bitrate if available
+			let bitrateBps = 0;
+			let nominalBitrateStr = "";
+			if (
+				hlsRef.current?.levels &&
+				hlsRef.current.currentLevel >= 0 &&
+				hlsRef.current.levels[hlsRef.current.currentLevel]?.bitrate
+			) {
+				bitrateBps = hlsRef.current.levels[hlsRef.current.currentLevel].bitrate;
+				const nomFmt = formatBytesPerSec(bitrateBps / 8);
+				nominalBitrateStr = `${nomFmt.formatted} (${nomFmt.mbps})`;
+			}
+
+			// 5. Bandwidth capacity from HLS bandwidthEstimate (divided by 8)
+			const bwEstimateBits = hlsRef.current?.bandwidthEstimate || 0;
+			const fmtCapacity = formatBytesPerSec(bwEstimateBits / 8);
+
+			// 6. Real-time download speed calculation in between chunks
+			let currentDownloadBytesSec = 0;
+			if (lastFragStatsRef.current) {
+				const elapsed =
+					(performance.now() - lastFragStatsRef.current.lastDownloadTime) / 1000;
+				if (elapsed < 2.5) {
+					currentDownloadBytesSec = lastFragStatsRef.current.lastDownloadSpeed;
+				} else if (elapsed < 6.0) {
+					currentDownloadBytesSec =
+						lastFragStatsRef.current.lastDownloadSpeed * (1 - (elapsed - 2.5) / 5);
+				} else {
+					currentDownloadBytesSec = 0;
+				}
+			}
+			const fmtCurrentDownload = formatBytesPerSec(currentDownloadBytesSec);
+
+			// 7. Update telemetry state
+			const telemetryUpdates: Parameters<typeof setTelemetryStats>[0] = {
+				droppedFrames,
+				totalFrames,
+				liveLatency,
+				bandwidthCapacityFormatted: fmtCapacity.formatted,
+				bandwidthCapacityMbps: fmtCapacity.mbps,
+				downloadBandwidth: fmtCapacity.formatted,
+			};
+			// Ensure stream bitrate is always active
+			let activeStreamBytesSec = 0;
+			if (
+				lastFragStatsRef.current &&
+				lastFragStatsRef.current.lastStreamBitrate > 0
+			) {
+				activeStreamBytesSec = lastFragStatsRef.current.lastStreamBitrate;
+			} else if (bitrateBps > 0) {
+				activeStreamBytesSec = bitrateBps / 8;
+			}
+			if (activeStreamBytesSec > 0) {
+				const streamFmt = formatBytesPerSec(activeStreamBytesSec);
+				telemetryUpdates.streamBitrateFormatted = streamFmt.formatted;
+				telemetryUpdates.streamBitrateMbps = streamFmt.mbps;
+			}
+
+			if (nominalBitrateStr) {
+				telemetryUpdates.nominalBitrate = nominalBitrateStr;
+			}
+			if (currentFps > 0) {
+				telemetryUpdates.currentFps = currentFps;
+			}
+			if (currentDownloadBytesSec > 0) {
+				telemetryUpdates.networkSpeed = fmtCurrentDownload.formatted;
+				telemetryUpdates.downloadSpeedFormatted = fmtCurrentDownload.formatted;
+				telemetryUpdates.downloadSpeedMbps = fmtCurrentDownload.mbps;
+			}
+			setTelemetryStats(telemetryUpdates);
 
 			// Stall Watchdog: Detect silent video freezes without error events
 			const currentTime = video.currentTime;

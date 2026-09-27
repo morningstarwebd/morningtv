@@ -24,6 +24,8 @@ pub struct AppState {
     pub last_synced_at: Option<String>,
     pub bandwidth_monitor: BandwidthMonitor,
     pub adaptive_controller: AdaptiveBitrateController,
+    pub sys_networks: Option<sysinfo::Networks>,
+    pub sys_network_last_tick: Option<std::time::Instant>,
 }
 
 pub type SharedAppState = Arc<Mutex<AppState>>;
@@ -50,6 +52,8 @@ impl AppState {
             last_synced_at: None,
             bandwidth_monitor: BandwidthMonitor::new(),
             adaptive_controller: AdaptiveBitrateController::new(),
+            sys_networks: Some(sysinfo::Networks::new_with_refreshed_list()),
+            sys_network_last_tick: Some(std::time::Instant::now()),
         })
     }
 

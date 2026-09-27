@@ -67,6 +67,7 @@ pub fn run() {
             commands::cycle_quality,
             commands::record_metrics,
             commands::get_metrics,
+            commands::get_system_network_stats,
             commands::open_youtube,
             commands::open_hotstar,
             commands::focus_main_window,

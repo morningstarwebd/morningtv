@@ -31,4 +31,5 @@ url = "2.5"
 chrono = { version = "0.4", features = ["serde"] }
 tauri-plugin-updater = "2.13"
 tauri-plugin-process = "2.4"
+sysinfo = { version = "0.36.1", features = ["network"] }
 
