@@ -1,5 +1,5 @@
 // src/error.rs
-// Global typed error definitions for NovaTV
+// Global typed error definitions for MorningTV
 
 #![allow(dead_code)]
 

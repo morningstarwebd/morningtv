@@ -142,7 +142,9 @@ export const AppleTVDock: React.FC = () => {
 					className="hidden sm:flex items-center justify-center gap-1.5 w-14 px-2 py-1 rounded-full bg-white/5 border border-white/5 shrink-0 text-xs text-zinc-300"
 					title={`Stream Buffer: ${bufferSecs} seconds`}
 				>
-					<span className={`w-2 h-2 rounded-full shrink-0 ${getBufferColor()}`} />
+					<span
+						className={`w-2 h-2 rounded-full shrink-0 ${getBufferColor()}`}
+					/>
 					<span className="font-mono tabular-nums text-[11px] font-bold w-6 text-center shrink-0">
 						{bufferSecs}s
 					</span>

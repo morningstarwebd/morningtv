@@ -21,10 +21,19 @@
 				"noLabelWithoutControl": "off",
 				"useButtonType": "off",
 				"useKeyWithClickEvents": "off",
-				"useMediaCaption": "off"
+				"useMediaCaption": "off",
+				"noSvgWithoutTitle": "off"
 			},
 			"correctness": {
 				"useExhaustiveDependencies": "off"
+			},
+			"suspicious": {
+				"noArrayIndexKey": "off",
+				"noExplicitAny": "off",
+				"noGlobalIsFinite": "off"
+			},
+			"complexity": {
+				"noImportantStyles": "off"
 			},
 			"style": {
 				"noNonNullAssertion": "off"

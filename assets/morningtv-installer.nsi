@@ -92,6 +92,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 
 !if "${INSTALLERICON}" != ""
   !define MUI_ICON "${INSTALLERICON}"
+  !define MUI_UNICON "${INSTALLERICON}"
 !endif
 
 !define MUI_ABORTWARNING

@@ -124,9 +124,7 @@ export const StreamQualityPopover: React.FC = () => {
 
 	// Calculate dropped frame percentage
 	const dropRate =
-		totalFrames > 0
-			? ((droppedFrames / totalFrames) * 100).toFixed(1)
-			: "0.0";
+		totalFrames > 0 ? ((droppedFrames / totalFrames) * 100).toFixed(1) : "0.0";
 
 	// Ensure stream bitrate display is always active with clean fallback
 	const activeStreamBitrate =
@@ -287,8 +285,10 @@ export const StreamQualityPopover: React.FC = () => {
 								<h3 className="text-sm font-extrabold text-white tracking-wide flex items-center gap-2">
 									{activeTab === "speed" && "Live OS Network Speed Meter"}
 									{activeTab === "renditions" && "Stream Renditions & Quality"}
-									{activeTab === "buffer" && "Buffer Health & Broadcast Latency"}
-									{activeTab === "decoder" && "Hardware Media Decoder Telemetry"}
+									{activeTab === "buffer" &&
+										"Buffer Health & Broadcast Latency"}
+									{activeTab === "decoder" &&
+										"Hardware Media Decoder Telemetry"}
 								</h3>
 								<p className="text-[11px] text-zinc-300 mt-0.5">
 									{activeTab === "speed" &&
@@ -320,7 +320,8 @@ export const StreamQualityPopover: React.FC = () => {
 									<div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-950/40 via-black/40 to-cyan-950/30 border border-emerald-500/30 shadow-md relative overflow-hidden backdrop-blur-md">
 										<div className="flex items-center justify-between mb-1">
 											<span className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest flex items-center gap-1.5">
-												<Gauge className="w-3.5 h-3.5 text-emerald-400" /> System Network Speed Meter
+												<Gauge className="w-3.5 h-3.5 text-emerald-400" />{" "}
+												System Network Speed Meter
 											</span>
 											<span className="text-[9px] font-mono text-zinc-300 bg-white/10 px-2 py-0.5 rounded-full border border-white/10">
 												Adapter: {sysStats.primary_interface}
@@ -348,7 +349,8 @@ export const StreamQualityPopover: React.FC = () => {
 										</div>
 
 										<p className="text-[10px] text-zinc-300 truncate mt-0.5">
-											Live Windows network driver throughput. Matches Task Manager & mobile status bar.
+											Live Windows network driver throughput. Matches Task
+											Manager & mobile status bar.
 										</p>
 									</div>
 
@@ -357,32 +359,39 @@ export const StreamQualityPopover: React.FC = () => {
 										{/* Active Video Stream Bitrate - ALWAYS ACTIVE */}
 										<div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.1] hover:border-cyan-500/30 transition-colors backdrop-blur-md">
 											<div className="text-[10px] font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
-												<Activity className="w-3.5 h-3.5 text-cyan-400" /> Video Stream Chunk Rate
+												<Activity className="w-3.5 h-3.5 text-cyan-400" /> Video
+												Stream Chunk Rate
 											</div>
 											<div className="text-xl font-black text-white font-mono tabular-nums">
 												{activeStreamBitrate}
 											</div>
 											<div className="text-[11px] font-mono text-cyan-300 mt-0.5 truncate">
-												{activeStreamMbps} • Nominal: {nominalBitrate !== "--" ? nominalBitrate : "Dynamic"}
+												{activeStreamMbps} • Nominal:{" "}
+												{nominalBitrate !== "--" ? nominalBitrate : "Dynamic"}
 											</div>
 											<p className="text-[9px] text-zinc-400 mt-1 truncate">
-												Actual media data consumed by the player decoder per second.
+												Actual media data consumed by the player decoder per
+												second.
 											</p>
 										</div>
 
 										{/* Stream Health & ABR Guidance */}
 										<div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.1] hover:border-blue-500/30 transition-colors backdrop-blur-md">
 											<div className="text-[10px] font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
-												<Wifi className="w-3.5 h-3.5 text-blue-400" /> Stream Health Profile
+												<Wifi className="w-3.5 h-3.5 text-blue-400" /> Stream
+												Health Profile
 											</div>
 											<div className="text-xl font-black text-white font-mono tabular-nums capitalize">
-												{streamHealthStatus === "good" ? "Optimal" : streamHealthStatus}
+												{streamHealthStatus === "good"
+													? "Optimal"
+													: streamHealthStatus}
 											</div>
 											<div className="text-[11px] font-mono text-blue-300 mt-0.5">
 												ABR Guidance: {abrTier || "High"} Tier
 											</div>
 											<p className="text-[9px] text-zinc-400 mt-1 truncate">
-												Continuous adaptive bitrate recommendation engine active.
+												Continuous adaptive bitrate recommendation engine
+												active.
 											</p>
 										</div>
 									</div>
@@ -409,7 +418,8 @@ export const StreamQualityPopover: React.FC = () => {
 													)}
 												</div>
 												<p className="text-[10px] text-zinc-300 mt-0.5">
-													Caps video stream to ~360p/480p, reducing data usage by ~80%.
+													Caps video stream to ~360p/480p, reducing data usage
+													by ~80%.
 												</p>
 											</div>
 										</div>
@@ -418,7 +428,11 @@ export const StreamQualityPopover: React.FC = () => {
 											className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
 												is3GDataSaver ? "bg-emerald-500" : "bg-white/20"
 											}`}
-											title={is3GDataSaver ? "Disable Data Saver" : "Enable Data Saver"}
+											title={
+												is3GDataSaver
+													? "Disable Data Saver"
+													: "Enable Data Saver"
+											}
 										>
 											<div
 												className={`w-4.5 h-4.5 rounded-full bg-white transition-transform transform shadow-md ${
@@ -459,7 +473,9 @@ export const StreamQualityPopover: React.FC = () => {
 											</div>
 											<div className="text-left">
 												<div className="flex items-center gap-2">
-													<span className="text-xs font-bold">Auto (Adaptive ABR)</span>
+													<span className="text-xs font-bold">
+														Auto (Adaptive ABR)
+													</span>
 													{selectedQualityLevel === -1 && currentResolution && (
 														<span className="text-[9px] font-bold px-1.5 py-0.2 rounded-md bg-cyan-400/25 text-cyan-200 border border-cyan-400/40">
 															Active: {currentResolution.split(" ")[0]}
@@ -467,7 +483,8 @@ export const StreamQualityPopover: React.FC = () => {
 													)}
 												</div>
 												<div className="text-[10px] text-zinc-300 font-normal mt-0.5">
-													Dynamically scales bitrate according to real-time network throughput.
+													Dynamically scales bitrate according to real-time
+													network throughput.
 												</div>
 											</div>
 										</div>
@@ -504,7 +521,9 @@ export const StreamQualityPopover: React.FC = () => {
 													<div className="flex items-center gap-2.5">
 														<Radio className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
 														<div className="text-left">
-															<span className="text-xs font-bold">{lvl.label}</span>
+															<span className="text-xs font-bold">
+																{lvl.label}
+															</span>
 															{lvl.height >= 1080 && (
 																<span className="ml-1.5 px-1.5 py-0.2 rounded-md bg-blue-500/30 text-blue-200 text-[8px] font-bold border border-blue-400/40">
 																	Crisp HD
@@ -528,7 +547,8 @@ export const StreamQualityPopover: React.FC = () => {
 
 										{availableQualityLevels.length === 0 && (
 											<div className="p-3 text-center text-xs text-zinc-300 bg-white/[0.03] rounded-xl border border-white/[0.08]">
-												Direct broadcaster stream without multi-bitrate playlist. Stream will play at full native resolution.
+												Direct broadcaster stream without multi-bitrate
+												playlist. Stream will play at full native resolution.
 											</div>
 										)}
 									</div>
@@ -542,7 +562,8 @@ export const StreamQualityPopover: React.FC = () => {
 									<div className="p-3.5 rounded-2xl bg-white/[0.04] border border-white/[0.1] backdrop-blur-md">
 										<div className="flex items-center justify-between mb-2">
 											<span className="text-xs font-semibold text-zinc-200 flex items-center gap-1.5">
-												<HardDrive className="w-4 h-4 text-indigo-400" /> Buffer Health Gauge
+												<HardDrive className="w-4 h-4 text-indigo-400" /> Buffer
+												Health Gauge
 											</span>
 											<div className="flex items-center gap-2">
 												<span
@@ -591,7 +612,8 @@ export const StreamQualityPopover: React.FC = () => {
 									<div className="grid grid-cols-2 gap-2.5">
 										<div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.1] backdrop-blur-md">
 											<div className="text-[10px] font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
-												<Clock className="w-3.5 h-3.5 text-purple-400" /> Broadcast Live Edge Latency
+												<Clock className="w-3.5 h-3.5 text-purple-400" />{" "}
+												Broadcast Live Edge Latency
 											</div>
 											<div className="text-xl font-black text-white font-mono tabular-nums">
 												{liveLatency > 0 ? `${liveLatency}s` : "< 1.5s"}
@@ -603,10 +625,13 @@ export const StreamQualityPopover: React.FC = () => {
 
 										<div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.1] backdrop-blur-md">
 											<div className="text-[10px] font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
-												<ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> Stall Watchdog & Health
+												<ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />{" "}
+												Stall Watchdog & Health
 											</div>
 											<div className="text-xl font-black text-white font-mono tabular-nums capitalize">
-												{streamHealthStatus === "good" ? "Optimal" : streamHealthStatus}
+												{streamHealthStatus === "good"
+													? "Optimal"
+													: streamHealthStatus}
 											</div>
 											<p className="text-[9px] text-zinc-400 mt-0.5">
 												{stallCount === 0
@@ -625,7 +650,8 @@ export const StreamQualityPopover: React.FC = () => {
 										{/* Hardware Decoded Resolution */}
 										<div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.1] backdrop-blur-md">
 											<div className="text-[10px] font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
-												<Monitor className="w-3.5 h-3.5 text-blue-400" /> Decoded Frame Resolution
+												<Monitor className="w-3.5 h-3.5 text-blue-400" />{" "}
+												Decoded Frame Resolution
 											</div>
 											<div className="text-lg font-black text-white font-mono">
 												{currentResolution || "Auto (1080p)"}
@@ -638,7 +664,8 @@ export const StreamQualityPopover: React.FC = () => {
 										{/* Hardware Decoded FPS */}
 										<div className="p-3 rounded-2xl bg-white/[0.04] border border-white/[0.1] backdrop-blur-md">
 											<div className="text-[10px] font-semibold text-zinc-300 flex items-center gap-1.5 mb-1">
-												<Cpu className="w-3.5 h-3.5 text-cyan-400" /> Media Decoded Frame Rate
+												<Cpu className="w-3.5 h-3.5 text-cyan-400" /> Media
+												Decoded Frame Rate
 											</div>
 											<div className="text-lg font-black text-white font-mono">
 												{currentFps > 0 ? `${currentFps} FPS` : "60 FPS Native"}
@@ -656,17 +683,22 @@ export const StreamQualityPopover: React.FC = () => {
 												Frame Drops & Render Smoothness
 											</span>
 											<span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30">
-												{droppedFrames === 0 ? "100% Smooth" : `${100 - parseFloat(dropRate)}% Smooth`}
+												{droppedFrames === 0
+													? "100% Smooth"
+													: `${100 - parseFloat(dropRate)}% Smooth`}
 											</span>
 										</div>
 										<div className="flex items-baseline gap-2 text-lg font-black text-white font-mono">
 											<span>{droppedFrames} dropped</span>
 											<span className="text-xs text-zinc-300 font-normal">
-												out of {totalFrames > 0 ? totalFrames.toLocaleString() : "0"} total decoded frames ({dropRate}%)
+												out of{" "}
+												{totalFrames > 0 ? totalFrames.toLocaleString() : "0"}{" "}
+												total decoded frames ({dropRate}%)
 											</span>
 										</div>
 										<p className="text-[10px] text-zinc-400 mt-1">
-											Direct GPU statistics from VideoPlaybackQuality API. Zero drops indicates fluid presentation.
+											Direct GPU statistics from VideoPlaybackQuality API. Zero
+											drops indicates fluid presentation.
 										</p>
 									</div>
 								</div>

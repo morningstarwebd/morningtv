@@ -5,11 +5,11 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const NAV_SCRIPT: &str = r##"
 (function() {
-    if (window.__novatv_nav_active) return;
-    window.__novatv_nav_active = true;
+    if (window.__morningtv_nav_active) return;
+    window.__morningtv_nav_active = true;
 
     function buildNav() {
-        if (document.getElementById('novatv-top-strip')) return;
+        if (document.getElementById('morningtv-top-strip')) return;
         const parent = document.body || document.documentElement;
         if (!parent) return;
 
@@ -17,7 +17,7 @@ const NAV_SCRIPT: &str = r##"
 
         // Style container
         const strip = document.createElement('div');
-        strip.id = 'novatv-top-strip';
+        strip.id = 'morningtv-top-strip';
         strip.style.cssText = [
             'position: fixed',
             'top: 0',
@@ -37,7 +37,7 @@ const NAV_SCRIPT: &str = r##"
             'transition: transform 0.2s ease, opacity 0.2s ease'
         ].join(';');
 
-        // Left Section: [Brand Logo/Title] [◀ Live TV (in marked red box location)] [◀] [▶] [↻]
+        // Left Section: [Brand Logo/Title] [◀ Live TV] [◀] [▶] [↻]
         const leftBox = document.createElement('div');
         leftBox.style.cssText = 'display:flex;align-items:center;gap:8px;';
 
@@ -60,10 +60,10 @@ const NAV_SCRIPT: &str = r##"
         }
         leftBox.appendChild(brandBox);
 
-        // 2. BACK TO LIVE TV BUTTON (PLACED EXACTLY WHERE THE USER MARKED THE RED BOX)
+        // 2. BACK TO LIVE TV BUTTON
         const btnLive = document.createElement('button');
-        btnLive.id = 'novatv-btn-live';
-        btnLive.title = 'Return to NovaTV Live TV Channel Guide';
+        btnLive.id = 'morningtv-btn-live';
+        btnLive.title = 'Return to MorningTV Live TV Channel Guide';
         btnLive.innerHTML = '<span style="font-size:11px;">◀</span> <span>Live TV</span>';
         btnLive.style.cssText = [
             'display: flex',
@@ -91,7 +91,7 @@ const NAV_SCRIPT: &str = r##"
         };
         btnLive.onclick = function(e) {
             e.stopPropagation();
-            window.location.href = 'http://127.0.0.1:18181/return_to_novatv';
+            window.location.href = 'http://127.0.0.1:18181/return_to_morningtv';
         };
         leftBox.appendChild(btnLive);
 
@@ -107,7 +107,7 @@ const NAV_SCRIPT: &str = r##"
             if (window.history.length > 1) {
                 window.history.back();
             } else {
-                window.location.href = 'http://127.0.0.1:18181/return_to_novatv';
+                window.location.href = 'http://127.0.0.1:18181/return_to_morningtv';
             }
         };
         leftBox.appendChild(btnBack);
@@ -140,24 +140,24 @@ const NAV_SCRIPT: &str = r##"
 
         strip.appendChild(leftBox);
 
-        // Right Section: Hint & Return to NovaTV Close button
+        // Right Section: Hint & Return to MorningTV Close button
         const rightBox = document.createElement('div');
         rightBox.style.cssText = 'display:flex;align-items:center;gap:10px;';
 
         const hint = document.createElement('span');
         hint.style.cssText = 'color:rgba(255,255,255,0.4);font-size:11px;font-weight:500;';
-        hint.textContent = 'NovaTV View • Esc to return';
+        hint.textContent = 'MorningTV View • Esc to return';
         rightBox.appendChild(hint);
 
         const btnClose = document.createElement('button');
-        btnClose.title = 'Exit & Return to NovaTV Live TV';
+        btnClose.title = 'Exit & Return to MorningTV Live TV';
         btnClose.textContent = '✕';
         btnClose.style.cssText = 'background:rgba(239,68,68,0.2);border:1px solid rgba(239,68,68,0.4);color:#fca5a5;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;cursor:pointer;outline:none;transition:all 0.15s;';
         btnClose.onmouseenter = function() { btnClose.style.background = 'rgba(239,68,68,0.4)'; btnClose.style.color = '#fff'; };
         btnClose.onmouseleave = function() { btnClose.style.background = 'rgba(239,68,68,0.2)'; btnClose.style.color = '#fca5a5'; };
         btnClose.onclick = function(e) {
             e.stopPropagation();
-            window.location.href = 'http://127.0.0.1:18181/return_to_novatv';
+            window.location.href = 'http://127.0.0.1:18181/return_to_morningtv';
         };
         rightBox.appendChild(btnClose);
 
@@ -167,10 +167,10 @@ const NAV_SCRIPT: &str = r##"
 
         // Adjust host page styling so the 32px top strip doesn't clip any web UI
         const style = document.createElement('style');
-        style.id = 'novatv-injected-style';
+        style.id = 'morningtv-injected-style';
         style.textContent = `
-            #novatv-top-strip { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; }
-            :fullscreen #novatv-top-strip, :-webkit-full-screen #novatv-top-strip { display: none !important; }
+            #morningtv-top-strip { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important; }
+            :fullscreen #morningtv-top-strip, :-webkit-full-screen #morningtv-top-strip { display: none !important; }
             body { margin-top: 32px !important; }
             #masthead-container { top: 32px !important; }
             #page-manager { margin-top: 32px !important; }
@@ -178,7 +178,7 @@ const NAV_SCRIPT: &str = r##"
         document.head.appendChild(style);
     }
 
-    // Keyboard shortcut: Esc to return to NovaTV when not typing or in fullscreen
+    // Keyboard shortcut: Esc to return to MorningTV when not typing or in fullscreen
     window.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             if (document.fullscreenElement) {
@@ -189,7 +189,7 @@ const NAV_SCRIPT: &str = r##"
                 document.activeElement.blur();
                 return;
             }
-            window.location.href = 'http://127.0.0.1:18181/return_to_novatv';
+            window.location.href = 'http://127.0.0.1:18181/return_to_morningtv';
         }
     });
 
@@ -252,7 +252,7 @@ pub async fn open_youtube(app: AppHandle) -> Result<(), String> {
     let window = builder
         .on_navigation(move |nav_url| {
             let s = nav_url.as_str();
-            if s.contains("return_to_novatv") || s.contains("close_window") || nav_url.scheme() == "novatv" {
+            if s.contains("return_to_morningtv") || s.contains("return_to_novatv") || s.contains("close_window") || nav_url.scheme() == "morningtv" || nav_url.scheme() == "novatv" {
                 if let Some(main) = app_handle.get_webview_window("main") {
                     let _ = main.show();
                     let _ = main.unminimize();
@@ -302,7 +302,7 @@ pub async fn open_hotstar(app: AppHandle) -> Result<(), String> {
 
     let app_handle = app.clone();
 
-    // Hotstar in full unified window matching NovaTV main window size & position
+    // Hotstar in full unified window matching MorningTV main window size & position
     let mut builder = WebviewWindowBuilder::new(&app, "hotstar", WebviewUrl::External(url))
         .title("JioHotstar")
         .center()
@@ -325,7 +325,7 @@ pub async fn open_hotstar(app: AppHandle) -> Result<(), String> {
     let window = builder
         .on_navigation(move |nav_url| {
             let s = nav_url.as_str();
-            if s.contains("return_to_novatv") || s.contains("close_window") || nav_url.scheme() == "novatv" {
+            if s.contains("return_to_morningtv") || s.contains("return_to_novatv") || s.contains("close_window") || nav_url.scheme() == "morningtv" || nav_url.scheme() == "novatv" {
                 if let Some(main) = app_handle.get_webview_window("main") {
                     let _ = main.show();
                     let _ = main.unminimize();

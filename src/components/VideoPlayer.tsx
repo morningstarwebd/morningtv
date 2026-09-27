@@ -53,7 +53,9 @@ export const VideoPlayer: React.FC = () => {
 	const stallTicksRef = useRef<number>(0);
 	const stallRecoveryAttemptRef = useRef<number>(0);
 	const failedUrlsRef = useRef<Set<string>>(new Set());
-	const lastQualityRef = useRef<{ totalFrames: number; time: number } | null>(null);
+	const lastQualityRef = useRef<{ totalFrames: number; time: number } | null>(
+		null,
+	);
 	const lastFragStatsRef = useRef<{
 		lastDownloadSpeed: number;
 		lastStreamBitrate: number;
@@ -497,14 +499,18 @@ export const VideoPlayer: React.FC = () => {
 
 						const loadStart = frag.stats?.loading?.start || 0;
 						const loadEnd = frag.stats?.loading?.end || performance.now();
-						const loadDurationSec = Math.max(0.01, (loadEnd - loadStart) / 1000);
+						const loadDurationSec = Math.max(
+							0.01,
+							(loadEnd - loadStart) / 1000,
+						);
 
 						// 1. Actual instantaneous network download speed in Bytes/sec (divided by 8)
 						const downloadBytesSec = totalBytes / loadDurationSec;
 						const fmtDownload = formatBytesPerSec(downloadBytesSec);
 
 						// 2. Actual video segment bitrate in Bytes/sec (divided by 8)
-						const streamBytesSec = totalBytes > 0 ? totalBytes / durationSec : 0;
+						const streamBytesSec =
+							totalBytes > 0 ? totalBytes / durationSec : 0;
 
 						// 3. Network bandwidth capacity from Hls bandwidth estimate (bits / 8 = Bytes)
 						const bwEstimateBits = hls.bandwidthEstimate || 0;
@@ -681,7 +687,6 @@ export const VideoPlayer: React.FC = () => {
 		}
 	}, [selectedQualityLevel, is3GDataSaver]);
 
-
 	// Buffer, network telemetry, stall watchdog, and ABR evaluation loop
 	useEffect(() => {
 		const timer = setInterval(async () => {
@@ -746,7 +751,9 @@ export const VideoPlayer: React.FC = () => {
 			if (hlsRef.current?.liveSyncPosition && video.currentTime > 0) {
 				liveLatency = Math.max(
 					0,
-					Math.round((hlsRef.current.liveSyncPosition - video.currentTime) * 10) / 10,
+					Math.round(
+						(hlsRef.current.liveSyncPosition - video.currentTime) * 10,
+					) / 10,
 				);
 			} else if (
 				video.duration &&
@@ -780,12 +787,14 @@ export const VideoPlayer: React.FC = () => {
 			let currentDownloadBytesSec = 0;
 			if (lastFragStatsRef.current) {
 				const elapsed =
-					(performance.now() - lastFragStatsRef.current.lastDownloadTime) / 1000;
+					(performance.now() - lastFragStatsRef.current.lastDownloadTime) /
+					1000;
 				if (elapsed < 2.5) {
 					currentDownloadBytesSec = lastFragStatsRef.current.lastDownloadSpeed;
 				} else if (elapsed < 6.0) {
 					currentDownloadBytesSec =
-						lastFragStatsRef.current.lastDownloadSpeed * (1 - (elapsed - 2.5) / 5);
+						lastFragStatsRef.current.lastDownloadSpeed *
+						(1 - (elapsed - 2.5) / 5);
 				} else {
 					currentDownloadBytesSec = 0;
 				}
@@ -834,9 +843,13 @@ export const VideoPlayer: React.FC = () => {
 			const currentTime = video.currentTime;
 			if (isPlaying && !video.paused && !video.ended) {
 				if (bufferSecs > 0 && bufferSecs < 2.5) {
-					const { selectedQualityLevel: qLvl, is3GDataSaver: sMode } = useAppStore.getState();
+					const { selectedQualityLevel: qLvl, is3GDataSaver: sMode } =
+						useAppStore.getState();
 					if (qLvl === -1 && !sMode && hlsRef.current) {
-						if (hlsRef.current.currentLevel > 0 || hlsRef.current.autoLevelCapping !== 0) {
+						if (
+							hlsRef.current.currentLevel > 0 ||
+							hlsRef.current.autoLevelCapping !== 0
+						) {
 							hlsRef.current.autoLevelCapping = 0;
 							hlsRef.current.currentLevel = 0;
 							setStreamHealthStatus("degraded");
@@ -981,14 +994,20 @@ export const VideoPlayer: React.FC = () => {
 						onCanPlay={() => {
 							setIsBuffering(false);
 							setIsChannelLoading(false);
-							if (videoRef.current?.paused && useAppStore.getState().isPlaying) {
+							if (
+								videoRef.current?.paused &&
+								useAppStore.getState().isPlaying
+							) {
 								videoRef.current.play().catch(() => {});
 							}
 						}}
 						onLoadedData={() => {
 							setIsBuffering(false);
 							setIsChannelLoading(false);
-							if (videoRef.current?.paused && useAppStore.getState().isPlaying) {
+							if (
+								videoRef.current?.paused &&
+								useAppStore.getState().isPlaying
+							) {
 								videoRef.current.play().catch(() => {});
 							}
 						}}
@@ -1055,8 +1074,6 @@ export const VideoPlayer: React.FC = () => {
 							</div>
 						</div>
 					)}
-
-
 				</div>
 			) : (
 				/* Clean Welcome Screen with MorningTV Branding */
@@ -1068,7 +1085,8 @@ export const VideoPlayer: React.FC = () => {
 						MorningTV
 					</h2>
 					<p className="text-xs text-zinc-400 leading-relaxed mb-6 max-w-sm">
-						Ultra-smooth live television player with 3G shield and 300% Web Audio Booster.
+						Ultra-smooth live television player with 3G shield and 300% Web
+						Audio Booster.
 					</p>
 					<button
 						onClick={openChannelDrawer}

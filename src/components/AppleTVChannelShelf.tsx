@@ -101,7 +101,13 @@ export const AppleTVChannelShelf: React.FC = () => {
 			}
 		}
 		setVisibleCount(INITIAL_COUNT);
-	}, [activeCategory, activeProvider, searchQuery, displayChannels.length, activeChannelId]);
+	}, [
+		activeCategory,
+		activeProvider,
+		searchQuery,
+		displayChannels.length,
+		activeChannelId,
+	]);
 
 	// Horizontal scroll listener fallback for smooth chunk loading
 	const handleScroll = useCallback(() => {
@@ -232,7 +238,10 @@ export const AppleTVChannelShelf: React.FC = () => {
 						{/* Scroll Categories Left */}
 						<button
 							onClick={() =>
-								catScrollRef.current?.scrollBy({ left: -220, behavior: "smooth" })
+								catScrollRef.current?.scrollBy({
+									left: -220,
+									behavior: "smooth",
+								})
 							}
 							className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white shrink-0 transition-opacity opacity-0 group-hover/cats:opacity-100 cursor-pointer z-10 shadow"
 							title="Scroll categories left"
@@ -286,7 +295,10 @@ export const AppleTVChannelShelf: React.FC = () => {
 						{/* Scroll Categories Right */}
 						<button
 							onClick={() =>
-								catScrollRef.current?.scrollBy({ left: 220, behavior: "smooth" })
+								catScrollRef.current?.scrollBy({
+									left: 220,
+									behavior: "smooth",
+								})
 							}
 							className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white shrink-0 transition-opacity opacity-0 group-hover/cats:opacity-100 cursor-pointer z-10 shadow"
 							title="Scroll categories right"
@@ -506,33 +518,41 @@ export const AppleTVChannelShelf: React.FC = () => {
 							</div>
 						) : displayChannels.length > 0 ? (
 							<>
-								{displayChannels.slice(0, visibleCount).map((channel, index) => (
-									<AppleTVCard
-										key={getChannelIdString(channel.id)}
-										channel={channel}
-										index={index}
-										isActive={activeChannelId === getChannelIdString(channel.id)}
-										isPlaying={isPlaying}
-										onSelect={selectChannel}
-										onToggleFavorite={toggleFavorite}
-									/>
-								))}
+								{displayChannels
+									.slice(0, visibleCount)
+									.map((channel, index) => (
+										<AppleTVCard
+											key={getChannelIdString(channel.id)}
+											channel={channel}
+											index={index}
+											isActive={
+												activeChannelId === getChannelIdString(channel.id)
+											}
+											isPlaying={isPlaying}
+											onSelect={selectChannel}
+											onToggleFavorite={toggleFavorite}
+										/>
+									))}
 
 								{/* Progressive YouTube-Style Loading Skeleton Sentinel */}
 								{visibleCount < displayChannels.length && (
-									<div ref={sentinelRef} className="flex items-center gap-3 sm:gap-4 shrink-0">
+									<div
+										ref={sentinelRef}
+										className="flex items-center gap-3 sm:gap-4 shrink-0"
+									>
 										<AppleTVCardSkeleton count={2} />
 									</div>
 								)}
 
 								{/* End of Category Indicator */}
-								{displayChannels.length > INITIAL_COUNT && visibleCount >= displayChannels.length && (
-									<div className="shrink-0 px-4 py-8 text-center select-none">
-										<span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">
-											All {displayChannels.length} Channels Loaded
-										</span>
-									</div>
-								)}
+								{displayChannels.length > INITIAL_COUNT &&
+									visibleCount >= displayChannels.length && (
+										<div className="shrink-0 px-4 py-8 text-center select-none">
+											<span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 font-bold">
+												All {displayChannels.length} Channels Loaded
+											</span>
+										</div>
+									)}
 							</>
 						) : channels.length === 0 ? (
 							<div className="flex items-center gap-3 sm:gap-4 px-2">

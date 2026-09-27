@@ -3,6 +3,11 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { create } from "zustand";
+import {
+	type UpdateInfo,
+	type UpdateStatus,
+	updaterService,
+} from "../services/updaterService";
 import type {
 	AppSettings,
 	AspectRatio,
@@ -13,7 +18,6 @@ import type {
 } from "../types";
 import { getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
-import { updaterService, type UpdateInfo, type UpdateStatus } from "../services/updaterService";
 
 function filterChannelsClient(
 	allChannels: Channel[],
@@ -27,7 +31,9 @@ function filterChannelsClient(
 		} else if (activeCategory !== "All") {
 			const catMatches = ch.group
 				.split(/[;,]/)
-				.some((part) => part.trim().toLowerCase() === activeCategory.toLowerCase());
+				.some(
+					(part) => part.trim().toLowerCase() === activeCategory.toLowerCase(),
+				);
 			if (!catMatches) return false;
 		}
 
@@ -183,7 +189,6 @@ interface AppState {
 	isCheckingUpdate: boolean;
 	setUpdateModalOpen: (open: boolean) => void;
 	checkForUpdates: (manual?: boolean) => Promise<void>;
-	triggerVirtualUpdate: () => void;
 	startDownloadUpdate: () => Promise<void>;
 	dismissUpdate: () => void;
 	relaunchApp: () => Promise<void>;
@@ -299,16 +304,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 				}
 			}, 4000);
 		}
-	},
-
-	triggerVirtualUpdate: () => {
-		const virtual = updaterService.getVirtualUpdate();
-		set({
-			updateInfo: virtual,
-			updateStatus: "available",
-			updateProgress: 0,
-		});
-		get().showToast("✨ Virtual update v1.1.0 ready for testing!", false);
 	},
 
 	startDownloadUpdate: async () => {
@@ -725,7 +720,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 			get().showToast("🔄 Refreshing channels cache...", false);
 			const channels = await invoke<Channel[]>("force_refresh_channels");
 			const categories = await invoke<string[]>("get_categories");
-			const totalCount = await invoke<number>("get_total_channel_count").catch(() => channels.length);
+			const totalCount = await invoke<number>("get_total_channel_count").catch(
+				() => channels.length,
+			);
 
 			const provSet = new Set<string>();
 			channels.forEach((c) => {

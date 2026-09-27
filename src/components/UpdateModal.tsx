@@ -1,7 +1,7 @@
 import { RefreshCw, X, Zap } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
-import { updaterService, type UpdateInfo } from "../services/updaterService";
+import { type UpdateInfo, updaterService } from "../services/updaterService";
 import { MorningTVLogo } from "./MorningTVLogo";
 
 interface UpdateModalProps {
@@ -75,7 +75,8 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 						What's New in this release:
 					</span>
 					<div className="max-h-40 overflow-y-auto scrollbar-none p-3 bg-black/40 border border-white/10 rounded-2xl text-xs text-zinc-300 leading-relaxed font-mono whitespace-pre-wrap">
-						{updateInfo.body || "Performance improvements, updated live stream mirrors, and stability fixes."}
+						{updateInfo.body ||
+							"Performance improvements, updated live stream mirrors, and stability fixes."}
 					</div>
 				</div>
 

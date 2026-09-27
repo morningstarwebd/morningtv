@@ -3,7 +3,9 @@
 
 import type React from "react";
 
-export const AppleTVCardSkeleton: React.FC<{ count?: number }> = ({ count = 6 }) => {
+export const AppleTVCardSkeleton: React.FC<{ count?: number }> = ({
+	count = 6,
+}) => {
 	return (
 		<>
 			{Array.from({ length: count }).map((_, idx) => (

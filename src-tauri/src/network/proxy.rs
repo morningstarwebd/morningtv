@@ -95,6 +95,7 @@ impl StreamProxy {
             let app = Router::new()
                 .route("/stream", get(handle_stream))
                 .route("/prewarm", get(handle_prewarm))
+                .route("/return_to_morningtv", get(handle_return))
                 .route("/return_to_novatv", get(handle_return))
                 .layer(CorsLayer::permissive())
                 .with_state(state);

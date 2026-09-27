@@ -1,5 +1,5 @@
 // src/lib.rs
-// NovaTV Tauri application initialization and command registration
+// MorningTV Tauri application initialization and command registration
 
 pub mod app;
 pub mod commands;

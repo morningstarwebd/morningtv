@@ -176,7 +176,12 @@ export const AppleTVTopBar: React.FC = () => {
 					<Layers className="w-3.5 h-3.5 text-cyan-400" />
 					<span>Guide</span>
 					<span className="text-[10px] text-zinc-400 font-mono">
-						({(totalChannels > 0 ? totalChannels : channels.length).toLocaleString()})
+						(
+						{(totalChannels > 0
+							? totalChannels
+							: channels.length
+						).toLocaleString()}
+						)
 					</span>
 				</button>
 
