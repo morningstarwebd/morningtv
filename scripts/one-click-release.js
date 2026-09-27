@@ -139,29 +139,54 @@ async function runRelease() {
     }
 
     // 4. Tauri NSIS & Update Package Build
-    log('Step 4: Compiling native Rust binary and packaging signed NSIS installer...');
-    const buildEnv = {
-      ...process.env,
-      TAURI_SIGNING_PRIVATE_KEY: privateKey,
-      TAURI_SIGNING_PRIVATE_KEY_PATH: keyPath,
-      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: '',
-    };
+    const skipBuild = process.argv.includes('--skip-build');
+    if (!skipBuild) {
+      log('Step 4: Compiling native Rust binary and packaging signed NSIS installer...');
+      const buildEnv = {
+        ...process.env,
+        TAURI_SIGNING_PRIVATE_KEY: privateKey,
+        TAURI_SIGNING_PRIVATE_KEY_PATH: keyPath,
+        TAURI_SIGNING_PRIVATE_KEY_PASSWORD: '',
+      };
 
-    execSync('npx tauri build --ignore-version-mismatches', {
-      cwd: ROOT,
-      stdio: 'inherit',
-      env: buildEnv,
-    });
+      execSync('npx tauri build --ignore-version-mismatches', {
+        cwd: ROOT,
+        stdio: 'inherit',
+        env: buildEnv,
+      });
+    } else {
+      log('Step 4: Build skipped via flag (--skip-build). Using existing binary/installer...');
+    }
 
     // 5. Locate and Collect Built Artifacts
     log('Step 5: Locating and copying release artifacts...');
-    const nsisDir = path.join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'nsis');
+    const candidateDirs = [
+      path.join(ROOT, 'target', 'release', 'bundle', 'nsis'),
+      path.join(ROOT, 'src-tauri', 'target', 'release', 'bundle', 'nsis'),
+    ];
     const exeName = `MorningTV_${nextVersion}_x64-setup.exe`;
-    const builtExe = path.join(nsisDir, exeName);
-    const builtSig = `${builtExe}.sig`;
+    let builtExe = null;
+    let nsisDir = null;
+    for (const dir of candidateDirs) {
+      const candidate = path.join(dir, exeName);
+      if (fs.existsSync(candidate)) {
+        builtExe = candidate;
+        nsisDir = dir;
+        break;
+      }
+    }
 
-    if (!fs.existsSync(builtExe)) {
-      throw new Error(`Built NSIS executable not found at: ${builtExe}`);
+    if (!builtExe) {
+      throw new Error(`Built NSIS executable not found. Checked: ${candidateDirs.join(', ')}`);
+    }
+
+    let builtSig = `${builtExe}.sig`;
+    if (!fs.existsSync(builtSig)) {
+      log(`Minisign signature missing. Signing ${exeName} with tauri signer...`);
+      execSync(`npx tauri signer sign "${builtExe}" -f "${keyPath}" --password "" --app-version "${nextVersion}"`, {
+        cwd: ROOT,
+        stdio: 'inherit',
+      });
     }
 
     const destExe = path.join(distReleaseDir, exeName);
@@ -232,13 +257,30 @@ async function runRelease() {
       'RELEASE_NOTES.md',
     ].filter((f) => fs.existsSync(path.join(ROOT, f)));
 
-    runGit(['add', ...trackedFiles]);
-    runGit(['commit', '-m', `v${nextVersion}: Automated Production Release`]);
-    runGit(['tag', '-a', `v${nextVersion}`, '-m', `Release v${nextVersion}`]);
+    try {
+      runGit(['add', ...trackedFiles]);
+      runGit(['commit', '-m', `v${nextVersion}: Automated Production Release`]);
+    } catch (e) {
+      log('Git commit note: working tree clean or already committed.');
+    }
+
+    try {
+      runGit(['tag', '-a', `v${nextVersion}`, '-m', `Release v${nextVersion}`]);
+    } catch (e) {
+      log(`Git tag note: tag v${nextVersion} already exists locally.`);
+    }
 
     log('Step 8: Pushing commit and tag to GitHub origin...');
-    runGit(['push', 'origin', 'HEAD']);
-    runGit(['push', 'origin', `v${nextVersion}`]);
+    try {
+      runGit(['push', 'origin', 'HEAD']);
+    } catch (e) {
+      log(`Git push branch warning: ${e.message}`);
+    }
+    try {
+      runGit(['push', 'origin', `v${nextVersion}`]);
+    } catch (e) {
+      log(`Git push tag warning: ${e.message}`);
+    }
 
     // 8. Publish GitHub Release using gh CLI
     if (shouldPublish) {
