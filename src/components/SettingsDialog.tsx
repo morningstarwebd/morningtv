@@ -1,4 +1,5 @@
 import {
+	ArrowDownCircle,
 	Check,
 	Cloud,
 	Globe,
@@ -35,6 +36,13 @@ export const SettingsDialog: React.FC = () => {
 		toggleNormalizeAudio,
 		isCheckingUpdate,
 		checkForUpdates,
+		updateInfo,
+		updateStatus,
+		updateProgress,
+		triggerVirtualUpdate,
+		startDownloadUpdate,
+		dismissUpdate,
+		relaunchApp,
 	} = useAppStore();
 
 	const [activeTab, setActiveTab] = useState<TabType>("playlist");
@@ -69,6 +77,10 @@ export const SettingsDialog: React.FC = () => {
 		settings?.playlist_url && settings.playlist_url !== DEFAULT_PLAYLIST_URL;
 
 	const totalChannelsCount = channels.length;
+	const isUpdateAvailable =
+		updateStatus === "available" ||
+		updateStatus === "downloading" ||
+		updateStatus === "ready";
 
 	const handleSave = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -93,6 +105,7 @@ export const SettingsDialog: React.FC = () => {
 			desc: "Stream link & library",
 			icon: Tv,
 			badge: totalChannelsCount > 0 ? totalChannelsCount.toLocaleString() : undefined,
+			badgeStyle: "bg-white/10 text-cyan-300",
 		},
 		{
 			id: "cinema" as TabType,
@@ -100,6 +113,7 @@ export const SettingsDialog: React.FC = () => {
 			desc: "Ambient glow & buffer",
 			icon: Sparkles,
 			badge: ambientGlow ? "ON" : undefined,
+			badgeStyle: "bg-cyan-500/20 text-cyan-300",
 		},
 		{
 			id: "audio" as TabType,
@@ -107,12 +121,15 @@ export const SettingsDialog: React.FC = () => {
 			desc: "Smart volume leveling",
 			icon: Volume2,
 			badge: normalizeAudio ? "ACTIVE" : undefined,
+			badgeStyle: "bg-emerald-500/20 text-emerald-300",
 		},
 		{
 			id: "system" as TabType,
 			label: "Cloud & Updates",
 			desc: "Sync repository & app",
 			icon: Cloud,
+			badge: isUpdateAvailable ? `UPDATE v${updateInfo?.version || "1.1"}` : undefined,
+			badgeStyle: "bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-black",
 		},
 	];
 
@@ -181,7 +198,7 @@ export const SettingsDialog: React.FC = () => {
 												className={`ml-2 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
 													isActive
 														? "bg-white/20 text-white"
-														: "bg-white/10 text-cyan-300"
+														: tab.badgeStyle || "bg-white/10 text-cyan-300"
 												}`}
 											>
 												{tab.badge}
@@ -227,7 +244,7 @@ export const SettingsDialog: React.FC = () => {
 									{activeTab === "audio" &&
 										"Fine-tune channel volume balance and prevent sudden loudness spikes"}
 									{activeTab === "system" &&
-										"Verify cloud repository synchronization and app updates"}
+										"Verify cloud repository synchronization and check for software updates"}
 								</p>
 							</div>
 
@@ -306,7 +323,7 @@ export const SettingsDialog: React.FC = () => {
 												className="text-[11px] text-amber-300 hover:text-amber-200 flex items-center gap-1.5 cursor-pointer font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 transition-all"
 											>
 												<RotateCcw
-													className={`w-3 h-3 ${isResetting ? "animate-spin" : ""}`}
+													className={`w-3.5 h-3.5 ${isResetting ? "animate-spin" : ""}`}
 												/>
 												<span>Reset to Default</span>
 											</button>
@@ -522,7 +539,7 @@ export const SettingsDialog: React.FC = () => {
 										type="button"
 										onClick={syncCloudStreams}
 										disabled={isSyncing}
-										className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/25 shrink-0"
+										className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/25 shrink-0 active:scale-95"
 									>
 										<RefreshCw
 											className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
@@ -531,41 +548,227 @@ export const SettingsDialog: React.FC = () => {
 									</button>
 								</div>
 
-								{/* Software Updates Card (Clean, Consumer Friendly) */}
-								<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-									<div className="flex items-center gap-3">
-										<div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center shrink-0">
-											<Check className="w-5 h-5" />
-										</div>
-										<div>
-											<div className="flex items-center gap-2">
-												<h4 className="text-sm font-bold text-white">
-													MorningTV Desktop
-												</h4>
-												<span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold font-mono">
-													v1.0.0
-												</span>
+								{/* Software Updates Station */}
+								{!isUpdateAvailable ? (
+									/* Default Clean Update Card (Matching Cloud Card Style) */
+									<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+										<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+											<div className="flex items-center gap-3">
+												<div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center shrink-0">
+													<Check className="w-5 h-5" />
+												</div>
+												<div>
+													<div className="flex items-center gap-2">
+														<h4 className="text-sm font-bold text-white">
+															MorningTV Desktop
+														</h4>
+														<span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold font-mono">
+															v1.0.0
+														</span>
+													</div>
+													<p className="text-xs text-zinc-400 mt-0.5">
+														{updateStatus === "checking"
+															? "Connecting to update server..."
+															: updateStatus === "upToDate"
+																? "Your desktop player is completely up to date"
+																: updateStatus === "error"
+																	? "Unable to connect to update server"
+																	: "Your desktop player is active and running the latest release"}
+													</p>
+												</div>
 											</div>
-											<p className="text-xs text-zinc-400 mt-0.5">
-												Your desktop player is active and running the latest release
-											</p>
+
+											<button
+												type="button"
+												onClick={() => checkForUpdates(true)}
+												disabled={isCheckingUpdate}
+												className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+											>
+												<RefreshCw
+													className={`w-3.5 h-3.5 ${
+														isCheckingUpdate ? "animate-spin text-cyan-400" : ""
+													}`}
+												/>
+												<span>
+													{isCheckingUpdate
+														? "Checking..."
+														: updateStatus === "upToDate"
+															? "Up to Date"
+															: "Check for Updates"}
+												</span>
+											</button>
+										</div>
+
+										{/* Test Virtual Update Trigger (for immediate preview before GitHub releases) */}
+										<div className="pt-2 border-t border-white/5 flex items-center justify-between">
+											<span className="text-[10px] text-zinc-500">
+												Ready for silent background updates
+											</span>
+											<button
+												type="button"
+												onClick={triggerVirtualUpdate}
+												className="text-[11px] text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5 font-bold cursor-pointer hover:underline"
+												title="Simulates a new update release so you can test the changelog, download and restart flow"
+											>
+												<Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+												<span>Test Virtual Update Flow (v1.1.0 Preview)</span>
+											</button>
 										</div>
 									</div>
+								) : (
+									/* Expanded Update Showcase Card (Shows What's New & Download) */
+									<div className="rounded-2xl p-5 bg-gradient-to-br from-blue-950/40 via-indigo-950/25 to-black/60 border border-blue-500/30 flex flex-col gap-4 shadow-xl shadow-blue-950/30 animate-in fade-in zoom-in-95 duration-200">
+										{/* Update Header */}
+										<div className="flex items-start justify-between gap-3">
+											<div className="flex items-center gap-3">
+												<div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
+													<ArrowDownCircle className="w-5 h-5 text-cyan-400 animate-pulse" />
+												</div>
+												<div>
+													<div className="flex items-center gap-2">
+														<h4 className="text-sm font-bold text-white">
+															MorningTV Feature Update
+														</h4>
+														<span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold font-mono">
+															v{updateInfo?.version || "1.1.0"} Available
+														</span>
+														{updateInfo?.isVirtual && (
+															<span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold font-mono">
+																TEST MODE
+															</span>
+														)}
+													</div>
+													<p className="text-xs text-zinc-400 mt-0.5">
+														A new verified version is ready with performance and channel improvements
+													</p>
+												</div>
+											</div>
 
-									<button
-										type="button"
-										onClick={() => checkForUpdates(true)}
-										disabled={isCheckingUpdate}
-										className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer disabled:opacity-50 shrink-0"
-									>
-										<RefreshCw
-											className={`w-3.5 h-3.5 ${
-												isCheckingUpdate ? "animate-spin text-cyan-400" : ""
-											}`}
-										/>
-										<span>{isCheckingUpdate ? "Checking..." : "Check for Updates"}</span>
-									</button>
-								</div>
+											{updateStatus !== "downloading" && (
+												<button
+													type="button"
+													onClick={dismissUpdate}
+													className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+													title="Dismiss update view"
+												>
+													<X className="w-4 h-4" />
+												</button>
+											)}
+										</div>
+
+										{/* What's New Section */}
+										<div className="flex flex-col gap-2 p-3.5 rounded-xl bg-black/40 border border-white/5">
+											<div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+												<Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+												<span>What's New in this release:</span>
+											</div>
+											<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-zinc-300">
+												<div className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+													<Zap className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+													<div>
+														<strong className="text-white font-semibold">Ultra-Fast 4K HLS:</strong>
+														<span className="text-zinc-400 text-[11px] block">Sub-second channel switching & zero-stall buffer</span>
+													</div>
+												</div>
+												<div className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+													<Sparkles className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+													<div>
+														<strong className="text-white font-semibold">Cinema Ambilight:</strong>
+														<span className="text-zinc-400 text-[11px] block">60fps dynamic aura lighting behind video player</span>
+													</div>
+												</div>
+												<div className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+													<Volume2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+													<div>
+														<strong className="text-white font-semibold">Smart Volume Leveler:</strong>
+														<span className="text-zinc-400 text-[11px] block">Automatic limiter prevents sudden loud channel spikes</span>
+													</div>
+												</div>
+												<div className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
+													<ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+													<div>
+														<strong className="text-white font-semibold">Zero-Freeze Stream Guard:</strong>
+														<span className="text-zinc-400 text-[11px] block">Automated background failover to backup mirrors</span>
+													</div>
+												</div>
+											</div>
+										</div>
+
+										{/* Download / Install Controls */}
+										{updateStatus === "available" && (
+											<div className="flex items-center justify-between pt-2 border-t border-white/5 flex-wrap gap-3">
+												<span className="text-[11px] text-zinc-400 font-mono">
+													Ed25519 Verified Package
+												</span>
+												<div className="flex items-center gap-2">
+													<button
+														type="button"
+														onClick={dismissUpdate}
+														className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+													>
+														Later
+													</button>
+													<button
+														type="button"
+														onClick={startDownloadUpdate}
+														className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg shadow-blue-500/25 active:scale-95"
+													>
+														<ArrowDownCircle className="w-3.5 h-3.5" />
+														<span>Download & Install Now</span>
+													</button>
+												</div>
+											</div>
+										)}
+
+										{/* Downloading Progress Bar */}
+										{updateStatus === "downloading" && (
+											<div className="flex flex-col gap-2 p-3 bg-cyan-950/20 border border-cyan-500/20 rounded-xl">
+												<div className="flex items-center justify-between text-xs font-bold text-cyan-300">
+													<span className="flex items-center gap-2">
+														<RefreshCw className="w-3.5 h-3.5 animate-spin" />
+														<span>Downloading & verifying package...</span>
+													</span>
+													<span className="font-mono">{updateProgress}%</span>
+												</div>
+												<div className="w-full h-2.5 bg-black/60 rounded-full overflow-hidden border border-white/10">
+													<div
+														className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-200"
+														style={{ width: `${updateProgress}%` }}
+													/>
+												</div>
+												<span className="text-[10px] text-zinc-400 font-mono">
+													Silent background update in progress
+												</span>
+											</div>
+										)}
+
+										{/* Ready to Restart */}
+										{updateStatus === "ready" && (
+											<div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+												<div className="flex items-center gap-2.5 text-xs text-emerald-300 font-bold">
+													<Check className="w-4 h-4 text-emerald-400 shrink-0" />
+													<span>Update downloaded! Restart MorningTV to apply changes.</span>
+												</div>
+												<div className="flex items-center gap-2 self-end sm:self-auto">
+													<button
+														type="button"
+														onClick={dismissUpdate}
+														className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-semibold cursor-pointer"
+													>
+														Later
+													</button>
+													<button
+														type="button"
+														onClick={relaunchApp}
+														className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
+													>
+														Restart Now
+													</button>
+												</div>
+											</div>
+										)}
+									</div>
+								)}
 							</div>
 						)}
 					</div>

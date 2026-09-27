@@ -5,25 +5,28 @@ export interface UpdateInfo {
 	version: string;
 	body?: string;
 	date?: string;
+	isVirtual?: boolean;
 }
 
-export type UpdateStatus = 
+export type UpdateStatus =
 	| "idle"
 	| "checking"
 	| "available"
 	| "upToDate"
 	| "downloading"
-	| "readyToInstall"
+	| "ready"
 	| "error";
 
 class UpdaterService {
 	private pendingUpdate: Update | null = null;
+	private isVirtualPending = false;
 
 	/**
 	 * Checks GitHub Releases for a signed MorningTV update
 	 */
 	async checkForUpdate(): Promise<{ hasUpdate: boolean; info?: UpdateInfo; error?: string }> {
 		try {
+			this.isVirtualPending = false;
 			const update = await check();
 			if (update?.available) {
 				this.pendingUpdate = update;
@@ -33,6 +36,7 @@ class UpdaterService {
 						version: update.version,
 						body: update.body || "Performance improvements and bug fixes.",
 						date: update.date,
+						isVirtual: false,
 					},
 				};
 			}
@@ -46,9 +50,44 @@ class UpdaterService {
 	}
 
 	/**
+	 * Returns a realistic simulated update info for local testing
+	 */
+	getVirtualUpdate(): UpdateInfo {
+		this.isVirtualPending = true;
+		this.pendingUpdate = null;
+		return {
+			version: "1.1.0",
+			date: "Latest Release",
+			body: `• Ultra-Fast 4K HLS Engine: Sub-second channel switching & zero-stall buffer
+• Enhanced Cinema Ambilight: 60fps dynamic ambient aura reacting to video frames
+• Smart Volume Leveling: Hardware dynamic limiter prevents sudden audio blasts
+• 200+ Verified Channels: Fresh community-verified live news, sports & music streams
+• Zero-Freeze Auto-Failover: Instant automated switch to backup mirrors`,
+			isVirtual: true,
+		};
+	}
+
+	/**
+	 * Clears any pending update state
+	 */
+	clearPendingUpdate(): void {
+		this.pendingUpdate = null;
+		this.isVirtualPending = false;
+	}
+
+	/**
 	 * Downloads and installs the pending update with real-time progress
 	 */
 	async downloadAndInstall(onProgress?: (percent: number) => void): Promise<void> {
+		if (this.isVirtualPending) {
+			// Simulate smooth realistic download for testing
+			for (let pct = 0; pct <= 100; pct += 5) {
+				await new Promise((r) => setTimeout(r, 100));
+				onProgress?.(pct);
+			}
+			return;
+		}
+
 		if (!this.pendingUpdate) {
 			throw new Error("No update ready to download.");
 		}
@@ -74,9 +113,18 @@ class UpdaterService {
 					break;
 			}
 		});
+	}
 
-		// Restart app with the newly installed version
-		await relaunch();
+	/**
+	 * Relaunches application to apply installed update
+	 */
+	async relaunchApp(): Promise<void> {
+		try {
+			await relaunch();
+		} catch (err) {
+			console.warn("[Updater] Relaunch failed, reloading window:", err);
+			window.location.reload();
+		}
 	}
 }
 

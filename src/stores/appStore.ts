@@ -13,7 +13,7 @@ import type {
 } from "../types";
 import { getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
-import { updaterService, type UpdateInfo } from "../services/updaterService";
+import { updaterService, type UpdateInfo, type UpdateStatus } from "../services/updaterService";
 
 interface AppState {
 	// Channel & Playlist State
@@ -119,10 +119,16 @@ interface AppState {
 
 	// App Updater State
 	updateInfo: UpdateInfo | null;
+	updateStatus: UpdateStatus;
+	updateProgress: number;
 	isUpdateModalOpen: boolean;
 	isCheckingUpdate: boolean;
 	setUpdateModalOpen: (open: boolean) => void;
 	checkForUpdates: (manual?: boolean) => Promise<void>;
+	triggerVirtualUpdate: () => void;
+	startDownloadUpdate: () => Promise<void>;
+	dismissUpdate: () => void;
+	relaunchApp: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -170,30 +176,86 @@ export const useAppStore = create<AppState>((set, get) => ({
 	toast: null,
 	isSyncing: false,
 	updateInfo: null,
+	updateStatus: "idle",
+	updateProgress: 0,
 	isUpdateModalOpen: false,
 	isCheckingUpdate: false,
 	setUpdateModalOpen: (open: boolean) => set({ isUpdateModalOpen: open }),
 
 	checkForUpdates: async (manual = false) => {
-		set({ isCheckingUpdate: true });
+		set({ isCheckingUpdate: true, updateStatus: "checking" });
 		try {
 			const res = await updaterService.checkForUpdate();
 			set({ isCheckingUpdate: false });
 			if (res.hasUpdate && res.info) {
-				set({ updateInfo: res.info, isUpdateModalOpen: true });
-			} else if (manual) {
-				if (res.error) {
-					get().showToast(`Update check failed: ${res.error}`, true);
-				} else {
-					get().showToast("🎉 MorningTV is completely up to date! (v1.0.0)");
+				set({ updateInfo: res.info, updateStatus: "available" });
+			} else {
+				set({ updateStatus: "upToDate" });
+				if (manual) {
+					if (res.error) {
+						get().showToast(`Update check failed: ${res.error}`, true);
+					} else {
+						get().showToast("✅ MorningTV is completely up to date! (v1.0.0)");
+					}
 				}
+				setTimeout(() => {
+					if (get().updateStatus === "upToDate") {
+						set({ updateStatus: "idle" });
+					}
+				}, 4000);
 			}
 		} catch (e: unknown) {
-			set({ isCheckingUpdate: false });
+			set({ isCheckingUpdate: false, updateStatus: "error" });
 			if (manual) {
 				const msg = e instanceof Error ? e.message : String(e);
 				get().showToast(`Update check failed: ${msg}`, true);
 			}
+			setTimeout(() => {
+				if (get().updateStatus === "error") {
+					set({ updateStatus: "idle" });
+				}
+			}, 4000);
+		}
+	},
+
+	triggerVirtualUpdate: () => {
+		const virtual = updaterService.getVirtualUpdate();
+		set({
+			updateInfo: virtual,
+			updateStatus: "available",
+			updateProgress: 0,
+		});
+		get().showToast("✨ Virtual update v1.1.0 ready for testing!", false);
+	},
+
+	startDownloadUpdate: async () => {
+		const { updateInfo } = get();
+		if (!updateInfo) return;
+		set({ updateStatus: "downloading", updateProgress: 0 });
+		try {
+			await updaterService.downloadAndInstall((pct) => {
+				set({ updateProgress: pct });
+			});
+			set({ updateStatus: "ready", updateProgress: 100 });
+			get().showToast("🎉 Update downloaded! Restart to apply changes.", false);
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : String(err);
+			set({ updateStatus: "error" });
+			get().showToast(`Update download failed: ${msg}`, true);
+		}
+	},
+
+	dismissUpdate: () => {
+		updaterService.clearPendingUpdate();
+		set({ updateInfo: null, updateStatus: "idle", updateProgress: 0 });
+	},
+
+	relaunchApp: async () => {
+		try {
+			await updaterService.relaunchApp();
+		} catch (err) {
+			console.error("Failed to relaunch:", err);
+			window.location.reload();
 		}
 	},
 
