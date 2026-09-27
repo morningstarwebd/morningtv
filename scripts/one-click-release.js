@@ -220,13 +220,17 @@ async function runRelease() {
     log(`Step 7: Committing version changes and creating Git tag v${nextVersion}...`);
     const trackedFiles = [
       'package.json',
+      'package-lock.json',
+      'scripts/one-click-release.js',
       'src-tauri/tauri.conf.json',
       'src-tauri/Cargo.toml',
+      'src-tauri/Cargo.lock',
       'src-tauri/src/config/defaults.rs',
       'src/components/SettingsDialog.tsx',
+      'assets/morningtv-installer.nsi',
       'latest.json',
       'RELEASE_NOTES.md',
-    ];
+    ].filter((f) => fs.existsSync(path.join(ROOT, f)));
 
     runGit(['add', ...trackedFiles]);
     runGit(['commit', '-m', `v${nextVersion}: Automated Production Release`]);
