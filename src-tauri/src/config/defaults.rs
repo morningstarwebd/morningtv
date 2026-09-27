@@ -1,5 +1,5 @@
 // src/config/defaults.rs
-// Default values and constants for NovaTV player
+// Default values and constants for MorningTV player
 
 #![allow(dead_code)]
 

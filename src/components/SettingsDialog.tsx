@@ -7,7 +7,6 @@ import {
 	RotateCcw,
 	Save,
 	ShieldCheck,
-	Sliders,
 	Sparkles,
 	Tv,
 	Volume2,
@@ -17,6 +16,7 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
+import { MorningTVLogo } from "./MorningTVLogo";
 
 type TabType = "playlist" | "cinema" | "audio" | "cloud" | "updates";
 
@@ -164,9 +164,7 @@ export const SettingsDialog: React.FC = () => {
 					<div>
 						{/* App Branding */}
 						<div className="flex items-center gap-2.5 pb-4 mb-3 border-b border-white/10">
-							<div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500/30 to-blue-600/40 border border-cyan-400/40 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20 shrink-0">
-								<Sliders className="w-4 h-4 text-cyan-300" />
-							</div>
+							<MorningTVLogo className="w-8 h-8" glow={true} />
 							<div>
 								<h2 className="text-xs font-black text-white tracking-wider uppercase">
 									MorningTV

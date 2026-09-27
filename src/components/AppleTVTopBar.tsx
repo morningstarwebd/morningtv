@@ -8,11 +8,11 @@ import {
 	RefreshCw,
 	Server,
 	Settings,
-	Tv,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
+import { MorningTVLogo } from "./MorningTVLogo";
 
 export const AppleTVTopBar: React.FC = () => {
 	const {
@@ -86,13 +86,11 @@ export const AppleTVTopBar: React.FC = () => {
 					className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/60 hover:bg-black/85 border border-white/10 backdrop-blur-2xl text-white shadow-xl transition-all cursor-pointer group"
 					title="Open Channel Shelf (C)"
 				>
-					<div className="w-5 h-5 rounded-md bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center">
-						<Tv className="w-3 h-3 text-white" />
-					</div>
+					<MorningTVLogo className="w-5 h-5" glow={false} />
 					<span className="text-xs font-black tracking-wider text-white">
 						MorningTV
 					</span>
-					<span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping ml-1" />
+					<span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping ml-0.5" />
 				</button>
 
 				{activeChannel && (

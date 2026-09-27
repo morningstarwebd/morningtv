@@ -1,7 +1,8 @@
-import { ArrowDownCircle, RefreshCw, X, Zap } from "lucide-react";
+import { RefreshCw, X, Zap } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { updaterService, type UpdateInfo } from "../services/updaterService";
+import { MorningTVLogo } from "./MorningTVLogo";
 
 interface UpdateModalProps {
 	isOpen: boolean;
@@ -45,9 +46,7 @@ export const UpdateModal: React.FC<UpdateModalProps> = ({
 				{/* Header */}
 				<div className="flex items-center justify-between border-b border-white/10 pb-3">
 					<div className="flex items-center gap-2.5">
-						<div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500/30 to-blue-600/40 border border-cyan-400/40 text-cyan-300 flex items-center justify-center shrink-0">
-							<ArrowDownCircle className="w-4 h-4 text-cyan-300 animate-pulse" />
-						</div>
+						<MorningTVLogo className="w-8 h-8" glow={true} />
 						<div>
 							<h2 className="text-sm font-extrabold text-white tracking-wide flex items-center gap-2">
 								MorningTV Update

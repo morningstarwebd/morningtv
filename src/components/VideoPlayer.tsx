@@ -1,10 +1,11 @@
 import Hls from "hls.js";
-import { ChevronRight, Loader2, RefreshCw, Tv } from "lucide-react";
+import { ChevronRight, RefreshCw } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { audioBooster } from "../utils/audioBooster";
 import { formatBytesPerSec } from "../utils/speedFormatter";
+import { MorningTVLogo } from "./MorningTVLogo";
 
 export const VideoPlayer: React.FC = () => {
 	const {
@@ -346,10 +347,8 @@ export const VideoPlayer: React.FC = () => {
 				hlsRef.current.destroy();
 				hlsRef.current = null;
 			}
-			// Clean hardware decoder state for instant TV-like channel switch
+			// Cleanly reset playback without destroying HTMLMediaElement pipeline
 			video.pause();
-			video.removeAttribute("src");
-			video.load();
 
 			// Configure HLS for instant low-latency startup and extreme network resilience
 			const hls = new Hls({
@@ -386,7 +385,7 @@ export const VideoPlayer: React.FC = () => {
 				abrBandWidthUpFactor: 0.55,
 				abrMaxWithRealBitrate: true,
 				capLevelToPlayerSize: true,
-				startLevel: 0,
+				startLevel: -1,
 				autoStartLoad: true,
 			});
 
@@ -428,10 +427,8 @@ export const VideoPlayer: React.FC = () => {
 						);
 						hls.currentLevel = saverLevelIdx !== -1 ? saverLevelIdx : 0;
 					} else {
-						// FAST TV-LIKE ZAPPING: Start on Level 0 (lowest bitrate, smallest chunks)
-						// to ensure instant 1-second video startup without buffer stalls!
-						hls.currentLevel = 0;
-						hls.loadLevel = 0;
+						// Auto Adaptive Bitrate (ABR) - smoothly selects best rendition
+						hls.currentLevel = -1;
 					}
 				}
 
@@ -520,26 +517,11 @@ export const VideoPlayer: React.FC = () => {
 							nominalBitrate: nominalBitrateStr || "--",
 						});
 
-						// INSTANT NETWORK DETECTOR & QUALITY AUTO-ADAPTOR
-						const { selectedQualityLevel: curQual, is3GDataSaver: curSaver, showToast: notifyToast } = useAppStore.getState();
-						if (curQual === -1 && !curSaver) {
-							// If download speed is slow (< 180 KB/s) or chunk download took > 80% of duration:
-							if (downloadBytesSec < 180_000 || loadDurationSec > durationSec * 0.8) {
-								if (hls.autoLevelCapping !== 0) {
-									hls.autoLevelCapping = 0; // Lock to lowest level (240p/360p)
-									if (hls.currentLevel > 0) {
-										hls.currentLevel = 0;
-									}
-									notifyToast("⚡ Low bandwidth detected — auto-adapted to 360p for buffer-free playback", false);
-									setStreamHealthStatus("degraded");
-								}
-							} else if (downloadBytesSec > 450_000 && loadDurationSec < durationSec * 0.4) {
-								// Network is fast and healthy (> 3.6 Mbps, broadband / fast 4G)
-								if (hls.autoLevelCapping !== -1) {
-									hls.autoLevelCapping = -1; // Unlock auto level
-									hls.currentLevel = -1;     // Let ABR smoothly climb to HD
-								}
-							}
+						// Silent stream health status calculation (no intrusive toast notifications)
+						if (downloadBytesSec < 180_000 || loadDurationSec > durationSec * 0.8) {
+							setStreamHealthStatus("degraded");
+						} else if (downloadBytesSec > 400_000) {
+							setStreamHealthStatus("good");
 						}
 					}
 				} catch (err) {
@@ -896,6 +878,7 @@ export const VideoPlayer: React.FC = () => {
 						ref={videoRef}
 						className={`${getAspectRatioClasses()} transition-all`}
 						style={{ imageRendering: "-webkit-optimize-contrast" }}
+						autoPlay
 						playsInline
 						onWaiting={() => setIsBuffering(true)}
 						onPlaying={() => {
@@ -922,10 +905,16 @@ export const VideoPlayer: React.FC = () => {
 						onCanPlay={() => {
 							setIsBuffering(false);
 							setIsChannelLoading(false);
+							if (videoRef.current?.paused && useAppStore.getState().isPlaying) {
+								videoRef.current.play().catch(() => {});
+							}
 						}}
 						onLoadedData={() => {
 							setIsBuffering(false);
 							setIsChannelLoading(false);
+							if (videoRef.current?.paused && useAppStore.getState().isPlaying) {
+								videoRef.current.play().catch(() => {});
+							}
 						}}
 					/>
 
@@ -962,35 +951,19 @@ export const VideoPlayer: React.FC = () => {
 						</div>
 					)}
 
-					{/* Buffering & Channel Loading Overlay */}
-					{(isBuffering || isChannelLoading) &&
-						reconnectCountdown === null && (
-							<div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none transition-opacity duration-200">
-								<div className="flex items-center gap-2.5 px-4 py-2 rounded-full bg-black/75 border border-white/10 shadow-2xl backdrop-blur-xl animate-in fade-in zoom-in-95 duration-150">
-									<Loader2 className="w-4 h-4 text-cyan-400 animate-spin" />
-									<span className="text-xs font-semibold text-zinc-200">
-										{isChannelLoading
-											? "Tuning Channel..."
-											: is3GDataSaver
-												? "Connecting 3G Stream..."
-												: "Connecting Live Stream..."}
-									</span>
-								</div>
-							</div>
-						)}
+
 				</div>
 			) : (
-				/* Clean Welcome Screen */
+				/* Clean Welcome Screen with MorningTV Branding */
 				<div className="flex flex-col items-center justify-center text-center p-8 max-w-lg select-none relative z-10">
-					<div className="w-24 h-24 rounded-3xl bg-gradient-to-tr from-cyan-600/30 via-blue-600/20 to-indigo-500/30 border border-white/10 flex items-center justify-center mb-6 shadow-2xl shadow-cyan-500/10">
-						<Tv className="w-12 h-12 text-cyan-400" />
+					<div className="mb-6 flex items-center justify-center">
+						<MorningTVLogo className="w-24 h-24" glow={true} />
 					</div>
 					<h2 className="text-2xl font-black text-white mb-2 tracking-tight">
-						MorningTV 4K
+						MorningTV
 					</h2>
 					<p className="text-xs text-zinc-400 leading-relaxed mb-6 max-w-sm">
-						Simplified, ultra-smooth Apple TV & Google TV live television player
-						with 3G shield and 300% Web Audio Booster.
+						Ultra-smooth live television player with 3G shield and 300% Web Audio Booster.
 					</p>
 					<button
 						onClick={openChannelDrawer}
