@@ -876,7 +876,9 @@ export const VideoPlayer: React.FC = () => {
 						try {
 							video.currentTime += 0.15;
 							hlsRef.current?.startLoad();
-						} catch (_) {}
+						} catch {
+							// Ignored: video element might not be seekable yet
+						}
 					}
 
 					// After 15s stalled: trigger media error recovery
