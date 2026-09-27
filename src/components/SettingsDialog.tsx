@@ -156,11 +156,11 @@ export const SettingsDialog: React.FC = () => {
 			onClick={closeSettings}
 		>
 			<div
-				className="w-[760px] max-w-[95vw] h-[510px] bg-[#060814]/55 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-col md:flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
+				className="w-[760px] max-w-[95vw] h-[510px] bg-[#060814]/55 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Left Sidebar Navigation */}
-				<div className="w-full md:w-60 h-full bg-black/40 border-b md:border-b-0 md:border-r border-white/10 p-4 flex flex-col justify-between shrink-0 backdrop-blur-xl">
+				<div className="w-56 sm:w-60 h-full bg-black/40 border-r border-white/10 p-3.5 sm:p-4 flex flex-col justify-between shrink-0 backdrop-blur-xl">
 					<div>
 						{/* App Branding */}
 						<div className="flex items-center gap-2.5 pb-4 mb-3 border-b border-white/10">
@@ -280,21 +280,21 @@ export const SettingsDialog: React.FC = () => {
 							</button>
 						</div>
 
-						{/* Content Container - Fixed 350px */}
-						<div className="h-[350px] overflow-y-auto pr-1 scrollbar-thin">
+						{/* Content Container (Fixed 370px, Zero Scroll, Overflow Hidden) */}
+						<div className="h-[370px] overflow-hidden flex flex-col justify-start">
 
 						{/* TAB 1: PLAYLIST & CHANNELS */}
 						{activeTab === "playlist" && (
-							<form onSubmit={handleSave} className="flex flex-col gap-4">
+							<form onSubmit={handleSave} className="flex flex-col gap-3">
 								{/* Dynamic Channel Counter Card */}
-								<div className="p-4.5 rounded-2xl bg-gradient-to-r from-blue-950/40 via-cyan-950/20 to-black/30 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+								<div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-950/40 via-cyan-950/20 to-black/30 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
 									<div className="flex items-center gap-3">
-										<div className="w-11 h-11 rounded-2xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
-											<Tv className="w-5 h-5" />
+										<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
+											<Tv className="w-4.5 h-4.5" />
 										</div>
 										<div>
 											<div className="flex items-center gap-2">
-												<span className="text-2xl font-black text-white tracking-tight">
+												<span className="text-xl font-black text-white tracking-tight">
 													{totalChannelsCount > 0
 														? totalChannelsCount.toLocaleString()
 														: "0"}
@@ -303,7 +303,7 @@ export const SettingsDialog: React.FC = () => {
 													Verified Channels
 												</span>
 											</div>
-											<p className="text-xs text-zinc-400 mt-0.5">
+											<p className="text-[11px] text-zinc-400 mt-0.5">
 												Total channels currently loaded in your library
 											</p>
 										</div>
@@ -313,7 +313,7 @@ export const SettingsDialog: React.FC = () => {
 										type="button"
 										onClick={syncCloudStreams}
 										disabled={isSyncing}
-										className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/20 shrink-0 self-end sm:self-auto"
+										className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/20 shrink-0 self-end sm:self-auto"
 									>
 										<RefreshCw
 											className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
@@ -323,19 +323,19 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* M3U Link Input Card */}
-								<div className="rounded-2xl p-4.5 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
 									<div className="flex items-center justify-between flex-wrap gap-2">
 										<div className="flex items-center gap-2">
-											<Globe className="w-4 h-4 text-cyan-400" />
+											<Globe className="w-3.5 h-3.5 text-cyan-400" />
 											<span className="text-xs font-bold text-white">
 												M3U Playlist Source
 											</span>
 											{isCustomPlaylist ? (
-												<span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[10px] font-bold">
+												<span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[9px] font-bold">
 													Custom Link
 												</span>
 											) : (
-												<span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+												<span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold">
 													Default Channels
 												</span>
 											)}
@@ -361,20 +361,20 @@ export const SettingsDialog: React.FC = () => {
 										value={playlistUrl}
 										onChange={(e) => setPlaylistUrl(e.target.value)}
 										placeholder="https://.../playlist.m3u"
-										className="w-full bg-[#05070d] text-xs text-white rounded-xl px-3.5 py-2.5 border border-white/10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
+										className="w-full bg-[#05070d] text-xs text-white rounded-xl px-3 py-2 border border-white/10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
 									/>
 
-									<p className="text-[11px] text-zinc-400">
+									<p className="text-[10px] text-zinc-400">
 										Paste any valid M3U or M3U8 link. All channels will be loaded and indexed automatically.
 									</p>
 								</div>
 
 								{/* Action Buttons */}
-								<div className="flex items-center justify-end gap-3 pt-2">
+								<div className="flex items-center justify-end gap-3">
 									<button
 										type="submit"
 										disabled={isSaving || isResetting || !playlistUrl.trim()}
-										className="flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-lg shadow-blue-500/25 transition-all cursor-pointer"
+										className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-lg shadow-blue-500/25 transition-all cursor-pointer"
 									>
 										{isSaving ? (
 											<>
@@ -394,19 +394,19 @@ export const SettingsDialog: React.FC = () => {
 
 						{/* TAB 2: CINEMA & DISPLAY */}
 						{activeTab === "cinema" && (
-							<div className="flex flex-col gap-4">
+							<div className="flex flex-col gap-3">
 								{/* Ambilight Card */}
-								<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex flex-col gap-4">
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
 									<div className="flex items-start justify-between gap-3">
-										<div className="flex items-center gap-3">
-											<div className="w-10 h-10 rounded-2xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
-												<Sparkles className="w-5 h-5" />
+										<div className="flex items-center gap-2.5">
+											<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
+												<Sparkles className="w-4.5 h-4.5" />
 											</div>
 											<div>
-												<h4 className="text-sm font-bold text-white">
+												<h4 className="text-xs sm:text-sm font-bold text-white">
 													Ambilight Ambient Glow
 												</h4>
-												<p className="text-xs text-zinc-400 mt-0.5">
+												<p className="text-[11px] text-zinc-400 mt-0.5">
 													Projects dynamic ambient colors on the wall behind the player
 												</p>
 											</div>
@@ -417,28 +417,28 @@ export const SettingsDialog: React.FC = () => {
 											role="switch"
 											aria-checked={ambientGlow}
 											onClick={toggleAmbientGlow}
-											className={`w-12 h-6.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+											className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
 												ambientGlow ? "bg-cyan-600" : "bg-zinc-800"
 											}`}
 										>
 											<span
-												className={`absolute top-1 left-1 w-4.5 h-4.5 rounded-full bg-white transition-transform ${
-													ambientGlow ? "translate-x-5.5" : "translate-x-0"
+												className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+													ambientGlow ? "translate-x-5" : "translate-x-0"
 												}`}
 											/>
 										</button>
 									</div>
 
 									{/* Visual Preview Box */}
-									<div className="relative h-20 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center bg-black/60">
+									<div className="relative h-14 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center bg-black/60">
 										{ambientGlow && (
 											<div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-cyan-500/30 to-purple-600/30 filter blur-xl animate-pulse" />
 										)}
 										<div className="relative z-10 flex items-center gap-2 text-xs text-zinc-300 font-medium">
-											<div className="w-12 h-7 rounded-md bg-zinc-800 border border-white/20 flex items-center justify-center text-[9px] font-mono text-zinc-400">
+											<div className="w-10 h-6 rounded-md bg-zinc-800 border border-white/20 flex items-center justify-center text-[9px] font-mono text-zinc-400">
 												TV
 											</div>
-											<span>
+											<span className="text-[11px]">
 												{ambientGlow
 													? "Cinema aura is active and reacting to video colors"
 													: "Ambient glow is currently turned off"}
@@ -448,28 +448,28 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* Anti-Stall Buffer Card */}
-								<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex items-start justify-between gap-4">
-									<div className="flex items-center gap-3">
-										<div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-											<Zap className="w-5 h-5" />
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex items-start justify-between gap-4">
+									<div className="flex items-center gap-2.5">
+										<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+											<Zap className="w-4.5 h-4.5" />
 										</div>
 										<div>
 											<div className="flex items-center gap-2">
-												<h4 className="text-sm font-bold text-white">
+												<h4 className="text-xs sm:text-sm font-bold text-white">
 													Smooth Stream Protection
 												</h4>
-												<span className="flex items-center gap-1 text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+												<span className="flex items-center gap-1 text-[8px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
 													<span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
 													PROTECTED
 												</span>
 											</div>
-											<p className="text-xs text-zinc-400 mt-0.5">
+											<p className="text-[11px] text-zinc-400 mt-0.5">
 												Deep background buffering and automated failover keep playback smooth without freezing
 											</p>
 										</div>
 									</div>
 
-									<div className="text-emerald-400 text-xs font-bold shrink-0 flex items-center gap-1 pt-1">
+									<div className="text-emerald-400 text-xs font-bold shrink-0 flex items-center gap-1 pt-0.5">
 										<ShieldCheck className="w-4 h-4" />
 										<span>Zero-Freeze</span>
 									</div>
@@ -479,25 +479,25 @@ export const SettingsDialog: React.FC = () => {
 
 						{/* TAB 3: AUDIO & ACOUSTICS */}
 						{activeTab === "audio" && (
-							<div className="flex flex-col gap-4">
-								<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex flex-col gap-4">
+							<div className="flex flex-col gap-3">
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
 									<div className="flex items-start justify-between gap-3">
-										<div className="flex items-center gap-3">
-											<div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-												<Volume2 className="w-5 h-5" />
+										<div className="flex items-center gap-2.5">
+											<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+												<Volume2 className="w-4.5 h-4.5" />
 											</div>
 											<div>
 												<div className="flex items-center gap-2">
-													<h4 className="text-sm font-bold text-white">
+													<h4 className="text-xs sm:text-sm font-bold text-white">
 														Smart Volume Leveler
 													</h4>
 													{normalizeAudio && (
-														<span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold">
+														<span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[8px] font-bold">
 															ACTIVE
 														</span>
 													)}
 												</div>
-												<p className="text-xs text-zinc-400 mt-0.5">
+												<p className="text-[11px] text-zinc-400 mt-0.5">
 													Balances loudness variations between channels so switching never hurts your ears
 												</p>
 											</div>
@@ -508,29 +508,29 @@ export const SettingsDialog: React.FC = () => {
 											role="switch"
 											aria-checked={normalizeAudio}
 											onClick={toggleNormalizeAudio}
-											className={`w-12 h-6.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+											className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
 												normalizeAudio ? "bg-emerald-600" : "bg-zinc-800"
 											}`}
 										>
 											<span
-												className={`absolute top-1 left-1 w-4.5 h-4.5 rounded-full bg-white transition-transform ${
-													normalizeAudio ? "translate-x-5.5" : "translate-x-0"
+												className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+													normalizeAudio ? "translate-x-5" : "translate-x-0"
 												}`}
 											/>
 										</button>
 									</div>
 
 									{/* Simulated Audio Equalizer Bars */}
-									<div className="p-3.5 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
-										<span className="text-xs text-zinc-400">
+									<div className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+										<span className="text-[11px] text-zinc-400">
 											Dynamic range limiter & audio spike guard
 										</span>
-										<div className="flex items-end gap-1 h-5">
-											<div className="w-1 h-3 bg-emerald-400 rounded-full animate-pulse" />
-											<div className="w-1 h-5 bg-emerald-400 rounded-full animate-pulse" />
-											<div className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" />
+										<div className="flex items-end gap-1 h-4">
+											<div className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
 											<div className="w-1 h-4 bg-emerald-400 rounded-full animate-pulse" />
-											<div className="w-1 h-3 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-3.5 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
 										</div>
 									</div>
 								</div>
@@ -539,21 +539,21 @@ export const SettingsDialog: React.FC = () => {
 
 						{/* TAB 4: CLOUD REPOSITORY */}
 						{activeTab === "cloud" && (
-							<div className="flex flex-col gap-4">
+							<div className="flex flex-col gap-3">
 								{/* Cloud Repository Card */}
-								<div className="rounded-2xl p-5 bg-gradient-to-br from-cyan-950/30 via-blue-950/20 to-black/40 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-									<div className="flex items-center gap-3">
-										<div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
-											<Cloud className="w-5 h-5" />
+								<div className="rounded-2xl p-3.5 bg-gradient-to-br from-cyan-950/30 via-blue-950/20 to-black/40 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+									<div className="flex items-center gap-2.5">
+										<div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
+											<Cloud className="w-4.5 h-4.5" />
 										</div>
 										<div>
-											<h4 className="text-sm font-bold text-white">
+											<h4 className="text-xs sm:text-sm font-bold text-white">
 												Cloud Repository Sync
 											</h4>
-											<p className="text-xs text-zinc-400 mt-0.5">
+											<p className="text-[11px] text-zinc-400 mt-0.5">
 												Refreshes verified live streaming channels from the cloud mirror
 											</p>
-											<div className="text-[11px] text-cyan-300 font-mono mt-1 font-bold">
+											<div className="text-[10px] text-cyan-300 font-mono mt-0.5 font-bold">
 												{totalChannelsCount > 0
 													? `${totalChannelsCount.toLocaleString()} channels currently verified`
 													: "Ready to sync channels"}
@@ -565,7 +565,7 @@ export const SettingsDialog: React.FC = () => {
 										type="button"
 										onClick={syncCloudStreams}
 										disabled={isSyncing}
-										className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/25 shrink-0 active:scale-95"
+										className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/25 shrink-0 active:scale-95"
 									>
 										<RefreshCw
 											className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
@@ -575,35 +575,35 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* Cloud Mirror Health Card */}
-								<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
-									<div className="flex items-center gap-3">
-										<div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-											<ShieldCheck className="w-5 h-5" />
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+									<div className="flex items-center gap-2.5">
+										<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+											<ShieldCheck className="w-4.5 h-4.5" />
 										</div>
 										<div>
-											<h4 className="text-sm font-bold text-white">
+											<h4 className="text-xs sm:text-sm font-bold text-white">
 												High-Speed Cloud Resilience
 											</h4>
-											<p className="text-xs text-zinc-400 mt-0.5">
-												All channels are verified with automatic fallback mirrors to ensure high availability
+											<p className="text-[11px] text-zinc-400 mt-0.5">
+												All channels are verified with automatic fallback mirrors
 											</p>
 										</div>
 									</div>
 
-									<div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 text-xs">
-										<div className="p-3 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-1">
-											<span className="text-[10px] uppercase font-bold text-zinc-500">Live Channels</span>
-											<span className="text-sm font-black text-cyan-300 font-mono">
+									<div className="grid grid-cols-3 gap-2 pt-1 text-xs">
+										<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
+											<span className="text-[9px] uppercase font-bold text-zinc-500">Live Channels</span>
+											<span className="text-xs sm:text-sm font-black text-cyan-300 font-mono">
 												{totalChannelsCount > 0 ? totalChannelsCount.toLocaleString() : "8,300+"}
 											</span>
 										</div>
-										<div className="p-3 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-1">
-											<span className="text-[10px] uppercase font-bold text-zinc-500">Mirror Fallback</span>
-											<span className="text-sm font-black text-emerald-400 font-mono">Multi-Server</span>
+										<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
+											<span className="text-[9px] uppercase font-bold text-zinc-500">Mirror Fallback</span>
+											<span className="text-xs sm:text-sm font-black text-emerald-400 font-mono">Multi-Server</span>
 										</div>
-										<div className="p-3 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-1">
-											<span className="text-[10px] uppercase font-bold text-zinc-500">Sync Protocol</span>
-											<span className="text-sm font-black text-white font-mono">HTTPS Cloud</span>
+										<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
+											<span className="text-[9px] uppercase font-bold text-zinc-500">Sync Protocol</span>
+											<span className="text-xs sm:text-sm font-black text-white font-mono">HTTPS Cloud</span>
 										</div>
 									</div>
 								</div>
@@ -612,14 +612,14 @@ export const SettingsDialog: React.FC = () => {
 
 						{/* TAB 5: SOFTWARE UPDATE */}
 						{activeTab === "updates" && (
-							<div className="flex flex-col gap-4">
+							<div className="flex flex-col gap-3">
 								{!isUpdateAvailable ? (
 									/* Default Clean Update Card */
-									<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex flex-col gap-4">
-										<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+									<div className="rounded-2xl p-4 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+										<div className="flex items-center justify-between gap-3">
 											<div className="flex items-center gap-3">
-												<div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center shrink-0">
-													<Check className="w-5 h-5" />
+												<div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center shrink-0">
+													<Check className="w-4 h-4" />
 												</div>
 												<div>
 													<div className="flex items-center gap-2">
@@ -646,7 +646,7 @@ export const SettingsDialog: React.FC = () => {
 												type="button"
 												onClick={() => checkForUpdates(true)}
 												disabled={isCheckingUpdate}
-												className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+												className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer disabled:opacity-50 shrink-0"
 											>
 												<RefreshCw
 													className={`w-3.5 h-3.5 ${
@@ -664,45 +664,45 @@ export const SettingsDialog: React.FC = () => {
 										</div>
 
 										{/* Test Virtual Update Trigger */}
-										<div className="pt-3 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+										<div className="pt-2.5 border-t border-white/5 flex items-center justify-between gap-2">
 											<span className="text-[11px] text-zinc-400">
 												Want to preview how the update flow looks?
 											</span>
 											<button
 												type="button"
 												onClick={triggerVirtualUpdate}
-												className="text-xs text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5 font-bold cursor-pointer hover:underline px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 transition-all"
+												className="text-xs text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5 font-bold cursor-pointer hover:underline px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 transition-all shrink-0"
 												title="Simulates a new update release so you can test the changelog, download and restart flow"
 											>
 												<Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-												<span>Test Virtual Update Flow (v1.1.0 Preview)</span>
+												<span>Test Virtual Update (v1.1.0 Preview)</span>
 											</button>
 										</div>
 									</div>
 								) : (
 									/* Expanded Update Showcase Card (Shows What's New & Download) */
-									<div className="rounded-2xl p-5 bg-gradient-to-br from-blue-950/40 via-indigo-950/25 to-black/60 border border-blue-500/30 flex flex-col gap-4 shadow-xl shadow-blue-950/30 animate-in fade-in zoom-in-95 duration-200">
+									<div className="rounded-2xl p-3.5 sm:p-4 bg-gradient-to-br from-blue-950/40 via-indigo-950/25 to-black/60 border border-blue-500/30 flex flex-col gap-2.5 shadow-xl shadow-blue-950/30 animate-in fade-in zoom-in-95 duration-200">
 										{/* Update Header */}
-										<div className="flex items-start justify-between gap-3">
-											<div className="flex items-center gap-3">
-												<div className="w-10 h-10 rounded-2xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
-													<ArrowDownCircle className="w-5 h-5 text-cyan-400 animate-pulse" />
+										<div className="flex items-start justify-between gap-2.5">
+											<div className="flex items-center gap-2.5 min-w-0">
+												<div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
+													<ArrowDownCircle className="w-4 h-4 text-cyan-400 animate-pulse" />
 												</div>
-												<div>
-													<div className="flex items-center gap-2">
-														<h4 className="text-sm font-bold text-white">
+												<div className="min-w-0">
+													<div className="flex items-center gap-2 flex-wrap">
+														<h4 className="text-xs sm:text-sm font-bold text-white truncate">
 															MorningTV Feature Update
 														</h4>
-														<span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[10px] font-bold font-mono">
+														<span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-bold font-mono shrink-0">
 															v{updateInfo?.version || "1.1.0"} Available
 														</span>
 														{updateInfo?.isVirtual && (
-															<span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold font-mono">
+															<span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[9px] font-bold font-mono shrink-0">
 																TEST MODE
 															</span>
 														)}
 													</div>
-													<p className="text-xs text-zinc-400 mt-0.5">
+													<p className="text-[11px] text-zinc-300 mt-0.5 truncate">
 														A new verified version is ready with performance and channel improvements
 													</p>
 												</div>
@@ -712,7 +712,7 @@ export const SettingsDialog: React.FC = () => {
 												<button
 													type="button"
 													onClick={dismissUpdate}
-													className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-xl transition-all cursor-pointer"
+													className="p-1 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all cursor-pointer shrink-0"
 													title="Dismiss update view"
 												>
 													<X className="w-4 h-4" />
@@ -721,38 +721,54 @@ export const SettingsDialog: React.FC = () => {
 										</div>
 
 										{/* What's New Section */}
-										<div className="flex flex-col gap-2 p-3.5 rounded-xl bg-black/40 border border-white/5">
-											<div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-												<Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+										<div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-black/40 border border-white/10">
+											<div className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+												<Sparkles className="w-3 h-3 text-cyan-400" />
 												<span>What's New in this release:</span>
 											</div>
-											<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-zinc-300">
-												<div className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
-													<Zap className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
-													<div>
-														<strong className="text-white font-semibold">Ultra-Fast 4K HLS:</strong>
-														<span className="text-zinc-400 text-[11px] block">Sub-second channel switching & zero-stall buffer</span>
+											<div className="grid grid-cols-2 gap-1.5 text-xs text-zinc-300">
+												<div className="flex items-center gap-2 p-1.5 sm:p-2 rounded-lg bg-white/[0.03] border border-white/5 min-w-0">
+													<Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+													<div className="min-w-0">
+														<div className="text-white font-semibold text-[11px] truncate leading-tight">
+															Ultra-Fast 4K HLS
+														</div>
+														<div className="text-zinc-400 text-[10px] truncate leading-tight">
+															Sub-second channel switching
+														</div>
 													</div>
 												</div>
-												<div className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
-													<Sparkles className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-													<div>
-														<strong className="text-white font-semibold">Cinema Ambilight:</strong>
-														<span className="text-zinc-400 text-[11px] block">60fps dynamic aura lighting behind video player</span>
+												<div className="flex items-center gap-2 p-1.5 sm:p-2 rounded-lg bg-white/[0.03] border border-white/5 min-w-0">
+													<Sparkles className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+													<div className="min-w-0">
+														<div className="text-white font-semibold text-[11px] truncate leading-tight">
+															Cinema Ambilight
+														</div>
+														<div className="text-zinc-400 text-[10px] truncate leading-tight">
+															60fps dynamic aura lighting
+														</div>
 													</div>
 												</div>
-												<div className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
-													<Volume2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-													<div>
-														<strong className="text-white font-semibold">Smart Volume Leveler:</strong>
-														<span className="text-zinc-400 text-[11px] block">Automatic limiter prevents sudden loud channel spikes</span>
+												<div className="flex items-center gap-2 p-1.5 sm:p-2 rounded-lg bg-white/[0.03] border border-white/5 min-w-0">
+													<Volume2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+													<div className="min-w-0">
+														<div className="text-white font-semibold text-[11px] truncate leading-tight">
+															Smart Volume Leveler
+														</div>
+														<div className="text-zinc-400 text-[10px] truncate leading-tight">
+															Automatic limiter for loud spikes
+														</div>
 													</div>
 												</div>
-												<div className="flex items-start gap-2 p-2 rounded-lg bg-white/[0.02] border border-white/5">
-													<ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-													<div>
-														<strong className="text-white font-semibold">Zero-Freeze Stream Guard:</strong>
-														<span className="text-zinc-400 text-[11px] block">Automated background failover to backup mirrors</span>
+												<div className="flex items-center gap-2 p-1.5 sm:p-2 rounded-lg bg-white/[0.03] border border-white/5 min-w-0">
+													<ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+													<div className="min-w-0">
+														<div className="text-white font-semibold text-[11px] truncate leading-tight">
+															Zero-Freeze Guard
+														</div>
+														<div className="text-zinc-400 text-[10px] truncate leading-tight">
+															Automated mirror failover
+														</div>
 													</div>
 												</div>
 											</div>
@@ -760,22 +776,23 @@ export const SettingsDialog: React.FC = () => {
 
 										{/* Download / Install Controls */}
 										{updateStatus === "available" && (
-											<div className="flex items-center justify-between pt-2 border-t border-white/5 flex-wrap gap-3">
-												<span className="text-[11px] text-zinc-400 font-mono">
-													Ed25519 Verified Package
-												</span>
+											<div className="flex items-center justify-between pt-2 border-t border-white/10">
+												<div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-mono">
+													<ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+													<span>Ed25519 Verified</span>
+												</div>
 												<div className="flex items-center gap-2">
 													<button
 														type="button"
 														onClick={dismissUpdate}
-														className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+														className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
 													>
 														Later
 													</button>
 													<button
 														type="button"
 														onClick={startDownloadUpdate}
-														className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-lg shadow-blue-500/25 active:scale-95"
+														className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-cyan-600/30 active:scale-95"
 													>
 														<ArrowDownCircle className="w-3.5 h-3.5" />
 														<span>Download & Install Now</span>
@@ -786,21 +803,21 @@ export const SettingsDialog: React.FC = () => {
 
 										{/* Downloading Progress Bar */}
 										{updateStatus === "downloading" && (
-											<div className="flex flex-col gap-2 p-3 bg-cyan-950/20 border border-cyan-500/20 rounded-xl">
+											<div className="flex flex-col gap-1.5 p-2.5 bg-cyan-950/20 border border-cyan-500/20 rounded-xl">
 												<div className="flex items-center justify-between text-xs font-bold text-cyan-300">
 													<span className="flex items-center gap-2">
-														<RefreshCw className="w-3.5 h-3.5 animate-spin" />
+														<RefreshCw className="w-3 h-3 animate-spin" />
 														<span>Downloading & verifying package...</span>
 													</span>
-													<span className="font-mono">{updateProgress}%</span>
+													<span className="font-mono text-xs">{updateProgress}%</span>
 												</div>
-												<div className="w-full h-2.5 bg-black/60 rounded-full overflow-hidden border border-white/10">
+												<div className="w-full h-2 bg-black/60 rounded-full overflow-hidden border border-white/10">
 													<div
 														className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-200"
 														style={{ width: `${updateProgress}%` }}
 													/>
 												</div>
-												<span className="text-[10px] text-zinc-400 font-mono">
+												<span className="text-[9px] text-zinc-400 font-mono">
 													Silent background update in progress
 												</span>
 											</div>
@@ -808,23 +825,23 @@ export const SettingsDialog: React.FC = () => {
 
 										{/* Ready to Restart */}
 										{updateStatus === "ready" && (
-											<div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-												<div className="flex items-center gap-2.5 text-xs text-emerald-300 font-bold">
+											<div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between gap-3">
+												<div className="flex items-center gap-2 text-xs text-emerald-300 font-bold min-w-0">
 													<Check className="w-4 h-4 text-emerald-400 shrink-0" />
-													<span>Update downloaded! Restart MorningTV to apply changes.</span>
+													<span className="truncate">Update downloaded! Restart to apply changes.</span>
 												</div>
-												<div className="flex items-center gap-2 self-end sm:self-auto">
+												<div className="flex items-center gap-2 shrink-0">
 													<button
 														type="button"
 														onClick={dismissUpdate}
-														className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-semibold cursor-pointer"
+														className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-semibold cursor-pointer"
 													>
 														Later
 													</button>
 													<button
 														type="button"
 														onClick={relaunchApp}
-														className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
+														className="px-3.5 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
 													>
 														Restart Now
 													</button>
