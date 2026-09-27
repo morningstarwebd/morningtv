@@ -346,17 +346,17 @@ export const VideoPlayer: React.FC = () => {
 				maxMaxBufferLength: is3GDataSaver ? 60 : 60,
 				maxBufferSize: 60 * 1000 * 1000,
 				liveSyncDurationCount: 3,
-				liveMaxLatencyDurationCount: 8,
-				fragLoadingTimeOut: 10000,
-				fragLoadingMaxRetry: 4,
+				liveMaxLatencyDurationCount: 10,
+				fragLoadingTimeOut: 20000,
+				fragLoadingMaxRetry: 6,
 				fragLoadingRetryDelay: 1000,
-				manifestLoadingTimeOut: 8000,
-				manifestLoadingMaxRetry: 3,
-				levelLoadingTimeOut: 8000,
-				levelLoadingMaxRetry: 3,
+				manifestLoadingTimeOut: 15000,
+				manifestLoadingMaxRetry: 5,
+				levelLoadingTimeOut: 15000,
+				levelLoadingMaxRetry: 5,
 				nudgeOffset: 0.2,
-				nudgeMaxRetry: 15,
-				maxStarvationDelay: 2,
+				nudgeMaxRetry: 20,
+				maxStarvationDelay: 5,
 				abrEwmaFastLive: 3.0,
 				abrEwmaSlowLive: 9.0,
 				abrMaxWithRealBitrate: true,
@@ -441,7 +441,7 @@ export const VideoPlayer: React.FC = () => {
 					switch (data.type) {
 						case Hls.ErrorTypes.NETWORK_ERROR:
 							retryCountRef.current += 1;
-							if (retryCountRef.current <= 2) {
+							if (retryCountRef.current <= 4) {
 								hls.startLoad();
 							} else {
 								retryCountRef.current = 0;
@@ -736,19 +736,14 @@ export const VideoPlayer: React.FC = () => {
 						}}
 					/>
 
-					{/* Reconnecting Backoff Overlay */}
+					{/* Reconnecting Backoff Indicator */}
 					{reconnectCountdown !== null && (
-						<div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-xs transition-opacity duration-200">
-							<div className="flex flex-col items-center gap-3 p-5 rounded-3xl bg-black/85 border border-rose-500/30 shadow-2xl shadow-rose-950/40 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150">
-								<div className="flex items-center gap-2 text-rose-400">
-									<RefreshCw className="w-5 h-5 animate-spin" />
-									<span className="text-sm font-black tracking-wide">
-										Reconnecting in {reconnectCountdown}s...
-									</span>
-								</div>
-								<p className="text-[11px] text-zinc-400 text-center max-w-xs">
-									All stream mirrors are temporarily unreachable. Retrying with exponential backoff.
-								</p>
+						<div className="absolute top-20 left-1/2 -translate-x-1/2 z-40 flex items-center justify-center pointer-events-none transition-opacity duration-200">
+							<div className="flex items-center gap-3 px-5 py-2 rounded-2xl bg-black/90 border border-rose-500/40 shadow-2xl shadow-rose-950/50 backdrop-blur-2xl animate-in fade-in zoom-in-95 duration-150 pointer-events-auto">
+								<RefreshCw className="w-4 h-4 text-rose-400 animate-spin" />
+								<span className="text-xs font-bold text-rose-300">
+									Stream reconnecting in {reconnectCountdown}s...
+								</span>
 								<button
 									onClick={() => {
 										failedUrlsRef.current.clear();
@@ -759,7 +754,7 @@ export const VideoPlayer: React.FC = () => {
 										setReconnectCountdown(null);
 										cycleMirror();
 									}}
-									className="px-4 py-1.5 rounded-full bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-xs font-bold text-rose-200 transition-all cursor-pointer hover:scale-105 active:scale-95"
+									className="px-3 py-1 rounded-full bg-rose-500/25 hover:bg-rose-500/40 border border-rose-500/40 text-[11px] font-bold text-rose-200 transition-all cursor-pointer hover:scale-105 active:scale-95"
 								>
 									Retry Now
 								</button>

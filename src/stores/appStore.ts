@@ -206,13 +206,6 @@ export const useAppStore = create<AppState>((set, get) => ({
 	},
 
 	selectChannel: async (channel: Channel) => {
-		// If user clicked the YouTube channel, launch the full native YouTube browser
-		if (channel.url.includes("youtube.com") || channel.group === "YouTube") {
-			get().openNativeYouTube();
-			set({ isChannelDrawerOpen: false });
-			return;
-		}
-
 		const channelId = getChannelIdString(channel.id);
 		// Immediately set activeChannel and isChannelLoading: true for instant UI feedback
 		set({

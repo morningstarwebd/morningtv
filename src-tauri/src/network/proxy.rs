@@ -1,5 +1,6 @@
 // src-tauri/src/network/proxy.rs
-// Local HTTP streaming proxy to eliminate CORS restrictions and bypass ISP/User-Agent blocks
+// Local HTTP streaming proxy to eliminate CORS restrictions, follow redirects,
+// and bypass ISP/User-Agent/Referer blocks for FAST & live streams (Pluto, Samsung TV Plus, Free-TV)
 
 use std::io::Cursor;
 use std::sync::Arc;
@@ -25,9 +26,10 @@ impl StreamProxy {
 
             let client = Arc::new(
                 reqwest::blocking::Client::builder()
-                    .timeout(std::time::Duration::from_secs(10))
-                    .connect_timeout(std::time::Duration::from_secs(3))
+                    .timeout(std::time::Duration::from_secs(25))
+                    .connect_timeout(std::time::Duration::from_secs(10))
                     .danger_accept_invalid_certs(true)
+                    .redirect(reqwest::redirect::Policy::limited(10))
                     .build()
                     .unwrap_or_default(),
             );
@@ -80,14 +82,28 @@ impl StreamProxy {
             }
         };
 
-        // Fetch target upstream stream with realistic User-Agent
-        let upstream_res = match client
+        // Build request with provider-appropriate headers (Pluto TV, Samsung TV Plus, Amagi, etc.)
+        let mut req_builder = client
             .get(&target_url)
-            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            )
             .header("Accept", "*/*")
-            .header("Connection", "keep-alive")
-            .send()
-        {
+            .header("Connection", "keep-alive");
+
+        let lower = target_url.to_lowercase();
+        if lower.contains("pluto.tv") {
+            req_builder = req_builder
+                .header("Referer", "https://pluto.tv/")
+                .header("Origin", "https://pluto.tv");
+        } else if lower.contains("samsung") || lower.contains("amagi.tv") {
+            req_builder = req_builder
+                .header("Referer", "https://www.samsungtvplus.com/")
+                .header("Origin", "https://www.samsungtvplus.com");
+        }
+
+        let upstream_res = match req_builder.send() {
             Ok(r) => r,
             Err(e) => {
                 eprintln!("Stream proxy fetch error for {}: {}", target_url, e);
@@ -95,6 +111,9 @@ impl StreamProxy {
                 return;
             }
         };
+
+        // Capture effective URL after 301/302 redirects (CRUCIAL for Samsung jmp2.uk -> amagi.tv)
+        let effective_url = upstream_res.url().as_str().to_string();
 
         let content_type = upstream_res
             .headers()
@@ -112,13 +131,14 @@ impl StreamProxy {
         };
 
         let is_m3u8 = target_url.contains(".m3u8")
+            || effective_url.contains(".m3u8")
             || content_type.contains("mpegurl")
             || bytes.starts_with(b"#EXTM3U");
 
         if is_m3u8 {
-            // Rewrite M3U8 URLs so fragments route back through this proxy
+            // Rewrite M3U8 URLs using the post-redirect effective URL as the base
             if let Ok(text) = std::str::from_utf8(&bytes) {
-                let rewritten = rewrite_m3u8(text, &target_url);
+                let rewritten = rewrite_m3u8(text, &effective_url);
                 let res = Response::from_string(rewritten)
                     .with_status_code(StatusCode(200))
                     .with_header(Header::from_bytes(&b"Content-Type"[..], &b"application/vnd.apple.mpegurl"[..]).unwrap())
@@ -130,6 +150,7 @@ impl StreamProxy {
         }
 
         // Binary audio/video segments (.ts, .aac, .m4s, etc.)
+        // Note: Do NOT add duplicate Content-Length header - tiny_http automatically adds it from Some(len)
         let len = bytes.len();
         let ctype = if content_type.is_empty() {
             "video/mp2t".to_string()
@@ -141,7 +162,6 @@ impl StreamProxy {
             vec![
                 Header::from_bytes(&b"Access-Control-Allow-Origin"[..], &b"*"[..]).unwrap(),
                 Header::from_bytes(&b"Content-Type"[..], ctype.as_bytes()).unwrap(),
-                Header::from_bytes(&b"Content-Length"[..], len.to_string().as_bytes()).unwrap(),
                 Header::from_bytes(&b"Cache-Control"[..], &b"public, max-age=3600"[..]).unwrap(),
             ],
             Cursor::new(bytes),
@@ -170,26 +190,35 @@ fn rewrite_m3u8(manifest: &str, base_url_str: &str) -> String {
                 let after_prefix = &trimmed[prefix_len..];
                 if let Some(end) = after_prefix.find('"') {
                     let raw_uri = &after_prefix[..end];
-                    let resolved_uri = if let Some(ref base) = base_url {
-                        base.join(raw_uri).map(|u| u.to_string()).unwrap_or_else(|_| raw_uri.to_string())
-                    } else {
-                        raw_uri.to_string()
-                    };
-                    let proxied = format!(
-                        "http://127.0.0.1:{}/stream?url={}",
-                        StreamProxy::PORT,
-                        urlencoding_encode(&resolved_uri)
-                    );
-                    let mut new_line = String::with_capacity(trimmed.len() + 120);
-                    new_line.push_str(&trimmed[..prefix_len]);
-                    new_line.push_str(&proxied);
-                    new_line.push_str(&after_prefix[end..]);
-                    output.push_str(&new_line);
-                    output.push('\n');
-                    continue;
+                    if !raw_uri.starts_with("http://127.0.0.1:") {
+                        let resolved_uri = if let Some(ref base) = base_url {
+                            base.join(raw_uri).map(|u| u.to_string()).unwrap_or_else(|_| raw_uri.to_string())
+                        } else {
+                            raw_uri.to_string()
+                        };
+                        let proxied = format!(
+                            "http://127.0.0.1:{}/stream?url={}",
+                            StreamProxy::PORT,
+                            urlencoding_encode(&resolved_uri)
+                        );
+                        let mut new_line = String::with_capacity(trimmed.len() + 120);
+                        new_line.push_str(&trimmed[..prefix_len]);
+                        new_line.push_str(&proxied);
+                        new_line.push_str(&after_prefix[end..]);
+                        output.push_str(&new_line);
+                        output.push('\n');
+                        continue;
+                    }
                 }
             }
 
+            output.push_str(trimmed);
+            output.push('\n');
+            continue;
+        }
+
+        // Avoid re-proxying if already pointing to local proxy
+        if trimmed.starts_with("http://127.0.0.1:") {
             output.push_str(trimmed);
             output.push('\n');
             continue;
@@ -213,6 +242,7 @@ fn rewrite_m3u8(manifest: &str, base_url_str: &str) -> String {
     output
 }
 
+// Preserves '+' characters so Base64 and JWT signatures (Pluto TV, signed CDNs) are NOT corrupted
 fn urlencoding_decode(s: &str) -> String {
     let mut bytes = Vec::with_capacity(s.len());
     let mut chars = s.bytes();
@@ -223,9 +253,8 @@ fn urlencoding_decode(s: &str) -> String {
             if let Ok(val) = u8::from_str_radix(&format!("{}{}", h1, h2), 16) {
                 bytes.push(val);
             }
-        } else if b == b'+' {
-            bytes.push(b' ');
         } else {
+            // Keep '+' as '+' (do not convert to space!)
             bytes.push(b);
         }
     }
