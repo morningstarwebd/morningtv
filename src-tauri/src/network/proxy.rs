@@ -26,12 +26,14 @@ impl StreamProxy {
             let addr = SocketAddr::from(([127, 0, 0, 1], Self::PORT));
 
             let client = reqwest::Client::builder()
-                .timeout(std::time::Duration::from_secs(25))
-                .connect_timeout(std::time::Duration::from_secs(10))
+                .timeout(std::time::Duration::from_secs(60))
+                .connect_timeout(std::time::Duration::from_secs(30))
                 .danger_accept_invalid_certs(true)
                 .redirect(reqwest::redirect::Policy::limited(10))
-                .pool_max_idle_per_host(25)
-                .tcp_keepalive(std::time::Duration::from_secs(15))
+                .pool_max_idle_per_host(30)
+                .pool_idle_timeout(std::time::Duration::from_secs(60))
+                .tcp_keepalive(std::time::Duration::from_secs(30))
+                .tcp_nodelay(true)
                 .build()
                 .unwrap_or_default();
 
@@ -60,6 +62,7 @@ async fn handle_return() -> Response {
 
 async fn handle_stream(
     State(client): State<Arc<reqwest::Client>>,
+    incoming_headers: HeaderMap,
     uri: Uri,
 ) -> Response {
     let query_str = uri.query().unwrap_or("");
@@ -83,7 +86,14 @@ async fn handle_stream(
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         )
         .header("Accept", "*/*")
-        .header("Connection", "keep-alive");
+        .header("Accept-Language", "en-US,en;q=0.9");
+
+    // Forward Range header for byte-range streams (fMP4 / HLS byte-ranges) and seeking
+    if let Some(range) = incoming_headers.get(axum::http::header::RANGE) {
+        if let Ok(val) = range.to_str() {
+            req_builder = req_builder.header(reqwest::header::RANGE, val);
+        }
+    }
 
     if lower.contains("pluto.tv") {
         req_builder = req_builder
@@ -95,16 +105,61 @@ async fn handle_stream(
             .header("Origin", "https://www.samsungtvplus.com");
     }
 
-    let upstream_res = match req_builder.send().await {
-        Ok(res) => res,
-        Err(e) => {
-            log::warn!("Stream proxy fetch error for {}: {}", target_url, e);
-            return (StatusCode::BAD_GATEWAY, "Upstream fetch error").into_response();
+    // Resilient retry loop (up to 3 attempts with exponential backoff) for unstable networks
+    let mut upstream_res = None;
+    let mut last_err = None;
+
+    for attempt in 0..3 {
+        let req = match req_builder.try_clone() {
+            Some(r) => r,
+            None => {
+                break;
+            }
+        };
+
+        match req.send().await {
+            Ok(res) => {
+                upstream_res = Some(res);
+                break;
+            }
+            Err(e) => {
+                log::warn!(
+                    "Stream proxy attempt {} failed for {}: {}",
+                    attempt + 1,
+                    target_url,
+                    e
+                );
+                last_err = Some(e);
+                if attempt < 2 {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(150 * (attempt as u64 + 1))).await;
+                }
+            }
+        }
+    }
+
+    // Fallback if clone failed or retries exhausted
+    let upstream_res = match upstream_res {
+        Some(res) => res,
+        None => {
+            // One final direct attempt if try_clone was unavailable
+            match req_builder.send().await {
+                Ok(res) => res,
+                Err(e) => {
+                    log::warn!(
+                        "Stream proxy fetch exhausted retries for {}: {:?} (last: {:?})",
+                        target_url,
+                        e,
+                        last_err
+                    );
+                    return (StatusCode::BAD_GATEWAY, "Upstream fetch error").into_response();
+                }
+            }
         }
     };
 
     // Capture effective URL after 301/302 redirects (CRUCIAL for Samsung jmp2.uk -> amagi.tv)
     let effective_url = upstream_res.url().as_str().to_string();
+    let upstream_status = upstream_res.status();
 
     let content_type = upstream_res
         .headers()
@@ -128,16 +183,21 @@ async fn handle_stream(
                 );
                 headers.insert(
                     axum::http::header::CACHE_CONTROL,
-                    HeaderValue::from_static("no-cache"),
+                    HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+                );
+                headers.insert(
+                    axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                    HeaderValue::from_static("*"),
                 );
                 (headers, rewritten).into_response()
             }
             Err(_) => (StatusCode::BAD_GATEWAY, "Failed to read manifest text").into_response(),
         }
     } else {
-        // High-performance zero-copy async stream piping
-        let status = StatusCode::from_u16(upstream_res.status().as_u16()).unwrap_or(StatusCode::OK);
+        // High-performance zero-copy async stream piping for TS / AAC / MP4 segments
+        let status = StatusCode::from_u16(upstream_status.as_u16()).unwrap_or(StatusCode::OK);
         let mut headers = HeaderMap::new();
+
         let ctype = if content_type.is_empty() {
             "video/mp2t"
         } else {
@@ -146,9 +206,34 @@ async fn handle_stream(
         if let Ok(val) = HeaderValue::from_str(ctype) {
             headers.insert(axum::http::header::CONTENT_TYPE, val);
         }
+
+        // Forward Content-Length so player knows exact chunk size and download progress
+        if let Some(content_length) = upstream_res.content_length() {
+            headers.insert(
+                axum::http::header::CONTENT_LENGTH,
+                HeaderValue::from(content_length),
+            );
+        }
+
+        // Forward Content-Range for byte-range responses (206 Partial Content)
+        if let Some(content_range) = upstream_res.headers().get(reqwest::header::CONTENT_RANGE) {
+            headers.insert(axum::http::header::CONTENT_RANGE, content_range.clone());
+        }
+
+        // Enable byte-range seeking
+        headers.insert(
+            axum::http::header::ACCEPT_RANGES,
+            HeaderValue::from_static("bytes"),
+        );
+
         headers.insert(
             axum::http::header::CACHE_CONTROL,
             HeaderValue::from_static("public, max-age=3600"),
+        );
+
+        headers.insert(
+            axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            HeaderValue::from_static("*"),
         );
 
         let stream = upstream_res.bytes_stream();

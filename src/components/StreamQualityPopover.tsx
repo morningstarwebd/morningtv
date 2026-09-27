@@ -432,8 +432,8 @@ export const StreamQualityPopover: React.FC = () => {
 
 							{/* TAB 2: STREAM RENDITIONS & QUALITY */}
 							{activeTab === "renditions" && (
-								<div className="space-y-2.5 animate-in fade-in duration-150">
-									<div className="flex items-center justify-between px-1">
+								<div className="h-full flex flex-col space-y-2.5 animate-in fade-in duration-150">
+									<div className="flex items-center justify-between px-1 shrink-0">
 										<span className="text-xs font-bold text-zinc-200">
 											Available Stream Profiles
 										</span>
@@ -444,10 +444,10 @@ export const StreamQualityPopover: React.FC = () => {
 										</span>
 									</div>
 
-									{/* Auto Adaptive ABR Master Option */}
+									{/* Auto Adaptive ABR Master Option (fixed at top) */}
 									<button
 										onClick={() => setSelectedQualityLevel(-1)}
-										className={`w-full flex items-center justify-between p-2.5 px-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border ${
+										className={`w-full flex items-center justify-between p-2.5 px-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border shrink-0 ${
 											selectedQualityLevel === -1
 												? "bg-cyan-500/25 border-cyan-400/50 text-cyan-100 shadow-md shadow-cyan-500/15"
 												: "bg-white/[0.04] border-white/[0.08] text-zinc-200 hover:bg-white/[0.09] hover:text-white"
@@ -476,8 +476,8 @@ export const StreamQualityPopover: React.FC = () => {
 										)}
 									</button>
 
-									{/* Individual Manual Renditions - Compact Grid/List */}
-									<div className="space-y-1.5">
+									{/* Individual Manual Renditions - Smooth Scrollable List */}
+									<div className="flex-1 overflow-y-auto space-y-1.5 pr-1.5 pb-2">
 										{availableQualityLevels.map((lvl) => {
 											const isSelected = selectedQualityLevel === lvl.index;
 											const bytesPerSec = lvl.bitrate ? lvl.bitrate / 8 : 0;

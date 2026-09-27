@@ -25,6 +25,7 @@ export const AppleTVCard = memo<AppleTVCardProps>(({
 }) => {
 	const channelId = getChannelIdString(channel.id);
 	const [logoError, setLogoError] = useState(false);
+	const [imageLoaded, setImageLoaded] = useState(false);
 
 	// Resolution badge if present
 	const resolutionMatch = channel.name.match(
@@ -85,17 +86,25 @@ export const AppleTVCard = memo<AppleTVCardProps>(({
 				</div>
 			</div>
 
-			{/* Center Logo */}
-			<div className="flex-1 flex items-center justify-center my-1 z-10 px-2">
+			{/* Center Logo with Shimmer Skeleton */}
+			<div className="flex-1 flex items-center justify-center my-1 z-10 px-2 relative">
 				{channel.logo && !logoError ? (
-					<img
-						src={channel.logo}
-						alt={cleanName}
-						onError={() => setLogoError(true)}
-						className="max-h-12 max-w-[85%] object-contain filter drop-shadow-md group-hover:scale-110 transition-transform duration-300"
-						loading="lazy"
-						decoding="async"
-					/>
+					<>
+						{!imageLoaded && (
+							<div className="w-20 h-10 rounded-xl animate-shimmer bg-white/[0.05] border border-white/5 flex items-center justify-center absolute" />
+						)}
+						<img
+							src={channel.logo}
+							alt={cleanName}
+							onLoad={() => setImageLoaded(true)}
+							onError={() => setLogoError(true)}
+							className={`max-h-12 max-w-[85%] object-contain filter drop-shadow-md group-hover:scale-110 transition-all duration-300 ${
+								imageLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
+							}`}
+							loading="lazy"
+							decoding="async"
+						/>
+					</>
 				) : (
 					<div className="w-12 h-12 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
 						<Tv

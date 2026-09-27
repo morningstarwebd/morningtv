@@ -19,6 +19,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { getChannelIdString } from "../types";
 import { AppleTVCard } from "./AppleTVCard";
+import { AppleTVCardSkeleton } from "./AppleTVCardSkeleton";
 
 export const AppleTVChannelShelf: React.FC = () => {
 	const {
@@ -517,21 +518,10 @@ export const AppleTVChannelShelf: React.FC = () => {
 									/>
 								))}
 
-								{/* Progressive Loading Sentinel / Indicator */}
+								{/* Progressive YouTube-Style Loading Skeleton Sentinel */}
 								{visibleCount < displayChannels.length && (
-									<div
-										ref={sentinelRef}
-										className="w-44 sm:w-52 h-32 sm:h-36 shrink-0 rounded-2xl border border-white/10 bg-white/[0.02] flex flex-col items-center justify-center p-4 text-center select-none gap-2"
-									>
-										<div className="w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-										<div>
-											<span className="text-xs font-mono font-bold text-zinc-300">
-												{visibleCount} of {displayChannels.length}
-											</span>
-											<p className="text-[10px] text-zinc-500 mt-0.5">
-												Scroll for more
-											</p>
-										</div>
+									<div ref={sentinelRef} className="flex items-center gap-3 sm:gap-4 shrink-0">
+										<AppleTVCardSkeleton count={2} />
 									</div>
 								)}
 
@@ -544,11 +534,15 @@ export const AppleTVChannelShelf: React.FC = () => {
 									</div>
 								)}
 							</>
+						) : channels.length === 0 ? (
+							<div className="flex items-center gap-3 sm:gap-4 px-2">
+								<AppleTVCardSkeleton count={6} />
+							</div>
 						) : (
 							<div className="w-full py-8 text-center">
 								<Tv className="w-8 h-8 text-zinc-600 mx-auto mb-2 animate-pulse" />
 								<p className="text-xs font-bold text-zinc-400">
-									No channels in this category
+									No channels found in this category
 								</p>
 							</div>
 						)}

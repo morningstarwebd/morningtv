@@ -340,32 +340,53 @@ export const VideoPlayer: React.FC = () => {
 			: `http://127.0.0.1:18181/stream?url=${encodeURIComponent(currentUrl)}`;
 
 		if (Hls.isSupported()) {
-			if (hlsRef.current) hlsRef.current.destroy();
+			if (hlsRef.current) {
+				hlsRef.current.stopLoad();
+				hlsRef.current.detachMedia();
+				hlsRef.current.destroy();
+				hlsRef.current = null;
+			}
+			// Clean hardware decoder state for instant TV-like channel switch
+			video.pause();
+			video.removeAttribute("src");
+			video.load();
 
-			// Configure HLS for instant playback and smart network resilience
+			// Configure HLS for instant low-latency startup and extreme network resilience
 			const hls = new Hls({
 				enableWorker: true,
 				lowLatencyMode: false,
-				backBufferLength: 30,
-				maxBufferLength: is3GDataSaver ? 45 : 30,
-				maxMaxBufferLength: is3GDataSaver ? 60 : 60,
-				maxBufferSize: 60 * 1000 * 1000,
-				liveSyncDurationCount: 3,
-				liveMaxLatencyDurationCount: 10,
-				fragLoadingTimeOut: 20000,
-				fragLoadingMaxRetry: 6,
+				backBufferLength: 60,
+				maxBufferLength: 60,
+				maxMaxBufferLength: 120,
+				maxBufferSize: 80 * 1000 * 1000,
+				maxBufferHole: 0.5,
+				highBufferWatchdogPeriod: 2,
+				liveSyncDurationCount: 2,
+				liveMaxLatencyDurationCount: 8,
+				initialLiveManifestSize: 1,
+				liveDurationInfinity: true,
+				fragLoadingTimeOut: 35000,
+				fragLoadingMaxRetry: 8,
 				fragLoadingRetryDelay: 1000,
-				manifestLoadingTimeOut: 15000,
-				manifestLoadingMaxRetry: 5,
-				levelLoadingTimeOut: 15000,
-				levelLoadingMaxRetry: 5,
+				fragLoadingMaxRetryTimeout: 64000,
+				manifestLoadingTimeOut: 30000,
+				manifestLoadingMaxRetry: 8,
+				manifestLoadingRetryDelay: 1000,
+				manifestLoadingMaxRetryTimeout: 64000,
+				levelLoadingTimeOut: 30000,
+				levelLoadingMaxRetry: 8,
+				levelLoadingRetryDelay: 1000,
+				levelLoadingMaxRetryTimeout: 64000,
 				nudgeOffset: 0.2,
-				nudgeMaxRetry: 20,
-				maxStarvationDelay: 5,
-				abrEwmaFastLive: 3.0,
-				abrEwmaSlowLive: 9.0,
+				nudgeMaxRetry: 30,
+				maxStarvationDelay: 4,
+				abrEwmaFastLive: 1.5,
+				abrEwmaSlowLive: 6.0,
+				abrBandWidthFactor: 0.75,
+				abrBandWidthUpFactor: 0.55,
 				abrMaxWithRealBitrate: true,
-				startLevel: is3GDataSaver ? 0 : -1,
+				capLevelToPlayerSize: true,
+				startLevel: 0,
 				autoStartLoad: true,
 			});
 
@@ -407,7 +428,10 @@ export const VideoPlayer: React.FC = () => {
 						);
 						hls.currentLevel = saverLevelIdx !== -1 ? saverLevelIdx : 0;
 					} else {
-						hls.currentLevel = -1; // Adaptive ABR (will upgrade to 1080p)
+						// FAST TV-LIKE ZAPPING: Start on Level 0 (lowest bitrate, smallest chunks)
+						// to ensure instant 1-second video startup without buffer stalls!
+						hls.currentLevel = 0;
+						hls.loadLevel = 0;
 					}
 				}
 
@@ -495,6 +519,28 @@ export const VideoPlayer: React.FC = () => {
 							bandwidthCapacityMbps: fmtCapacity.mbps,
 							nominalBitrate: nominalBitrateStr || "--",
 						});
+
+						// INSTANT NETWORK DETECTOR & QUALITY AUTO-ADAPTOR
+						const { selectedQualityLevel: curQual, is3GDataSaver: curSaver, showToast: notifyToast } = useAppStore.getState();
+						if (curQual === -1 && !curSaver) {
+							// If download speed is slow (< 180 KB/s) or chunk download took > 80% of duration:
+							if (downloadBytesSec < 180_000 || loadDurationSec > durationSec * 0.8) {
+								if (hls.autoLevelCapping !== 0) {
+									hls.autoLevelCapping = 0; // Lock to lowest level (240p/360p)
+									if (hls.currentLevel > 0) {
+										hls.currentLevel = 0;
+									}
+									notifyToast("⚡ Low bandwidth detected — auto-adapted to 360p for buffer-free playback", false);
+									setStreamHealthStatus("degraded");
+								}
+							} else if (downloadBytesSec > 450_000 && loadDurationSec < durationSec * 0.4) {
+								// Network is fast and healthy (> 3.6 Mbps, broadband / fast 4G)
+								if (hls.autoLevelCapping !== -1) {
+									hls.autoLevelCapping = -1; // Unlock auto level
+									hls.currentLevel = -1;     // Let ABR smoothly climb to HD
+								}
+							}
+						}
 					}
 				} catch (err) {
 					console.warn("FRAG_LOADED telemetry calculation error:", err);
@@ -511,8 +557,13 @@ export const VideoPlayer: React.FC = () => {
 					switch (data.type) {
 						case Hls.ErrorTypes.NETWORK_ERROR:
 							retryCountRef.current += 1;
-							if (retryCountRef.current <= 4) {
-								hls.startLoad();
+							if (retryCountRef.current <= 6) {
+								const backoff = Math.min(5000, retryCountRef.current * 800);
+								setTimeout(() => {
+									if (hlsRef.current) {
+										hls.startLoad();
+									}
+								}, backoff);
 							} else {
 								retryCountRef.current = 0;
 								hls.destroy();
@@ -521,11 +572,17 @@ export const VideoPlayer: React.FC = () => {
 							}
 							break;
 						case Hls.ErrorTypes.MEDIA_ERROR:
-							hls.recoverMediaError();
+							retryCountRef.current += 1;
+							if (retryCountRef.current <= 3) {
+								hls.recoverMediaError();
+							} else {
+								hls.swapAudioCodec();
+								hls.recoverMediaError();
+							}
 							break;
 						default:
 							retryCountRef.current += 1;
-							if (retryCountRef.current <= 2) {
+							if (retryCountRef.current <= 4) {
 								hls.startLoad();
 							} else {
 								retryCountRef.current = 0;
@@ -715,26 +772,50 @@ export const VideoPlayer: React.FC = () => {
 			}
 			setTelemetryStats(telemetryUpdates);
 
-			// Stall Watchdog: Detect silent video freezes without error events
+			// Predictive buffer starvation guard (runs every 1 second)
 			const currentTime = video.currentTime;
 			if (isPlaying && !video.paused && !video.ended) {
+				if (bufferSecs > 0 && bufferSecs < 2.5) {
+					const { selectedQualityLevel: qLvl, is3GDataSaver: sMode } = useAppStore.getState();
+					if (qLvl === -1 && !sMode && hlsRef.current) {
+						if (hlsRef.current.currentLevel > 0 || hlsRef.current.autoLevelCapping !== 0) {
+							hlsRef.current.autoLevelCapping = 0;
+							hlsRef.current.currentLevel = 0;
+							setStreamHealthStatus("degraded");
+						}
+					}
+				}
+
 				if (currentTime === lastTimeRef.current && currentTime > 0) {
 					stallTicksRef.current += 1;
 
-					// After 5s stalled: trigger gentle startLoad() buffer reload
-					if (
-						stallTicksRef.current === 5 &&
-						stallRecoveryAttemptRef.current < 2
-					) {
-						stallRecoveryAttemptRef.current += 1;
+					// After 4s stalled: downgrade to level 0 (lowest bitrate) to recover immediately
+					if (stallTicksRef.current === 4) {
+						if (hlsRef.current && hlsRef.current.currentLevel > 0) {
+							hlsRef.current.currentLevel = 0;
+						}
 						hlsRef.current?.startLoad();
 						setIsBuffering(true);
 						incrementStallCount();
 						setStreamHealthStatus("stalled");
 					}
 
-					// After 10s stalled & recovery failed: switch to next available fallback URL
-					if (stallTicksRef.current >= 10) {
+					// After 8s stalled: nudge video element forward to bypass stuck frames
+					if (stallTicksRef.current === 8) {
+						try {
+							video.currentTime += 0.15;
+							hlsRef.current?.startLoad();
+						} catch (_) {}
+					}
+
+					// After 15s stalled: trigger media error recovery
+					if (stallTicksRef.current === 15) {
+						hlsRef.current?.recoverMediaError();
+						hlsRef.current?.startLoad();
+					}
+
+					// Only after 30s of persistent unrecovered freeze switch to backup fallback!
+					if (stallTicksRef.current >= 30) {
 						stallTicksRef.current = 0;
 						stallRecoveryAttemptRef.current = 0;
 						tryNextFallback();
@@ -871,6 +952,13 @@ export const VideoPlayer: React.FC = () => {
 									Retry Now
 								</button>
 							</div>
+						</div>
+					)}
+
+					{/* YouTube-Style Sleek Top Edge Buffer Line */}
+					{(isBuffering || isChannelLoading) && (
+						<div className="absolute top-0 left-0 right-0 h-1 bg-black/40 z-50 overflow-hidden pointer-events-none">
+							<div className="h-full w-full bg-gradient-to-r from-transparent via-cyan-400 to-blue-500 shadow-[0_0_12px_rgba(6,182,212,0.9)] animate-yt-progress" />
 						</div>
 					)}
 

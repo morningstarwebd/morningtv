@@ -70,3 +70,41 @@ input[type="range"]::-webkit-slider-thumb:hover {
 	transform: scale(1.2);
 	box-shadow: 0 0 10px rgba(59, 130, 246, 0.6);
 }
+
+/* YouTube-style glowing shimmer skeleton effect */
+@keyframes shimmer {
+	0% {
+		background-position: -200% 0;
+	}
+	100% {
+		background-position: 200% 0;
+	}
+}
+
+.animate-shimmer {
+	background: linear-gradient(
+		90deg,
+		rgba(255, 255, 255, 0.03) 0%,
+		rgba(255, 255, 255, 0.09) 50%,
+		rgba(255, 255, 255, 0.03) 100%
+	);
+	background-size: 200% 100%;
+	animation: shimmer 1.8s infinite linear;
+}
+
+/* YouTube-style top edge indeterminate buffer bar */
+@keyframes yt-progress {
+	0% {
+		transform: translateX(-100%);
+	}
+	50% {
+		transform: translateX(25%);
+	}
+	100% {
+		transform: translateX(100%);
+	}
+}
+
+.animate-yt-progress {
+	animation: yt-progress 1.4s infinite ease-in-out;
+}
