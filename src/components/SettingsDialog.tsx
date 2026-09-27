@@ -18,11 +18,13 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 
-type TabType = "playlist" | "cinema" | "audio" | "system";
+type TabType = "playlist" | "cinema" | "audio" | "cloud" | "updates";
 
 export const SettingsDialog: React.FC = () => {
 	const {
 		channels,
+		totalChannels,
+		refreshTotalChannelCount,
 		isSettingsOpen,
 		settings,
 		ambientGlow,
@@ -56,6 +58,13 @@ export const SettingsDialog: React.FC = () => {
 		}
 	}, [settings?.playlist_url]);
 
+	// Fetch full channel count whenever settings opens
+	useEffect(() => {
+		if (isSettingsOpen) {
+			refreshTotalChannelCount();
+		}
+	}, [isSettingsOpen, refreshTotalChannelCount]);
+
 	// Escape key to close modal
 	useEffect(() => {
 		if (!isSettingsOpen) return;
@@ -76,7 +85,7 @@ export const SettingsDialog: React.FC = () => {
 	const isCustomPlaylist =
 		settings?.playlist_url && settings.playlist_url !== DEFAULT_PLAYLIST_URL;
 
-	const totalChannelsCount = channels.length;
+	const totalChannelsCount = totalChannels > 0 ? totalChannels : channels.length;
 	const isUpdateAvailable =
 		updateStatus === "available" ||
 		updateStatus === "downloading" ||
@@ -124,11 +133,19 @@ export const SettingsDialog: React.FC = () => {
 			badgeStyle: "bg-emerald-500/20 text-emerald-300",
 		},
 		{
-			id: "system" as TabType,
-			label: "Cloud & Updates",
-			desc: "Sync repository & app",
+			id: "cloud" as TabType,
+			label: "Cloud Repository",
+			desc: "Verified channel sync",
 			icon: Cloud,
-			badge: isUpdateAvailable ? `UPDATE v${updateInfo?.version || "1.1"}` : undefined,
+			badge: totalChannelsCount > 0 ? `${totalChannelsCount.toLocaleString()}` : undefined,
+			badgeStyle: "bg-cyan-500/15 text-cyan-300",
+		},
+		{
+			id: "updates" as TabType,
+			label: "Software Update",
+			desc: "App version & updates",
+			icon: ArrowDownCircle,
+			badge: isUpdateAvailable ? `UPDATE` : undefined,
 			badgeStyle: "bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-black",
 		},
 	];
@@ -210,7 +227,7 @@ export const SettingsDialog: React.FC = () => {
 						</nav>
 					</div>
 
-					{/* Bottom System Info (Clean & Simple) */}
+					{/* Bottom System Info */}
 					<div className="hidden md:flex items-center justify-between pt-4 border-t border-white/5">
 						<div className="flex items-center gap-2">
 							<span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -234,7 +251,8 @@ export const SettingsDialog: React.FC = () => {
 									{activeTab === "playlist" && "Playlist & Channels"}
 									{activeTab === "cinema" && "Cinema & Display"}
 									{activeTab === "audio" && "Sound & Acoustics"}
-									{activeTab === "system" && "Cloud & Software"}
+									{activeTab === "cloud" && "Cloud Repository"}
+									{activeTab === "updates" && "Software Update"}
 								</h3>
 								<p className="text-xs text-zinc-400 mt-0.5">
 									{activeTab === "playlist" &&
@@ -243,8 +261,10 @@ export const SettingsDialog: React.FC = () => {
 										"Customize visual ambient lighting and stream buffer stability"}
 									{activeTab === "audio" &&
 										"Fine-tune channel volume balance and prevent sudden loudness spikes"}
-									{activeTab === "system" &&
-										"Verify cloud repository synchronization and check for software updates"}
+									{activeTab === "cloud" &&
+										"Sync verified channels and backup mirrors directly from cloud repository"}
+									{activeTab === "updates" &&
+										"Check for new releases, install updates, and review changelogs"}
 								</p>
 							</div>
 
@@ -278,7 +298,7 @@ export const SettingsDialog: React.FC = () => {
 												</span>
 											</div>
 											<p className="text-xs text-zinc-400 mt-0.5">
-												Active live channels ready to watch in your library
+												Total channels currently loaded in your library
 											</p>
 										</div>
 									</div>
@@ -511,8 +531,8 @@ export const SettingsDialog: React.FC = () => {
 							</div>
 						)}
 
-						{/* TAB 4: CLOUD & UPDATES */}
-						{activeTab === "system" && (
+						{/* TAB 4: CLOUD REPOSITORY */}
+						{activeTab === "cloud" && (
 							<div className="flex flex-col gap-4">
 								{/* Cloud Repository Card */}
 								<div className="rounded-2xl p-5 bg-gradient-to-br from-cyan-950/30 via-blue-950/20 to-black/40 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -548,10 +568,48 @@ export const SettingsDialog: React.FC = () => {
 									</button>
 								</div>
 
-								{/* Software Updates Station */}
+								{/* Cloud Mirror Health Card */}
+								<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+									<div className="flex items-center gap-3">
+										<div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+											<ShieldCheck className="w-5 h-5" />
+										</div>
+										<div>
+											<h4 className="text-sm font-bold text-white">
+												High-Speed Cloud Resilience
+											</h4>
+											<p className="text-xs text-zinc-400 mt-0.5">
+												All channels are verified with automatic fallback mirrors to ensure high availability
+											</p>
+										</div>
+									</div>
+
+									<div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2 text-xs">
+										<div className="p-3 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-1">
+											<span className="text-[10px] uppercase font-bold text-zinc-500">Live Channels</span>
+											<span className="text-sm font-black text-cyan-300 font-mono">
+												{totalChannelsCount > 0 ? totalChannelsCount.toLocaleString() : "8,300+"}
+											</span>
+										</div>
+										<div className="p-3 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-1">
+											<span className="text-[10px] uppercase font-bold text-zinc-500">Mirror Fallback</span>
+											<span className="text-sm font-black text-emerald-400 font-mono">Multi-Server</span>
+										</div>
+										<div className="p-3 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-1">
+											<span className="text-[10px] uppercase font-bold text-zinc-500">Sync Protocol</span>
+											<span className="text-sm font-black text-white font-mono">HTTPS Cloud</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* TAB 5: SOFTWARE UPDATE */}
+						{activeTab === "updates" && (
+							<div className="flex flex-col gap-4">
 								{!isUpdateAvailable ? (
-									/* Default Clean Update Card (Matching Cloud Card Style) */
-									<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+									/* Default Clean Update Card */
+									<div className="rounded-2xl p-5 bg-white/[0.03] border border-white/10 flex flex-col gap-4">
 										<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
 											<div className="flex items-center gap-3">
 												<div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center shrink-0">
@@ -599,15 +657,15 @@ export const SettingsDialog: React.FC = () => {
 											</button>
 										</div>
 
-										{/* Test Virtual Update Trigger (for immediate preview before GitHub releases) */}
-										<div className="pt-2 border-t border-white/5 flex items-center justify-between">
-											<span className="text-[10px] text-zinc-500">
-												Ready for silent background updates
+										{/* Test Virtual Update Trigger */}
+										<div className="pt-3 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+											<span className="text-[11px] text-zinc-400">
+												Want to preview how the update flow looks?
 											</span>
 											<button
 												type="button"
 												onClick={triggerVirtualUpdate}
-												className="text-[11px] text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5 font-bold cursor-pointer hover:underline"
+												className="text-xs text-cyan-300 hover:text-cyan-200 flex items-center gap-1.5 font-bold cursor-pointer hover:underline px-3 py-1.5 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/15 border border-cyan-500/20 transition-all"
 												title="Simulates a new update release so you can test the changelog, download and restart flow"
 											>
 												<Sparkles className="w-3.5 h-3.5 text-cyan-400" />

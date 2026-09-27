@@ -54,6 +54,8 @@ pub fn run() {
         .manage(state)
         .invoke_handler(tauri::generate_handler![
             commands::get_channels,
+            commands::get_all_channels,
+            commands::get_total_channel_count,
             commands::get_categories,
             commands::select_channel,
             commands::toggle_favorite,

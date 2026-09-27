@@ -81,24 +81,24 @@ export const AppleTVDock: React.FC = () => {
 				isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
 			}`}
 		>
-			<div className="flex items-center gap-2 sm:gap-3 px-4 py-2 rounded-full bg-[#050814]/85 border border-white/15 backdrop-blur-3xl shadow-2xl shadow-black ring-1 ring-white/10 pointer-events-auto">
+			<div className="flex items-center justify-between w-[720px] max-w-[95vw] px-5 py-2.5 rounded-full bg-[#050814]/85 border border-white/15 backdrop-blur-3xl shadow-2xl shadow-black ring-1 ring-white/10 pointer-events-auto shrink-0 select-none">
 				{/* Open Channels Shelf (Guide) */}
 				<button
 					onClick={openChannelDrawer}
-					className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-black shadow-lg shadow-white/15 transition-all cursor-pointer hover:scale-105 active:scale-95"
+					className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white text-black hover:bg-zinc-200 text-xs font-black shadow-lg shadow-white/15 transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
 					title="Browse Channels Shelf (C)"
 				>
 					<Layers className="w-3.5 h-3.5" />
 					<span>Channels</span>
 				</button>
 
-				<div className="w-px h-5 bg-white/10" />
+				<div className="w-px h-5 bg-white/10 shrink-0" />
 
 				{/* Previous Channel */}
 				<button
 					onClick={prevChannel}
 					disabled={!activeChannel}
-					className="p-1.5 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer disabled:opacity-30"
+					className="p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer disabled:opacity-30 shrink-0"
 					title="Previous Channel ([)"
 				>
 					<SkipBack className="w-4 h-4" />
@@ -126,21 +126,24 @@ export const AppleTVDock: React.FC = () => {
 				<button
 					onClick={nextChannel}
 					disabled={!activeChannel}
-					className="p-1.5 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer disabled:opacity-30"
+					className="p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer disabled:opacity-30 shrink-0"
 					title="Next Channel (])"
 				>
 					<SkipForward className="w-4 h-4" />
 				</button>
 
-				<div className="w-px h-5 bg-white/10" />
+				<div className="w-px h-5 bg-white/10 shrink-0" />
 
 				{/* Web Audio 300% Sound Booster & Volume */}
 				<SoundBoosterControl />
 
-				{/* Buffer Health Indicator */}
-				<div className="hidden sm:flex items-center gap-1.5 text-xs text-zinc-300">
-					<span className={`w-2 h-2 rounded-full ${getBufferColor()}`} />
-					<span className="font-mono text-[11px] font-semibold">
+				{/* Buffer Health Indicator (Fixed width & tabular numbers: zero layout shift) */}
+				<div
+					className="hidden sm:flex items-center justify-center gap-1.5 w-14 px-2 py-1 rounded-full bg-white/5 border border-white/5 shrink-0 text-xs text-zinc-300"
+					title={`Stream Buffer: ${bufferSecs} seconds`}
+				>
+					<span className={`w-2 h-2 rounded-full shrink-0 ${getBufferColor()}`} />
+					<span className="font-mono tabular-nums text-[11px] font-bold w-6 text-center shrink-0">
 						{bufferSecs}s
 					</span>
 				</div>
@@ -148,7 +151,7 @@ export const AppleTVDock: React.FC = () => {
 				{/* Aspect Ratio Cycler */}
 				<button
 					onClick={cycleAspectRatio}
-					className="p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer hidden sm:block"
+					className="p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer hidden sm:block shrink-0"
 					title={`Aspect Ratio: ${aspectRatio}`}
 				>
 					<Maximize className="w-3.5 h-3.5" />
@@ -157,7 +160,7 @@ export const AppleTVDock: React.FC = () => {
 				{/* Ambient Glow */}
 				<button
 					onClick={toggleAmbientGlow}
-					className={`p-2 rounded-full transition-all cursor-pointer hidden sm:block ${
+					className={`p-2 rounded-full transition-all cursor-pointer hidden sm:block shrink-0 ${
 						ambientGlow
 							? "text-cyan-400 bg-cyan-500/10"
 							: "text-zinc-400 hover:text-white"
@@ -167,12 +170,12 @@ export const AppleTVDock: React.FC = () => {
 					<Sparkles className="w-3.5 h-3.5" />
 				</button>
 
-				<div className="w-px h-5 bg-white/10" />
+				<div className="w-px h-5 bg-white/10 shrink-0" />
 
 				{/* Fullscreen Toggle */}
 				<button
 					onClick={toggleFullscreen}
-					className="p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer"
+					className="p-2 text-zinc-400 hover:text-white rounded-full hover:bg-white/10 transition-all cursor-pointer shrink-0"
 					title={isFullscreen ? "Exit Fullscreen (F)" : "Fullscreen (F)"}
 				>
 					{isFullscreen ? (

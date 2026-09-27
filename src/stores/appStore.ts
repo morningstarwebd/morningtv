@@ -18,11 +18,13 @@ import { updaterService, type UpdateInfo, type UpdateStatus } from "../services/
 interface AppState {
 	// Channel & Playlist State
 	channels: Channel[];
+	totalChannels: number;
 	categories: string[];
 	activeCategory: string;
 	providers: string[];
 	activeProvider: string;
 	searchQuery: string;
+	refreshTotalChannelCount: () => Promise<void>;
 	activeChannel: Channel | null;
 	setActiveProvider: (provider: string) => void;
 
@@ -133,12 +135,24 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set, get) => ({
 	channels: [],
+	totalChannels: 0,
 	categories: ["All", "Favorites"],
 	activeCategory: "All",
 	providers: ["All"],
 	activeProvider: "All",
 	searchQuery: "",
 	activeChannel: null,
+
+	refreshTotalChannelCount: async () => {
+		try {
+			const count = await invoke<number>("get_total_channel_count");
+			if (count > 0) {
+				set({ totalChannels: count });
+			}
+		} catch (err) {
+			console.warn("Failed to get total channel count:", err);
+		}
+	},
 
 	setActiveProvider: (provider: string) => {
 		set({ activeProvider: provider });
@@ -261,10 +275,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 	init: async () => {
 		try {
-			const [channels, categories, settings] = await Promise.all([
+			const [channels, categories, settings, totalCount] = await Promise.all([
 				invoke<Channel[]>("get_channels"),
 				invoke<string[]>("get_categories"),
 				invoke<AppSettings>("get_settings"),
+				invoke<number>("get_total_channel_count").catch(() => 0),
 			]);
 
 			const provSet = new Set<string>();
@@ -275,6 +290,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 			set({
 				channels,
+				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				providers: providers.length > 1 ? providers : ["All"],
 				settings,
@@ -540,19 +556,23 @@ export const useAppStore = create<AppState>((set, get) => ({
 	syncCloudStreams: async () => {
 		try {
 			set({ isSyncing: true });
-			get().showToast("☁️ Fetching latest cloud streams from GitHub...", false);
-			const channels = await invoke<Channel[]>("reset_playlist");
-			const categories = await invoke<string[]>("get_categories");
-			const settings = await invoke<AppSettings>("get_settings");
+			const [channels, categories, settings, totalCount] = await Promise.all([
+				invoke<Channel[]>("reset_playlist"),
+				invoke<string[]>("get_categories"),
+				invoke<AppSettings>("get_settings"),
+				invoke<number>("get_total_channel_count").catch(() => 0),
+			]);
+			const realCount = totalCount > 0 ? totalCount : channels.length;
 			set({
 				channels,
+				totalChannels: realCount,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				activeCategory: "All",
 				settings,
 				isSyncing: false,
 			});
 			get().showToast(
-				`✅ Synced ${channels.length.toLocaleString()} channels from GitHub!`,
+				`✅ Synced ${realCount.toLocaleString()} channels from GitHub!`,
 				false,
 			);
 		} catch (err) {
@@ -563,9 +583,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 	loadChannels: async () => {
 		try {
-			const [channels, categories] = await Promise.all([
+			const [channels, categories, totalCount] = await Promise.all([
 				invoke<Channel[]>("get_channels"),
 				invoke<string[]>("get_categories"),
+				invoke<number>("get_total_channel_count").catch(() => 0),
 			]);
 
 			const provSet = new Set<string>();
@@ -576,6 +597,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 			set({
 				channels,
+				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				providers: providers.length > 1 ? providers : ["All"],
 			});
@@ -589,6 +611,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 			get().showToast("🔄 Refreshing channels cache...", false);
 			const channels = await invoke<Channel[]>("force_refresh_channels");
 			const categories = await invoke<string[]>("get_categories");
+			const totalCount = await invoke<number>("get_total_channel_count").catch(() => channels.length);
 
 			const provSet = new Set<string>();
 			channels.forEach((c) => {
@@ -598,6 +621,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 			set({
 				channels,
+				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				providers: providers.length > 1 ? providers : ["All"],
 			});

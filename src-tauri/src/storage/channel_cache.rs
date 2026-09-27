@@ -15,43 +15,48 @@ impl ChannelCacheRepository {
         Self { db }
     }
 
-    /// Channel list সম্পূর্ণ replace করে SQLite-এ save করো
+    /// Channel list সম্পূর্ণ replace করে SQLite-এ save করো (atomic transaction)
     pub fn save_all(&self, channels: &[Channel]) -> StorageResult<()> {
         let conn_arc = self.db.conn();
-        let conn = conn_arc.lock().unwrap();
+        let mut conn = conn_arc.lock().unwrap();
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs() as i64;
 
-        // Transaction-এ পুরনো cache মুছে নতুন data insert
-        conn.execute("DELETE FROM channels_cache", [])
+        let tx = conn.transaction().map_err(StorageError::Sqlite)?;
+
+        tx.execute("DELETE FROM channels_cache", [])
             .map_err(StorageError::Sqlite)?;
 
-        let mut stmt = conn
-            .prepare(
-                "INSERT INTO channels_cache
-             (id, name, url, group_title, logo, fallbacks, provider, cached_at)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
-            )
-            .map_err(StorageError::Sqlite)?;
+        {
+            let mut stmt = tx
+                .prepare(
+                    "INSERT INTO channels_cache
+                 (id, name, url, group_title, logo, fallbacks, provider, cached_at)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
+                )
+                .map_err(StorageError::Sqlite)?;
 
-        for ch in channels {
-            let fallbacks_json =
-                serde_json::to_string(&ch.fallback_urls).unwrap_or_else(|_| "[]".to_string());
+            for ch in channels {
+                let fallbacks_json =
+                    serde_json::to_string(&ch.fallback_urls).unwrap_or_else(|_| "[]".to_string());
 
-            stmt.execute(rusqlite::params![
-                ch.id.0.as_str(),
-                ch.name,
-                ch.url,
-                ch.group,
-                ch.logo,
-                fallbacks_json,
-                ch.provider,
-                now,
-            ])
-            .map_err(StorageError::Sqlite)?;
+                stmt.execute(rusqlite::params![
+                    ch.id.0.as_str(),
+                    ch.name,
+                    ch.url,
+                    ch.group,
+                    ch.logo,
+                    fallbacks_json,
+                    ch.provider,
+                    now,
+                ])
+                .map_err(StorageError::Sqlite)?;
+            }
         }
+
+        tx.commit().map_err(StorageError::Sqlite)?;
 
         Ok(())
     }

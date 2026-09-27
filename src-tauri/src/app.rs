@@ -59,7 +59,7 @@ impl AppState {
 
         if self.channel_cache_repo.is_fresh(cache_max_age) {
             if let Ok(cached) = self.channel_cache_repo.load_all() {
-                if !cached.is_empty() {
+                if cached.len() > 500 {
                     // Loaded from cache — populate favorites
                     let mut channels = cached;
                     if let Ok(fav_ids) = self.favorites_repo.get_all_ids() {

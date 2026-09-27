@@ -162,22 +162,22 @@ export const SoundBoosterControl: React.FC = () => {
 					max="100"
 					value={isMuted ? 0 : volume}
 					onChange={(e) => setVolume(Number(e.target.value))}
-					className="w-16 sm:w-20 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+					className="w-20 sm:w-28 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
 				/>
 			</div>
 
-			{/* Sound Booster Badge Trigger Button */}
+			{/* Sound Booster Badge Trigger Button (Fixed width & tabular numbers) */}
 			<button
 				onClick={() => setIsOpen(!isOpen)}
-				className={`ml-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wider flex items-center gap-1 transition-all cursor-pointer ${
+				className={`ml-1.5 w-14 py-1 rounded-full text-[10px] font-extrabold tracking-wider flex items-center justify-center gap-0.5 transition-all cursor-pointer shrink-0 font-mono tabular-nums ${
 					isBoosted
 						? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/30 ring-1 ring-orange-400/50 hover:brightness-110"
 						: "bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-zinc-200 border border-white/10"
 				}`}
 				title="Open Sound Booster pre-amp gain control"
 			>
-				<Zap className="w-2.5 h-2.5 fill-current" />
-				<span>{isBoosted ? `${soundBoost}%` : "BOOST"}</span>
+				<Zap className="w-2.5 h-2.5 fill-current shrink-0" />
+				<span className="w-8 text-center">{isBoosted ? `${soundBoost}%` : "BOOST"}</span>
 			</button>
 		</div>
 	);

@@ -28,6 +28,7 @@ export const AppleTVTopBar: React.FC = () => {
 		openSettings,
 		openShortcuts,
 		channels,
+		totalChannels,
 		isSyncing,
 		syncCloudStreams,
 	} = useAppStore();
@@ -177,7 +178,7 @@ export const AppleTVTopBar: React.FC = () => {
 					<Layers className="w-3.5 h-3.5 text-cyan-400" />
 					<span>Guide</span>
 					<span className="text-[10px] text-zinc-400 font-mono">
-						({channels.length})
+						({(totalChannels > 0 ? totalChannels : channels.length).toLocaleString()})
 					</span>
 				</button>
 
