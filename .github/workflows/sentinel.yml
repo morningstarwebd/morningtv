@@ -28,6 +28,19 @@ jobs:
         with:
           workspaces: src-tauri -> target
 
+      - name: Install Linux System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglib2.0-dev \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
       - name: Run High-Speed Tokio Sentinel Engine (120 Workers)
         run: cargo run --release --manifest-path src-tauri/Cargo.toml --bin sentinel
 
