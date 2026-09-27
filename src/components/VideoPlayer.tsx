@@ -3,6 +3,7 @@ import { ChevronRight, RefreshCw } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
+import { getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
 import { formatBytesPerSec } from "../utils/speedFormatter";
 import { MorningTVLogo } from "./MorningTVLogo";
@@ -324,6 +325,36 @@ export const VideoPlayer: React.FC = () => {
 		handlePiPRequest,
 	]);
 
+	// Predictive RAM Pre-Warming: Pre-buffers neighbor channels into local Rust RAM
+	useEffect(() => {
+		if (!activeChannel || channels.length <= 1) return;
+		const currentIdx = channels.findIndex(
+			(c) => getChannelIdString(c.id) === getChannelIdString(activeChannel.id),
+		);
+		if (currentIdx === -1) return;
+
+		const nextCh = channels[(currentIdx + 1) % channels.length];
+		const prevCh =
+			channels[(currentIdx - 1 + channels.length) % channels.length];
+
+		const timer = setTimeout(() => {
+			if (nextCh?.url) {
+				fetch(
+					`http://127.0.0.1:18181/prewarm?url=${encodeURIComponent(nextCh.url)}`,
+					{ priority: "low" } as any,
+				).catch(() => {});
+			}
+			if (prevCh?.url) {
+				fetch(
+					`http://127.0.0.1:18181/prewarm?url=${encodeURIComponent(prevCh.url)}`,
+					{ priority: "low" } as any,
+				).catch(() => {});
+			}
+		}, 1000);
+
+		return () => clearTimeout(timer);
+	}, [activeChannel, channels]);
+
 	// HLS stream loader with 3G Anti-Fallback & Extreme Buffer Resilience
 	useEffect(() => {
 		if (!currentUrl || !videoRef.current) {
@@ -354,10 +385,10 @@ export const VideoPlayer: React.FC = () => {
 			const hls = new Hls({
 				enableWorker: true,
 				lowLatencyMode: false,
-				backBufferLength: 60,
-				maxBufferLength: 60,
-				maxMaxBufferLength: 120,
-				maxBufferSize: 80 * 1000 * 1000,
+				backBufferLength: 30,
+				maxBufferLength: 8, // Lean initial startup window for instantaneous zapping
+				maxMaxBufferLength: 16,
+				maxBufferSize: 60 * 1000 * 1000,
 				maxBufferHole: 0.5,
 				highBufferWatchdogPeriod: 2,
 				liveSyncDurationCount: 2,
@@ -517,11 +548,48 @@ export const VideoPlayer: React.FC = () => {
 							nominalBitrate: nominalBitrateStr || "--",
 						});
 
-						// Silent stream health status calculation (no intrusive toast notifications)
-						if (downloadBytesSec < 180_000 || loadDurationSec > durationSec * 0.8) {
-							setStreamHealthStatus("degraded");
-						} else if (downloadBytesSec > 400_000) {
-							setStreamHealthStatus("good");
+						// YOUTUBE-STYLE DYNAMIC ADAPTIVE BUFFER ENGINE
+						// Dynamically scales forward buffer window based on real-time measured throughput
+						const isSaver = useAppStore.getState().is3GDataSaver;
+						if (!isSaver) {
+							if (downloadBytesSec > 1_500_000) {
+								// High Speed (> 12 Mbps Fiber / 5G): Expand forward buffer to 30s
+								// Holds 8-12 upcoming chunks to absorb ISP jitter & packet loss
+								if (hls.config.maxBufferLength !== 30) {
+									hls.config.maxBufferLength = 30;
+									hls.config.maxMaxBufferLength = 60;
+									hls.config.maxBufferSize = 120 * 1024 * 1024;
+								}
+								setStreamHealthStatus("good");
+							} else if (downloadBytesSec > 400_000) {
+								// Stable Speed (3.2 Mbps - 12 Mbps standard broadband): 16s forward cushion
+								if (hls.config.maxBufferLength !== 16) {
+									hls.config.maxBufferLength = 16;
+									hls.config.maxMaxBufferLength = 32;
+									hls.config.maxBufferSize = 60 * 1024 * 1024;
+								}
+								setStreamHealthStatus("good");
+							} else {
+								// Constrained (< 3.2 Mbps): Tight 6s buffer so network doesn't choke
+								if (hls.config.maxBufferLength !== 6) {
+									hls.config.maxBufferLength = 6;
+									hls.config.maxMaxBufferLength = 12;
+									hls.config.maxBufferSize = 30 * 1024 * 1024;
+								}
+								setStreamHealthStatus("degraded");
+							}
+						} else {
+							// 3G Data Saver Mode: Lean 6s buffer window to strictly minimize data usage
+							if (hls.config.maxBufferLength !== 6) {
+								hls.config.maxBufferLength = 6;
+								hls.config.maxMaxBufferLength = 10;
+								hls.config.maxBufferSize = 20 * 1024 * 1024;
+							}
+							if (downloadBytesSec < 180_000) {
+								setStreamHealthStatus("degraded");
+							} else {
+								setStreamHealthStatus("good");
+							}
 						}
 					}
 				} catch (err) {
@@ -635,6 +703,14 @@ export const VideoPlayer: React.FC = () => {
 			}
 
 			setBufferSecs(Math.round(bufferSecs * 10) / 10);
+
+			// Buffer Starvation Guard: If buffer dips under 2.0s, tighten buffer window
+			// to force HLS engine to prioritize the immediate upcoming chunk
+			if (bufferSecs > 0 && bufferSecs < 2.0 && hlsRef.current) {
+				if (hlsRef.current.config.maxBufferLength > 8) {
+					hlsRef.current.config.maxBufferLength = 8;
+				}
+			}
 
 			// 1. Hardware decoded resolution detection from live video element
 			if (video.videoWidth > 0 && video.videoHeight > 0) {
@@ -948,6 +1024,35 @@ export const VideoPlayer: React.FC = () => {
 					{(isBuffering || isChannelLoading) && (
 						<div className="absolute top-0 left-0 right-0 h-1 bg-black/40 z-50 overflow-hidden pointer-events-none">
 							<div className="h-full w-full bg-gradient-to-r from-transparent via-cyan-400 to-blue-500 shadow-[0_0_12px_rgba(6,182,212,0.9)] animate-yt-progress" />
+						</div>
+					)}
+
+					{/* Cinematic Zero-Blackout Channel Transition Aura */}
+					{isChannelLoading && activeChannel && (
+						<div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/75 backdrop-blur-xl transition-opacity duration-300 pointer-events-none animate-in fade-in">
+							<div className="flex flex-col items-center justify-center p-6 rounded-3xl bg-zinc-950/60 border border-white/10 shadow-2xl backdrop-blur-2xl">
+								{activeChannel.logo ? (
+									<img
+										src={activeChannel.logo}
+										alt={activeChannel.name}
+										className="w-16 h-16 object-contain rounded-2xl drop-shadow-[0_0_24px_rgba(6,182,212,0.5)] animate-pulse"
+										onError={(e) => {
+											(e.target as HTMLElement).style.display = "none";
+										}}
+									/>
+								) : (
+									<MorningTVLogo className="w-16 h-16" glow={true} />
+								)}
+								<span className="text-sm font-black text-white mt-3 tracking-wide">
+									{activeChannel.name}
+								</span>
+								<div className="flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-400/20">
+									<span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />
+									<span className="text-[10px] font-bold text-cyan-300 uppercase tracking-widest">
+										Tuning Live Feed
+									</span>
+								</div>
+							</div>
 						</div>
 					)}
 

@@ -1,20 +1,70 @@
 // src-tauri/src/network/proxy.rs
 // Ultra-High-Performance Async HTTP Streaming Proxy built on Axum & Tokio
-// Eliminates CORS restrictions, follows 301/302 redirects, spoofs provider headers,
-// and streams video segments via zero-copy async piping (Body::from_stream)
+// Includes In-Memory RAM Segment Caching, Predictive Channel Pre-Warming,
+// CORS bypass, 301/302 redirect tracking, and zero-copy byte streaming.
 
 use axum::{
-    body::Body,
+    body::{Body, Bytes},
     extract::State,
     http::{HeaderMap, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Response},
     routing::get,
     Router,
 };
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Instant;
+use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use url::Url;
+
+#[derive(Clone)]
+struct CachedItem {
+    data: Bytes,
+    content_type: String,
+    created_at: Instant,
+    is_manifest: bool,
+}
+
+#[derive(Clone)]
+struct ProxyState {
+    client: Arc<reqwest::Client>,
+    cache: Arc<RwLock<HashMap<String, CachedItem>>>,
+}
+
+impl ProxyState {
+    async fn get_cached(&self, url: &str) -> Option<CachedItem> {
+        let cache = self.cache.read().await;
+        if let Some(item) = cache.get(url) {
+            let max_age_secs = if item.is_manifest { 4 } else { 30 };
+            if item.created_at.elapsed().as_secs() < max_age_secs {
+                return Some(item.clone());
+            }
+        }
+        None
+    }
+
+    async fn set_cached(&self, url: String, data: Bytes, content_type: String, is_manifest: bool) {
+        let mut cache = self.cache.write().await;
+        // Evict expired entries if cache is growing
+        if cache.len() > 35 {
+            cache.retain(|_, v| {
+                let max_age = if v.is_manifest { 4 } else { 30 };
+                v.created_at.elapsed().as_secs() < max_age
+            });
+        }
+        cache.insert(
+            url,
+            CachedItem {
+                data,
+                content_type,
+                created_at: Instant::now(),
+                is_manifest,
+            },
+        );
+    }
+}
 
 pub struct StreamProxy;
 
@@ -30,18 +80,24 @@ impl StreamProxy {
                 .connect_timeout(std::time::Duration::from_secs(30))
                 .danger_accept_invalid_certs(true)
                 .redirect(reqwest::redirect::Policy::limited(10))
-                .pool_max_idle_per_host(30)
+                .pool_max_idle_per_host(40)
                 .pool_idle_timeout(std::time::Duration::from_secs(60))
                 .tcp_keepalive(std::time::Duration::from_secs(30))
                 .tcp_nodelay(true)
                 .build()
                 .unwrap_or_default();
 
+            let state = ProxyState {
+                client: Arc::new(client),
+                cache: Arc::new(RwLock::new(HashMap::new())),
+            };
+
             let app = Router::new()
                 .route("/stream", get(handle_stream))
+                .route("/prewarm", get(handle_prewarm))
                 .route("/return_to_novatv", get(handle_return))
                 .layer(CorsLayer::permissive())
-                .with_state(Arc::new(client));
+                .with_state(state);
 
             match tokio::net::TcpListener::bind(addr).await {
                 Ok(listener) => {
@@ -60,8 +116,142 @@ async fn handle_return() -> Response {
     (StatusCode::OK, "Returning to MorningTV").into_response()
 }
 
+/// Predictive RAM pre-warming endpoint:
+/// Called in the background when the user hovers or switches to a channel
+async fn handle_prewarm(
+    State(state): State<ProxyState>,
+    uri: Uri,
+) -> Response {
+    let query_str = uri.query().unwrap_or("");
+    let target_url = match query_str.find("url=") {
+        Some(idx) => {
+            let raw = &query_str[idx + 4..];
+            let decoded = urlencoding_decode(raw);
+            if decoded.is_empty() {
+                return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response();
+            }
+            decoded
+        }
+        None => return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response(),
+    };
+
+    // Spawn non-blocking background task to prewarm manifest and first segment into RAM
+    let state_clone = state.clone();
+    tokio::spawn(async move {
+        prewarm_stream_into_ram(state_clone, target_url).await;
+    });
+
+    (StatusCode::OK, "Prewarm queued").into_response()
+}
+
+async fn prewarm_stream_into_ram(state: ProxyState, url: String) {
+    if state.get_cached(&url).await.is_some() {
+        return;
+    }
+
+    let client = &state.client;
+    let res = client
+        .get(&url)
+        .timeout(std::time::Duration::from_secs(5))
+        .header(
+            "User-Agent",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        )
+        .send()
+        .await;
+
+    let res = match res {
+        Ok(r) if r.status().is_success() => r,
+        _ => return,
+    };
+
+    let effective_url = res.url().as_str().to_string();
+    let text = match res.text().await {
+        Ok(t) => t,
+        _ => return,
+    };
+
+    let rewritten = rewrite_m3u8(&text, &effective_url);
+    let bytes = Bytes::from(rewritten);
+    state
+        .set_cached(
+            url.clone(),
+            bytes,
+            "application/vnd.apple.mpegurl".to_string(),
+            true,
+        )
+        .await;
+
+    // Parse text to find child playlist or first video segment
+    let base_url = Url::parse(&effective_url).ok();
+    let mut segment_to_fetch = None;
+
+    for line in text.lines().rev() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        let resolved = if let Some(ref b) = base_url {
+            b.join(trimmed).map(|u| u.to_string()).unwrap_or_else(|_| trimmed.to_string())
+        } else {
+            trimmed.to_string()
+        };
+        segment_to_fetch = Some(resolved);
+        break;
+    }
+
+    if let Some(seg_url) = segment_to_fetch {
+        // If it's a child .m3u8 playlist, pre-fetch it
+        if seg_url.contains(".m3u8") {
+            if let Ok(child_res) = client.get(&seg_url).timeout(std::time::Duration::from_secs(4)).send().await {
+                if let Ok(child_text) = child_res.text().await {
+                    let child_rewritten = rewrite_m3u8(&child_text, &seg_url);
+                    state
+                        .set_cached(
+                            seg_url.clone(),
+                            Bytes::from(child_rewritten.clone()),
+                            "application/vnd.apple.mpegurl".to_string(),
+                            true,
+                        )
+                        .await;
+
+                    // Now find the latest segment in child playlist
+                    let child_base = Url::parse(&seg_url).ok();
+                    for cline in child_text.lines().rev() {
+                        let ctrim = cline.trim();
+                        if ctrim.is_empty() || ctrim.starts_with('#') {
+                            continue;
+                        }
+                        let resolved_ts = if let Some(ref cb) = child_base {
+                            cb.join(ctrim).map(|u| u.to_string()).unwrap_or_else(|_| ctrim.to_string())
+                        } else {
+                            ctrim.to_string()
+                        };
+                        // Pre-fetch this single video TS/m4s segment into RAM!
+                        if let Ok(seg_res) = client.get(&resolved_ts).timeout(std::time::Duration::from_secs(5)).send().await {
+                            if let Ok(seg_bytes) = seg_res.bytes().await {
+                                state.set_cached(resolved_ts, seg_bytes, "video/mp2t".to_string(), false).await;
+                                log::info!("Pre-warmed live video segment in RAM for: {}", url);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        } else {
+            // It was a direct TS segment
+            if let Ok(seg_res) = client.get(&seg_url).timeout(std::time::Duration::from_secs(5)).send().await {
+                if let Ok(seg_bytes) = seg_res.bytes().await {
+                    state.set_cached(seg_url, seg_bytes, "video/mp2t".to_string(), false).await;
+                    log::info!("Pre-warmed direct live segment in RAM for: {}", url);
+                }
+            }
+        }
+    }
+}
+
 async fn handle_stream(
-    State(client): State<Arc<reqwest::Client>>,
+    State(state): State<ProxyState>,
     incoming_headers: HeaderMap,
     uri: Uri,
 ) -> Response {
@@ -78,8 +268,37 @@ async fn handle_stream(
         None => return (StatusCode::NOT_FOUND, "Not Found").into_response(),
     };
 
+    // 1. FAST PATH: In-Memory RAM Cache (Instant sub-millisecond return!)
+    if let Some(cached) = state.get_cached(&target_url).await {
+        let mut headers = HeaderMap::new();
+        if let Ok(val) = HeaderValue::from_str(&cached.content_type) {
+            headers.insert(axum::http::header::CONTENT_TYPE, val);
+        }
+        headers.insert(
+            axum::http::header::CONTENT_LENGTH,
+            HeaderValue::from(cached.data.len()),
+        );
+        headers.insert(
+            axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            HeaderValue::from_static("*"),
+        );
+        headers.insert(
+            axum::http::header::CACHE_CONTROL,
+            HeaderValue::from_static(if cached.is_manifest {
+                "no-cache, no-store, must-revalidate"
+            } else {
+                "public, max-age=3600"
+            }),
+        );
+        headers.insert(
+            axum::http::header::ACCEPT_RANGES,
+            HeaderValue::from_static("bytes"),
+        );
+        return (StatusCode::OK, headers, Body::from(cached.data)).into_response();
+    }
+
     let lower = target_url.to_lowercase();
-    let mut req_builder = client
+    let mut req_builder = state.client
         .get(&target_url)
         .header(
             "User-Agent",
@@ -176,6 +395,16 @@ async fn handle_stream(
         match upstream_res.text().await {
             Ok(manifest) => {
                 let rewritten = rewrite_m3u8(&manifest, &effective_url);
+                let bytes = Bytes::from(rewritten);
+                state
+                    .set_cached(
+                        target_url.clone(),
+                        bytes.clone(),
+                        "application/vnd.apple.mpegurl".to_string(),
+                        true,
+                    )
+                    .await;
+
                 let mut headers = HeaderMap::new();
                 headers.insert(
                     axum::http::header::CONTENT_TYPE,
@@ -189,7 +418,7 @@ async fn handle_stream(
                     axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
                     HeaderValue::from_static("*"),
                 );
-                (headers, rewritten).into_response()
+                (headers, Body::from(bytes)).into_response()
             }
             Err(_) => (StatusCode::BAD_GATEWAY, "Failed to read manifest text").into_response(),
         }
@@ -199,20 +428,12 @@ async fn handle_stream(
         let mut headers = HeaderMap::new();
 
         let ctype = if content_type.is_empty() {
-            "video/mp2t"
+            "video/mp2t".to_string()
         } else {
-            &content_type
+            content_type
         };
-        if let Ok(val) = HeaderValue::from_str(ctype) {
+        if let Ok(val) = HeaderValue::from_str(&ctype) {
             headers.insert(axum::http::header::CONTENT_TYPE, val);
-        }
-
-        // Forward Content-Length so player knows exact chunk size and download progress
-        if let Some(content_length) = upstream_res.content_length() {
-            headers.insert(
-                axum::http::header::CONTENT_LENGTH,
-                HeaderValue::from(content_length),
-            );
         }
 
         // Forward Content-Range for byte-range responses (206 Partial Content)
@@ -227,18 +448,41 @@ async fn handle_stream(
         );
 
         headers.insert(
-            axum::http::header::CACHE_CONTROL,
-            HeaderValue::from_static("public, max-age=3600"),
-        );
-
-        headers.insert(
             axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
             HeaderValue::from_static("*"),
         );
 
-        let stream = upstream_res.bytes_stream();
-        let body = Body::from_stream(stream);
-        (status, headers, body).into_response()
+        let is_range_req = incoming_headers.contains_key(axum::http::header::RANGE);
+        let content_length = upstream_res.content_length();
+
+        // If Range header was NOT requested and segment size is reasonable (< 6MB),
+        // read full bytes and save to RAM cache for instant replay/reconnects!
+        if !is_range_req && content_length.map_or(true, |l| l < 6 * 1024 * 1024) {
+            match upstream_res.bytes().await {
+                Ok(bytes) => {
+                    headers.insert(
+                        axum::http::header::CONTENT_LENGTH,
+                        HeaderValue::from(bytes.len()),
+                    );
+                    headers.insert(
+                        axum::http::header::CACHE_CONTROL,
+                        HeaderValue::from_static("public, max-age=3600"),
+                    );
+                    state
+                        .set_cached(target_url.clone(), bytes.clone(), ctype, false)
+                        .await;
+                    (status, headers, Body::from(bytes)).into_response()
+                }
+                Err(_) => (StatusCode::BAD_GATEWAY, "Failed reading upstream segment").into_response(),
+            }
+        } else {
+            if let Some(len) = content_length {
+                headers.insert(axum::http::header::CONTENT_LENGTH, HeaderValue::from(len));
+            }
+            let stream = upstream_res.bytes_stream();
+            let body = Body::from_stream(stream);
+            (status, headers, body).into_response()
+        }
     }
 }
 
