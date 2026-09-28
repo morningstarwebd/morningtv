@@ -144,10 +144,19 @@ pub async fn check_playlist_update(
         return Ok(false);
     }
 
-    // আগে কখনো sync হয়নি, বা remote টা newer
+    // Check if never synced, or remote timestamp is newer
     let has_update = match &last_synced {
         None => true,
-        Some(prev) => remote_updated_at > *prev, // ISO8601 string compare
+        Some(prev) => {
+            if let (Ok(remote_dt), Ok(prev_dt)) = (
+                chrono::DateTime::parse_from_rfc3339(&remote_updated_at),
+                chrono::DateTime::parse_from_rfc3339(prev),
+            ) {
+                remote_dt > prev_dt
+            } else {
+                remote_updated_at > *prev
+            }
+        }
     };
 
     Ok(has_update)

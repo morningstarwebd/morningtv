@@ -12,7 +12,7 @@ use axum::{
     Router,
 };
 use std::collections::{HashMap, VecDeque};
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 use tokio::sync::RwLock;
@@ -132,10 +132,41 @@ impl StreamProxy {
         tauri::async_runtime::spawn(async move {
             let _ = Self::get_auth_token(); // ensure initialized
 
+            let redirect_policy = reqwest::redirect::Policy::custom(|attempt| {
+                if attempt.previous().len() >= 10 {
+                    return attempt.stop();
+                }
+                let next_url = attempt.url();
+                let next_url_str = next_url.as_str();
+
+                if let Err(err) = validate_target_url(next_url_str) {
+                    log::warn!("SSRF blocked in redirect: {} ({})", next_url_str, err);
+                    return attempt.stop();
+                }
+
+                if let Some(host) = next_url.host_str() {
+                    let port = next_url.port_or_known_default().unwrap_or(80);
+                    if let Ok(addrs) = (host, port).to_socket_addrs() {
+                        for addr in addrs {
+                            if is_private_or_loopback_ip(&addr.ip()) {
+                                log::warn!(
+                                    "SSRF blocked in redirect: host {} resolved to private IP {}",
+                                    host,
+                                    addr.ip()
+                                );
+                                return attempt.stop();
+                            }
+                        }
+                    }
+                }
+
+                attempt.follow()
+            });
+
             let client = reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(60))
                 .connect_timeout(std::time::Duration::from_secs(30))
-                .redirect(reqwest::redirect::Policy::limited(10))
+                .redirect(redirect_policy)
                 .pool_max_idle_per_host(40)
                 .pool_idle_timeout(std::time::Duration::from_secs(60))
                 .tcp_keepalive(std::time::Duration::from_secs(30))
@@ -219,17 +250,21 @@ pub fn verify_auth(uri: &Uri, headers: &HeaderMap) -> bool {
     false
 }
 
-/// Robust query parameter extractor that safely preserves target URLs containing '&'
+/// Robust query parameter extractor that safely preserves target URLs containing '&' and nested stream tokens
 pub fn extract_target_url(query_str: &str) -> Option<String> {
     if query_str.is_empty() {
         return None;
     }
     if let Some(idx) = query_str.find("url=") {
         let after = &query_str[idx + 4..];
-        let raw_url = if let Some(token_pos) = after.find("&token=") {
-            &after[..token_pos]
-        } else if let Some(amp_pos) = after.find('&') {
-            &after[..amp_pos]
+        // Check if query_str has token= after url= (trailing proxy auth token)
+        let has_trailing_token = query_str.find("token=").map_or(false, |tok_idx| tok_idx > idx);
+        let raw_url = if has_trailing_token {
+            if let Some(token_pos) = after.rfind("&token=") {
+                &after[..token_pos]
+            } else {
+                after
+            }
         } else {
             after
         };

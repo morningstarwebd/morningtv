@@ -151,7 +151,6 @@ const KNOWN_BACKUP_MIRRORS = {
     'https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8'
   ],
   colorsbangla: [
-    'http://103.165.93.31:8095/colorsBangla/index.m3u8',
     'https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8'
   ],
   colorscineplex: [

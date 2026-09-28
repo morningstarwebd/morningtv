@@ -137,6 +137,27 @@ fn test_extract_target_url_with_nested_params() {
         Some("https://cdn.provider.com/stream.m3u8?auth=secret&exp=12345".to_string())
     );
 
+    // Target URL containing its OWN stream token parameter
+    let q3 = "url=https%3A%2F%2Fcdn.provider.com%2Fstream.m3u8%3Ftoken%3Dstream_auth_token%26exp%3D999&token=proxy_session_token";
+    assert_eq!(
+        extract_target_url(q3),
+        Some("https://cdn.provider.com/stream.m3u8?token=stream_auth_token&exp=999".to_string())
+    );
+
+    // Target URL when proxy token is passed BEFORE url parameter
+    let q4 = "token=proxy_session_token&url=https%3A%2F%2Fcdn.provider.com%2Fstream.m3u8%3Ftoken%3Dstream_auth_token";
+    assert_eq!(
+        extract_target_url(q4),
+        Some("https://cdn.provider.com/stream.m3u8?token=stream_auth_token".to_string())
+    );
+
+    // Unencoded target URL with stream token before trailing proxy token
+    let q5 = "url=https://cdn.provider.com/stream.m3u8?token=stream_auth_token&token=proxy_session_token";
+    assert_eq!(
+        extract_target_url(q5),
+        Some("https://cdn.provider.com/stream.m3u8?token=stream_auth_token".to_string())
+    );
+
     // Empty query
     assert_eq!(extract_target_url(""), None);
     assert_eq!(extract_target_url("foo=bar"), None);
