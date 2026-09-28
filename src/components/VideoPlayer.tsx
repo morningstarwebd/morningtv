@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
+import { buildPrewarmUrl, buildProxiedUrl, getProxyToken } from "../utils/proxy";
 import { formatBytesPerSec } from "../utils/speedFormatter";
 import { MorningTVLogo } from "./MorningTVLogo";
 
@@ -71,6 +72,19 @@ export const VideoPlayer: React.FC = () => {
 	const [channelTuneBanner, setChannelTuneBanner] = useState<string | null>(
 		null,
 	);
+	const [proxyToken, setProxyToken] = useState<string>("");
+
+	useEffect(() => {
+		let isMounted = true;
+		getProxyToken().then((token) => {
+			if (isMounted && token) {
+				setProxyToken(token);
+			}
+		});
+		return () => {
+			isMounted = false;
+		};
+	}, []);
 
 	// Full mirror URL list
 	const allUrls = useMemo(() => {
@@ -342,13 +356,13 @@ export const VideoPlayer: React.FC = () => {
 		const timer = setTimeout(() => {
 			if (nextCh?.url) {
 				fetch(
-					`http://127.0.0.1:18181/prewarm?url=${encodeURIComponent(nextCh.url)}`,
+					buildPrewarmUrl(nextCh.url, proxyToken),
 					{ priority: "low" } as any,
 				).catch(() => {});
 			}
 			if (prevCh?.url) {
 				fetch(
-					`http://127.0.0.1:18181/prewarm?url=${encodeURIComponent(prevCh.url)}`,
+					buildPrewarmUrl(prevCh.url, proxyToken),
 					{ priority: "low" } as any,
 				).catch(() => {});
 			}
@@ -369,9 +383,7 @@ export const VideoPlayer: React.FC = () => {
 
 		setIsBuffering(true);
 		const video = videoRef.current;
-		const proxiedUrl = currentUrl.startsWith("http://127.0.0.1:18181/")
-			? currentUrl
-			: `http://127.0.0.1:18181/stream?url=${encodeURIComponent(currentUrl)}`;
+		const proxiedUrl = buildProxiedUrl(currentUrl, proxyToken);
 
 		if (Hls.isSupported()) {
 			if (hlsRef.current) {
@@ -666,7 +678,7 @@ export const VideoPlayer: React.FC = () => {
 				hlsRef.current = null;
 			}
 		};
-	}, [currentUrl, tryNextFallback]);
+	}, [currentUrl, proxyToken, tryNextFallback]);
 
 	// Dynamically switch quality when user chooses a level in the Stream Quality HUD
 	useEffect(() => {

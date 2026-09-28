@@ -1,7 +1,7 @@
 // src-tauri/src/network/proxy.rs
 // Ultra-High-Performance Async HTTP Streaming Proxy built on Axum & Tokio
 // Includes In-Memory RAM Segment Caching, Predictive Channel Pre-Warming,
-// CORS bypass, 301/302 redirect tracking, and zero-copy byte streaming.
+// CORS bypass, 301/302 redirect tracking, SSRF filtering, and zero-copy byte streaming.
 
 use axum::{
     body::{Body, Bytes},
@@ -11,32 +11,40 @@ use axum::{
     routing::get,
     Router,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use url::Url;
 
 #[derive(Clone)]
-struct CachedItem {
-    data: Bytes,
-    content_type: String,
-    created_at: Instant,
-    is_manifest: bool,
+pub struct CachedItem {
+    pub data: Bytes,
+    pub content_type: String,
+    pub created_at: Instant,
+    pub is_manifest: bool,
 }
 
 #[derive(Clone)]
-struct ProxyState {
-    client: Arc<reqwest::Client>,
-    cache: Arc<RwLock<HashMap<String, CachedItem>>>,
+pub struct SegmentLruCache {
+    entries: HashMap<String, CachedItem>,
+    order: VecDeque<String>,
+    capacity: usize,
 }
 
-impl ProxyState {
-    async fn get_cached(&self, url: &str) -> Option<CachedItem> {
-        let cache = self.cache.read().await;
-        if let Some(item) = cache.get(url) {
+impl SegmentLruCache {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            entries: HashMap::with_capacity(capacity),
+            order: VecDeque::with_capacity(capacity),
+            capacity,
+        }
+    }
+
+    pub fn get(&mut self, url: &str) -> Option<CachedItem> {
+        if let Some(item) = self.entries.get(url) {
             let max_age_secs = if item.is_manifest { 4 } else { 30 };
             if item.created_at.elapsed().as_secs() < max_age_secs {
                 return Some(item.clone());
@@ -45,16 +53,29 @@ impl ProxyState {
         None
     }
 
-    async fn set_cached(&self, url: String, data: Bytes, content_type: String, is_manifest: bool) {
-        let mut cache = self.cache.write().await;
-        // Evict expired entries if cache is growing
-        if cache.len() > 35 {
-            cache.retain(|_, v| {
+    pub fn insert(&mut self, url: String, data: Bytes, content_type: String, is_manifest: bool) {
+        // Evict expired entries if cache is nearing capacity
+        if self.entries.len() >= self.capacity {
+            self.entries.retain(|_, v| {
                 let max_age = if v.is_manifest { 4 } else { 30 };
                 v.created_at.elapsed().as_secs() < max_age
             });
+            self.order.retain(|k| self.entries.contains_key(k));
         }
-        cache.insert(
+
+        // Evict oldest until under capacity
+        while self.entries.len() >= self.capacity {
+            if let Some(oldest) = self.order.pop_front() {
+                self.entries.remove(&oldest);
+            } else {
+                break;
+            }
+        }
+
+        if !self.entries.contains_key(&url) {
+            self.order.push_back(url.clone());
+        }
+        self.entries.insert(
             url,
             CachedItem {
                 data,
@@ -66,19 +87,48 @@ impl ProxyState {
     }
 }
 
+#[derive(Clone)]
+pub struct ProxyState {
+    client: Arc<reqwest::Client>,
+    cache: Arc<RwLock<SegmentLruCache>>,
+}
+
+impl ProxyState {
+    async fn get_cached(&self, url: &str) -> Option<CachedItem> {
+        let mut cache = self.cache.write().await;
+        cache.get(url)
+    }
+
+    async fn set_cached(&self, url: String, data: Bytes, content_type: String, is_manifest: bool) {
+        let mut cache = self.cache.write().await;
+        cache.insert(url, data, content_type, is_manifest);
+    }
+}
+
+static PROXY_AUTH_TOKEN: OnceLock<String> = OnceLock::new();
+
 pub struct StreamProxy;
 
 impl StreamProxy {
     pub const PORT: u16 = 18181;
+    pub const MAX_CACHE_SEGMENTS: usize = 50;
+
+    /// Returns the active ephemeral session auth token.
+    /// Generated randomly on first call using UUID v4.
+    pub fn get_auth_token() -> &'static str {
+        PROXY_AUTH_TOKEN.get_or_init(|| {
+            uuid::Uuid::new_v4().simple().to_string()
+        })
+    }
 
     pub fn start() {
         tauri::async_runtime::spawn(async move {
             let addr = SocketAddr::from(([127, 0, 0, 1], Self::PORT));
+            let _ = Self::get_auth_token(); // ensure initialized
 
             let client = reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(60))
                 .connect_timeout(std::time::Duration::from_secs(30))
-                .danger_accept_invalid_certs(true)
                 .redirect(reqwest::redirect::Policy::limited(10))
                 .pool_max_idle_per_host(40)
                 .pool_idle_timeout(std::time::Duration::from_secs(60))
@@ -89,7 +139,7 @@ impl StreamProxy {
 
             let state = ProxyState {
                 client: Arc::new(client),
-                cache: Arc::new(RwLock::new(HashMap::new())),
+                cache: Arc::new(RwLock::new(SegmentLruCache::new(Self::MAX_CACHE_SEGMENTS))),
             };
 
             let app = Router::new()
@@ -102,7 +152,7 @@ impl StreamProxy {
 
             match tokio::net::TcpListener::bind(addr).await {
                 Ok(listener) => {
-                    log::info!("Axum streaming proxy listening on http://{}", addr);
+                    log::info!("Axum streaming proxy listening on http://{} (Secured with Ephemeral Token + Anti-SSRF)", addr);
                     let _ = axum::serve(listener, app).await;
                 }
                 Err(e) => {
@@ -117,17 +167,100 @@ async fn handle_return() -> Response {
     (StatusCode::OK, "Returning to MorningTV").into_response()
 }
 
+/// Validates whether the incoming request contains the valid ephemeral proxy token
+pub fn verify_auth(uri: &Uri, headers: &HeaderMap) -> bool {
+    let expected = StreamProxy::get_auth_token();
+
+    // Check header: X-Proxy-Token
+    if let Some(h_val) = headers.get("x-proxy-token") {
+        if let Ok(s) = h_val.to_str() {
+            if s.trim() == expected {
+                return true;
+            }
+        }
+    }
+
+    // Check query parameter: &token=...
+    if let Some(query) = uri.query() {
+        for pair in query.split('&') {
+            if let Some((k, v)) = pair.split_once('=') {
+                if k == "token" && v == expected {
+                    return true;
+                }
+            }
+        }
+    }
+
+    false
+}
+
+/// Anti-SSRF filter: Rejects localhost, loopback, link-local, and RFC1918 private IP ranges
+pub fn is_private_or_loopback_host(host: &str) -> bool {
+    let lower = host.trim().to_lowercase();
+    if lower.is_empty()
+        || lower == "localhost"
+        || lower.ends_with(".localhost")
+        || lower.ends_with(".local")
+        || lower.ends_with(".internal")
+        || lower.ends_with(".lan")
+    {
+        return true;
+    }
+
+    if let Ok(ip) = lower.parse::<std::net::IpAddr>() {
+        return match ip {
+            std::net::IpAddr::V4(v4) => {
+                v4.is_loopback()            // 127.0.0.0/8
+                    || v4.is_private()      // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+                    || v4.is_link_local()   // 169.254.0.0/16 (Cloud metadata)
+                    || v4.is_broadcast()    // 255.255.255.255
+                    || v4.is_multicast()    // 224.0.0.0/4
+                    || v4.octets()[0] == 0  // 0.0.0.0/8
+            }
+            std::net::IpAddr::V6(v6) => {
+                v6.is_loopback()            // ::1
+                    || v6.is_multicast()    // ff00::/8
+                    || ((v6.segments()[0] & 0xfe00) == 0xfc00) // fc00::/7 (unique local)
+                    || ((v6.segments()[0] & 0xffc0) == 0xfe80) // fe80::/10 (link-local)
+            }
+        };
+    }
+
+    false
+}
+
+pub fn validate_target_url(target_url: &str) -> Result<Url, &'static str> {
+    let parsed = Url::parse(target_url).map_err(|_| "Invalid URL format")?;
+    let scheme = parsed.scheme();
+    if scheme != "http" && scheme != "https" {
+        return Err("Only http and https schemes are permitted");
+    }
+    let host = parsed.host_str().ok_or("Target URL has no host")?;
+    if is_private_or_loopback_host(host) {
+        return Err("Target host resolves to a private, loopback, or metadata address (SSRF blocked)");
+    }
+    Ok(parsed)
+}
+
 /// Predictive RAM pre-warming endpoint:
-/// Called in the background when the user hovers or switches to a channel
 async fn handle_prewarm(
     State(state): State<ProxyState>,
+    headers: HeaderMap,
     uri: Uri,
 ) -> Response {
+    if !verify_auth(&uri, &headers) {
+        return (StatusCode::FORBIDDEN, "Forbidden: Invalid or missing proxy token").into_response();
+    }
+
     let query_str = uri.query().unwrap_or("");
     let target_url = match query_str.find("url=") {
         Some(idx) => {
             let raw = &query_str[idx + 4..];
-            let decoded = urlencoding_decode(raw);
+            let raw_url = match raw.find('&') {
+                Some(amp_idx) => &raw[..amp_idx],
+                None => raw,
+            };
+            let decoded = urlencoding_decode(raw_url);
             if decoded.is_empty() {
                 return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response();
             }
@@ -136,7 +269,10 @@ async fn handle_prewarm(
         None => return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response(),
     };
 
-    // Spawn non-blocking background task to prewarm manifest and first segment into RAM
+    if let Err(err) = validate_target_url(&target_url) {
+        return (StatusCode::BAD_REQUEST, err).into_response();
+    }
+
     let state_clone = state.clone();
     tokio::spawn(async move {
         prewarm_stream_into_ram(state_clone, target_url).await;
@@ -172,7 +308,8 @@ async fn prewarm_stream_into_ram(state: ProxyState, url: String) {
         _ => return,
     };
 
-    let rewritten = rewrite_m3u8(&text, &effective_url);
+    let token = StreamProxy::get_auth_token();
+    let rewritten = rewrite_m3u8(&text, &effective_url, token);
     let bytes = Bytes::from(rewritten);
     state
         .set_cached(
@@ -202,11 +339,14 @@ async fn prewarm_stream_into_ram(state: ProxyState, url: String) {
     }
 
     if let Some(seg_url) = segment_to_fetch {
-        // If it's a child .m3u8 playlist, pre-fetch it
+        if let Err(_) = validate_target_url(&seg_url) {
+            return;
+        }
+
         if seg_url.contains(".m3u8") {
             if let Ok(child_res) = client.get(&seg_url).timeout(std::time::Duration::from_secs(4)).send().await {
                 if let Ok(child_text) = child_res.text().await {
-                    let child_rewritten = rewrite_m3u8(&child_text, &seg_url);
+                    let child_rewritten = rewrite_m3u8(&child_text, &seg_url, token);
                     state
                         .set_cached(
                             seg_url.clone(),
@@ -216,7 +356,6 @@ async fn prewarm_stream_into_ram(state: ProxyState, url: String) {
                         )
                         .await;
 
-                    // Now find the latest segment in child playlist
                     let child_base = Url::parse(&seg_url).ok();
                     for cline in child_text.lines().rev() {
                         let ctrim = cline.trim();
@@ -228,11 +367,12 @@ async fn prewarm_stream_into_ram(state: ProxyState, url: String) {
                         } else {
                             ctrim.to_string()
                         };
-                        // Pre-fetch this single video TS/m4s segment into RAM!
-                        if let Ok(seg_res) = client.get(&resolved_ts).timeout(std::time::Duration::from_secs(5)).send().await {
-                            if let Ok(seg_bytes) = seg_res.bytes().await {
-                                state.set_cached(resolved_ts, seg_bytes, "video/mp2t".to_string(), false).await;
-                                log::info!("Pre-warmed live video segment in RAM for: {}", url);
+                        if let Ok(_) = validate_target_url(&resolved_ts) {
+                            if let Ok(seg_res) = client.get(&resolved_ts).timeout(std::time::Duration::from_secs(5)).send().await {
+                                if let Ok(seg_bytes) = seg_res.bytes().await {
+                                    state.set_cached(resolved_ts, seg_bytes, "video/mp2t".to_string(), false).await;
+                                    log::info!("Pre-warmed live video segment in RAM for: {}", url);
+                                }
                             }
                         }
                         break;
@@ -240,7 +380,6 @@ async fn prewarm_stream_into_ram(state: ProxyState, url: String) {
                 }
             }
         } else {
-            // It was a direct TS segment
             if let Ok(seg_res) = client.get(&seg_url).timeout(std::time::Duration::from_secs(5)).send().await {
                 if let Ok(seg_bytes) = seg_res.bytes().await {
                     state.set_cached(seg_url, seg_bytes, "video/mp2t".to_string(), false).await;
@@ -256,11 +395,24 @@ async fn handle_stream(
     incoming_headers: HeaderMap,
     uri: Uri,
 ) -> Response {
+    // 0. AUTHENTICATION & ACCESS CONTROL
+    if !verify_auth(&uri, &incoming_headers) {
+        return (
+            StatusCode::FORBIDDEN,
+            "Forbidden: Invalid or missing proxy token",
+        )
+            .into_response();
+    }
+
     let query_str = uri.query().unwrap_or("");
     let target_url = match query_str.find("url=") {
         Some(idx) => {
             let raw = &query_str[idx + 4..];
-            let decoded = urlencoding_decode(raw);
+            let raw_url = match raw.find('&') {
+                Some(amp_idx) => &raw[..amp_idx],
+                None => raw,
+            };
+            let decoded = urlencoding_decode(raw_url);
             if decoded.is_empty() {
                 return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response();
             }
@@ -269,7 +421,13 @@ async fn handle_stream(
         None => return (StatusCode::NOT_FOUND, "Not Found").into_response(),
     };
 
-    // 1. FAST PATH: In-Memory RAM Cache (Instant sub-millisecond return!)
+    // 1. ANTI-SSRF TARGET URL VALIDATION
+    if let Err(err_msg) = validate_target_url(&target_url) {
+        log::warn!("SSRF or invalid URL blocked by stream proxy: {} ({})", target_url, err_msg);
+        return (StatusCode::BAD_REQUEST, err_msg).into_response();
+    }
+
+    // 2. FAST PATH: In-Memory RAM Cache (Instant sub-millisecond return!)
     if let Some(cached) = state.get_cached(&target_url).await {
         let mut headers = HeaderMap::new();
         if let Ok(val) = HeaderValue::from_str(&cached.content_type) {
@@ -308,7 +466,6 @@ async fn handle_stream(
         .header("Accept", "*/*")
         .header("Accept-Language", "en-US,en;q=0.9");
 
-    // Forward Range header for byte-range streams (fMP4 / HLS byte-ranges) and seeking
     if let Some(range) = incoming_headers.get(axum::http::header::RANGE) {
         if let Ok(val) = range.to_str() {
             req_builder = req_builder.header(reqwest::header::RANGE, val);
@@ -325,16 +482,13 @@ async fn handle_stream(
             .header("Origin", "https://www.samsungtvplus.com");
     }
 
-    // Resilient retry loop (up to 3 attempts with exponential backoff) for unstable networks
     let mut upstream_res = None;
     let mut last_err = None;
 
     for attempt in 0..3 {
         let req = match req_builder.try_clone() {
             Some(r) => r,
-            None => {
-                break;
-            }
+            None => break,
         };
 
         match req.send().await {
@@ -357,11 +511,9 @@ async fn handle_stream(
         }
     }
 
-    // Fallback if clone failed or retries exhausted
     let upstream_res = match upstream_res {
         Some(res) => res,
         None => {
-            // One final direct attempt if try_clone was unavailable
             match req_builder.send().await {
                 Ok(res) => res,
                 Err(e) => {
@@ -377,7 +529,6 @@ async fn handle_stream(
         }
     };
 
-    // Capture effective URL after 301/302 redirects (CRUCIAL for Samsung jmp2.uk -> amagi.tv)
     let effective_url = upstream_res.url().as_str().to_string();
     let upstream_status = upstream_res.status();
 
@@ -392,10 +543,12 @@ async fn handle_stream(
         || effective_url.contains(".m3u8")
         || content_type.contains("mpegurl");
 
+    let token = StreamProxy::get_auth_token();
+
     if is_m3u8 {
         match upstream_res.text().await {
             Ok(manifest) => {
-                let rewritten = rewrite_m3u8(&manifest, &effective_url);
+                let rewritten = rewrite_m3u8(&manifest, &effective_url, token);
                 let bytes = Bytes::from(rewritten);
                 state
                     .set_cached(
@@ -424,7 +577,6 @@ async fn handle_stream(
             Err(_) => (StatusCode::BAD_GATEWAY, "Failed to read manifest text").into_response(),
         }
     } else {
-        // High-performance zero-copy async stream piping for TS / AAC / MP4 segments
         let status = StatusCode::from_u16(upstream_status.as_u16()).unwrap_or(StatusCode::OK);
         let mut headers = HeaderMap::new();
 
@@ -437,12 +589,10 @@ async fn handle_stream(
             headers.insert(axum::http::header::CONTENT_TYPE, val);
         }
 
-        // Forward Content-Range for byte-range responses (206 Partial Content)
         if let Some(content_range) = upstream_res.headers().get(reqwest::header::CONTENT_RANGE) {
             headers.insert(axum::http::header::CONTENT_RANGE, content_range.clone());
         }
 
-        // Enable byte-range seeking
         headers.insert(
             axum::http::header::ACCEPT_RANGES,
             HeaderValue::from_static("bytes"),
@@ -456,8 +606,6 @@ async fn handle_stream(
         let is_range_req = incoming_headers.contains_key(axum::http::header::RANGE);
         let content_length = upstream_res.content_length();
 
-        // If Range header was NOT requested and segment size is reasonable (< 6MB),
-        // read full bytes and save to RAM cache for instant replay/reconnects!
         if !is_range_req && content_length.map_or(true, |l| l < 6 * 1024 * 1024) {
             match upstream_res.bytes().await {
                 Ok(bytes) => {
@@ -487,7 +635,7 @@ async fn handle_stream(
     }
 }
 
-fn rewrite_m3u8(manifest: &str, base_url_str: &str) -> String {
+pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
     let base_url = Url::parse(base_url_str).ok();
     let mut output = String::with_capacity(manifest.len() + 1024);
 
@@ -499,7 +647,6 @@ fn rewrite_m3u8(manifest: &str, base_url_str: &str) -> String {
         }
 
         if trimmed.starts_with('#') {
-            // Rewrite URI="..." inside tags such as #EXT-X-MEDIA, #EXT-X-KEY, #EXT-X-MAP
             if let Some(start) = trimmed.find("URI=\"") {
                 let prefix_len = start + 5;
                 let after_prefix = &trimmed[prefix_len..];
@@ -512,9 +659,10 @@ fn rewrite_m3u8(manifest: &str, base_url_str: &str) -> String {
                             raw_uri.to_string()
                         };
                         let proxied = format!(
-                            "http://127.0.0.1:{}/stream?url={}",
+                            "http://127.0.0.1:{}/stream?url={}&token={}",
                             StreamProxy::PORT,
-                            urlencoding_encode(&resolved_uri)
+                            urlencoding_encode(&resolved_uri),
+                            token
                         );
                         let mut new_line = String::with_capacity(trimmed.len() + 120);
                         new_line.push_str(&trimmed[..prefix_len]);
@@ -532,33 +680,30 @@ fn rewrite_m3u8(manifest: &str, base_url_str: &str) -> String {
             continue;
         }
 
-        // Avoid re-proxying if already pointing to local proxy
         if trimmed.starts_with("http://127.0.0.1:") {
             output.push_str(trimmed);
             output.push('\n');
             continue;
         }
 
-        // This is a chunk or child playlist URL
         let resolved = if let Some(ref base) = base_url {
             base.join(trimmed).map(|u| u.to_string()).unwrap_or_else(|_| trimmed.to_string())
         } else {
             trimmed.to_string()
         };
 
-        // Route through local proxy
         output.push_str(&format!(
-            "http://127.0.0.1:{}/stream?url={}\n",
+            "http://127.0.0.1:{}/stream?url={}&token={}\n",
             StreamProxy::PORT,
-            urlencoding_encode(&resolved)
+            urlencoding_encode(&resolved),
+            token
         ));
     }
 
     output
 }
 
-// Preserves '+' characters so Base64 and JWT signatures (Pluto TV, signed CDNs) are NOT corrupted
-fn urlencoding_decode(s: &str) -> String {
+pub fn urlencoding_decode(s: &str) -> String {
     let mut bytes = Vec::with_capacity(s.len());
     let mut chars = s.bytes();
     while let Some(b) = chars.next() {
@@ -569,14 +714,13 @@ fn urlencoding_decode(s: &str) -> String {
                 bytes.push(val);
             }
         } else {
-            // Keep '+' as '+' (do not convert to space!)
             bytes.push(b);
         }
     }
     String::from_utf8(bytes).unwrap_or_else(|_| s.to_string())
 }
 
-fn urlencoding_encode(s: &str) -> String {
+pub fn urlencoding_encode(s: &str) -> String {
     let mut res = String::with_capacity(s.len() * 3);
     for b in s.bytes() {
         if b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.' || b == b'~' {

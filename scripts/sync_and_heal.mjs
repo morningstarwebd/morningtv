@@ -157,31 +157,14 @@ const KNOWN_BACKUP_MIRRORS = {
   colorscineplex: [
     'https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/gb/YuppTV/ColorsCineplexUK.m3u8'
   ],
-  sonyentertainment: [
-    'https://cloudplay-sonyliv.pages.dev/sethd.m3u8'
-  ],
-  sonyaath: [
-    'https://cloudplay-sonyliv.pages.dev/aath.m3u8'
-  ],
   zeebangla: [
-    'https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/ZeeBanglaHD.m3u8',
     'https://live-bangla.akamaized.net/liveabr/playlist.m3u8'
   ],
   starjalsha: [
-    'https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starjalsha.smil/chunklist_b1928000.m3u8',
-    'http://cdn98.com/play/live.php?mac=00:1A:79:99:54:11&stream=225805&extension=ts&play_token=o1cczsG9wV'
-  ],
-  zee24ghanta: [
-    'https://tvsen6.aynaott.com/DpPnXP9r/index.m3u8',
-    'https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/ZMCL/Zee24Ghanta.m3u8'
+    'https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starjalsha.smil/chunklist_b1928000.m3u8'
   ],
   tsports: [
-    'https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8',
-    'https://tvsen5.aynascope.net/Wm9Lv2RjZGT6/index.m3u8'
-  ],
-  gtv: [
-    'https://app.ncare.live/c3VydmVyX8RpbEU9Mi8xNy8yMDE0GIDU6RgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcGVMZEJCTEFWeVN3PTOmdFsaWRtaW51aiPhnPTI2/gazibdz.stream/live-orgin/gazibdz.stream/playlist.m3u8',
-    'http://tvn1.chowdhury-shaheb.com/gazitv/index.m3u8'
+    'https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8'
   ]
 };
 

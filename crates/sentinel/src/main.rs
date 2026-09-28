@@ -204,33 +204,9 @@ fn is_vip_channel(name: &str, id: &str) -> bool {
 const KNOWN_BACKUP_MIRRORS: &[(&str, &[&str])] = &[
     ("colors", &["https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8"]),
     ("colorshd", &["https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8"]),
-    ("colorsbangla", &[
-        "http://103.165.93.31:8095/colorsBangla/index.m3u8",
-        "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8"
-    ]),
-    ("colorscineplex", &["https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/gb/YuppTV/ColorsCineplexUK.m3u8"]),
-    ("sonyentertainment", &["https://cloudplay-sonyliv.pages.dev/sethd.m3u8"]),
-    ("sonyaath", &["https://cloudplay-sonyliv.pages.dev/aath.m3u8"]),
-    ("zeebangla", &[
-        "https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/ZeeBanglaHD.m3u8",
-        "https://live-bangla.akamaized.net/liveabr/playlist.m3u8"
-    ]),
-    ("starjalsha", &[
-        "https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starjalsha.smil/chunklist_b1928000.m3u8",
-        "http://cdn98.com/play/live.php?mac=00:1A:79:99:54:11&stream=225805&extension=ts&play_token=o1cczsG9wV"
-    ]),
-    ("zee24ghanta", &[
-        "https://tvsen6.aynaott.com/DpPnXP9r/index.m3u8",
-        "https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/ZMCL/Zee24Ghanta.m3u8"
-    ]),
-    ("tsports", &[
-        "https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8",
-        "https://tvsen5.aynascope.net/Wm9Lv2RjZGT6/index.m3u8"
-    ]),
-    ("gtv", &[
-        "https://app.ncare.live/c3VydmVyX8RpbEU9Mi8xNy8yMDE0GIDU6RgzQ6NTAgdEoaeFzbF92YWxIZTO0U0ezN1IzMyfvcGVMZEJCTEFWeVN3PTOmdFsaWRtaW51aiPhnPTI2/gazibdz.stream/live-orgin/gazibdz.stream/playlist.m3u8",
-        "http://tvn1.chowdhury-shaheb.com/gazitv/index.m3u8"
-    ]),
+    ("zeebangla", &["https://live-bangla.akamaized.net/liveabr/playlist.m3u8"]),
+    ("starjalsha", &["https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starjalsha.smil/chunklist_b1928000.m3u8"]),
+    ("tsports", &["https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8"]),
 ];
 
 fn normalize_channel_key(name: &str, tvg_id: &str) -> String {
@@ -437,7 +413,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(4))
         .connect_timeout(std::time::Duration::from_secs(3))
-        .danger_accept_invalid_certs(true)
         .redirect(reqwest::redirect::Policy::limited(6))
         .pool_max_idle_per_host(30)
         .tcp_keepalive(std::time::Duration::from_secs(15))

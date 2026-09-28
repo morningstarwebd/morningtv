@@ -72,6 +72,7 @@ pub fn run() {
             commands::force_refresh_channels,
             commands::check_playlist_update,
             commands::background_refresh_playlist,
+            commands::get_proxy_auth_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
