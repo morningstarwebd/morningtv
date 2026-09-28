@@ -135,6 +135,42 @@ impl Drop for ActiveRequestGuard {
     }
 }
 
+static ORIGIN_LIMITS: OnceLock<dashmap::DashMap<String, Arc<AtomicUsize>>> = OnceLock::new();
+pub const MAX_CONCURRENT_PER_ORIGIN: usize = 12;
+pub const MAX_M3U8_SIZE: usize = 10 * 1024 * 1024;    // 10 MB
+pub const MAX_SEGMENT_SIZE: u64 = 60 * 1024 * 1024;  // 60 MB
+
+fn get_origin_limits() -> &'static dashmap::DashMap<String, Arc<AtomicUsize>> {
+    ORIGIN_LIMITS.get_or_init(dashmap::DashMap::new)
+}
+
+struct OriginGuard {
+    counter: Arc<AtomicUsize>,
+}
+
+impl Drop for OriginGuard {
+    fn drop(&mut self) {
+        self.counter.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
+fn try_acquire_origin(origin: &str) -> Option<OriginGuard> {
+    let limits = get_origin_limits();
+    let counter = limits
+        .entry(origin.to_string())
+        .or_insert_with(|| Arc::new(AtomicUsize::new(0)))
+        .clone();
+
+    let cur = counter.fetch_add(1, Ordering::Relaxed);
+    if cur >= MAX_CONCURRENT_PER_ORIGIN {
+        counter.fetch_sub(1, Ordering::Relaxed);
+        None
+    } else {
+        Some(OriginGuard { counter })
+    }
+}
+
+static SHUTDOWN_TX: OnceLock<tokio::sync::watch::Sender<bool>> = OnceLock::new();
 static PROXY_AUTH_TOKEN: OnceLock<String> = OnceLock::new();
 static PROXY_PORT: OnceLock<u16> = OnceLock::new();
 static PROXY_START_TIME: OnceLock<Instant> = OnceLock::new();
@@ -159,8 +195,40 @@ impl StreamProxy {
         })
     }
 
+    /// Signals graceful shutdown to the proxy listener and in-flight handlers
+    pub fn shutdown() {
+        if let Some(tx) = SHUTDOWN_TX.get() {
+            let _ = tx.send(true);
+            tracing::info!("Sent graceful shutdown signal to stream proxy");
+        }
+    }
+
+    /// Returns a structured metrics snapshot
+    pub fn get_metrics_snapshot() -> serde_json::Value {
+        let uptime = PROXY_START_TIME
+            .get()
+            .map(|t| t.elapsed().as_secs())
+            .unwrap_or(0);
+        serde_json::json!({
+            "status": "healthy",
+            "service": "MorningTV Stream Proxy",
+            "port": StreamProxy::get_port(),
+            "uptime_secs": uptime,
+            "active_requests": ACTIVE_REQUESTS.load(Ordering::Relaxed),
+            "total_requests": METRICS.total_requests.load(Ordering::Relaxed),
+            "cache_hits": METRICS.cache_hits.load(Ordering::Relaxed),
+            "cache_misses": METRICS.cache_misses.load(Ordering::Relaxed),
+            "upstream_errors": METRICS.upstream_errors.load(Ordering::Relaxed),
+            "ssrf_blocks": METRICS.ssrf_blocks.load(Ordering::Relaxed),
+            "auth_failures": METRICS.auth_failures.load(Ordering::Relaxed),
+        })
+    }
+
     pub fn start() {
         tauri::async_runtime::spawn(async move {
+            let (shutdown_tx, mut shutdown_rx) = tokio::sync::watch::channel(false);
+            let _ = SHUTDOWN_TX.set(shutdown_tx);
+
             let _ = Self::get_auth_token(); // ensure initialized
             PROXY_START_TIME.get_or_init(Instant::now);
 
@@ -172,7 +240,7 @@ impl StreamProxy {
                 let next_url_str = next_url.as_str();
 
                 if let Err(err) = validate_target_url(next_url_str) {
-                    log::warn!("SSRF blocked in redirect: {} ({})", next_url_str, err);
+                    tracing::warn!("SSRF blocked in redirect: {} ({})", next_url_str, err);
                     return attempt.stop();
                 }
 
@@ -181,7 +249,7 @@ impl StreamProxy {
                     if let Ok(addrs) = (host, port).to_socket_addrs() {
                         for addr in addrs {
                             if is_private_or_loopback_ip(&addr.ip()) {
-                                log::warn!(
+                                tracing::warn!(
                                     "SSRF blocked in redirect: host {} resolved to private IP {}",
                                     host,
                                     addr.ip()
@@ -215,6 +283,7 @@ impl StreamProxy {
                 .route("/stream", get(handle_stream))
                 .route("/prewarm", get(handle_prewarm))
                 .route("/health", get(handle_health))
+                .route("/metrics", get(handle_metrics))
                 .route("/return_to_morningtv", get(handle_return))
                 .layer(CorsLayer::permissive())
                 .with_state(state);
@@ -229,7 +298,7 @@ impl StreamProxy {
                     Ok(listener) => {
                         let actual_port = listener.local_addr().map(|a| a.port()).unwrap_or(port);
                         let _ = PROXY_PORT.set(actual_port);
-                        log::info!(
+                        tracing::info!(
                             "Axum streaming proxy listening on http://127.0.0.1:{} (Secured with Ephemeral Token + Anti-SSRF)",
                             actual_port
                         );
@@ -237,15 +306,21 @@ impl StreamProxy {
                         break;
                     }
                     Err(e) => {
-                        log::warn!("Port {} unavailable for Axum proxy: {}", port, e);
+                        tracing::warn!("Port {} unavailable for Axum proxy: {}", port, e);
                     }
                 }
             }
 
             if let Some(listener) = bound_listener {
-                let _ = axum::serve(listener, app).await;
+                let server = axum::serve(listener, app).with_graceful_shutdown(async move {
+                    let _ = shutdown_rx.changed().await;
+                    tracing::info!("Axum stream proxy shutdown signal received, draining connections...");
+                });
+                if let Err(e) = server.await {
+                    tracing::error!("Axum proxy server exited with error: {}", e);
+                }
             } else {
-                log::error!("CRITICAL: Failed to bind Axum stream proxy on any candidate port");
+                tracing::error!("CRITICAL: Failed to bind Axum stream proxy on any candidate port");
             }
         });
     }
@@ -282,6 +357,13 @@ async fn handle_health(State(state): State<ProxyState>) -> Response {
         }
     });
     (StatusCode::OK, Json(body)).into_response()
+}
+
+async fn handle_metrics(uri: Uri, headers: HeaderMap) -> Response {
+    if !verify_auth(&uri, &headers) {
+        return (StatusCode::FORBIDDEN, "Forbidden: Invalid or missing proxy token").into_response();
+    }
+    (StatusCode::OK, Json(StreamProxy::get_metrics_snapshot())).into_response()
 }
 
 /// Validates whether the incoming request contains the valid ephemeral proxy token
@@ -349,6 +431,10 @@ pub fn is_private_or_loopback_ip(ip: &std::net::IpAddr) -> bool {
                 || v4.octets()[0] == 0  // 0.0.0.0/8
         }
         std::net::IpAddr::V6(v6) => {
+            // Task 4.2: IPv4-mapped IPv6 (::ffff:x.x.x.x)
+            if let Some(v4) = v6.to_ipv4_mapped() {
+                return is_private_or_loopback_ip(&std::net::IpAddr::V4(v4));
+            }
             v6.is_loopback()            // ::1
                 || v6.is_multicast()    // ff00::/8
                 || v6.is_unspecified()  // ::
@@ -553,6 +639,7 @@ async fn handle_stream(
     incoming_headers: HeaderMap,
     uri: Uri,
 ) -> Response {
+    let req_start = Instant::now();
     METRICS.total_requests.fetch_add(1, Ordering::Relaxed);
 
     // Concurrency limit to protect system resources
@@ -586,13 +673,37 @@ async fn handle_stream(
     // 1. ANTI-SSRF TARGET URL VALIDATION (ASYNC WITH DNS REBINDING DEFENSE)
     if let Err(err_msg) = validate_target_url_async(&target_url).await {
         METRICS.ssrf_blocks.fetch_add(1, Ordering::Relaxed);
-        log::warn!("SSRF or invalid URL blocked by stream proxy: {} ({})", target_url, err_msg);
+        tracing::warn!("SSRF or invalid URL blocked by stream proxy: {} ({})", target_url, err_msg);
         return (StatusCode::BAD_REQUEST, err_msg).into_response();
     }
+
+    // Task 4.4: Per-origin rate limiting
+    let origin_host = Url::parse(&target_url)
+        .ok()
+        .and_then(|u| u.host_str().map(|s| s.to_string()))
+        .unwrap_or_else(|| "default".to_string());
+
+    let _origin_guard = match try_acquire_origin(&origin_host) {
+        Some(g) => g,
+        None => {
+            tracing::warn!(host = %origin_host, "Per-origin concurrency limit exceeded");
+            return (
+                StatusCode::TOO_MANY_REQUESTS,
+                "Too many concurrent requests to this upstream host",
+            )
+                .into_response();
+        }
+    };
 
     // 2. FAST PATH: In-Memory RAM Cache (Instant sub-millisecond return!)
     if let Some(cached) = state.get_cached(&target_url).await {
         METRICS.cache_hits.fetch_add(1, Ordering::Relaxed);
+        tracing::debug!(
+            url = %target_url,
+            duration_ms = req_start.elapsed().as_millis(),
+            cached = true,
+            "Served from RAM cache"
+        );
         let mut headers = HeaderMap::new();
         if let Ok(val) = HeaderValue::from_str(&cached.content_type) {
             headers.insert(axum::http::header::CONTENT_TYPE, val);
@@ -662,11 +773,11 @@ async fn handle_stream(
                 break;
             }
             Err(e) => {
-                log::warn!(
-                    "Stream proxy attempt {} failed for {}: {}",
-                    attempt + 1,
-                    target_url,
-                    e
+                tracing::warn!(
+                    attempt = attempt + 1,
+                    url = %target_url,
+                    error = %e,
+                    "Stream proxy attempt failed"
                 );
                 last_err = Some(e);
                 if attempt < 2 {
@@ -679,10 +790,10 @@ async fn handle_stream(
     let upstream_res = match upstream_res {
         Some(res) => res,
         None => {
-            log::warn!(
-                "Stream proxy exhausted 3 retries for {}: {:?}",
-                target_url,
-                last_err
+            tracing::warn!(
+                url = %target_url,
+                error = ?last_err,
+                "Stream proxy exhausted 3 retries"
             );
             METRICS.upstream_errors.fetch_add(1, Ordering::Relaxed);
             return (StatusCode::BAD_GATEWAY, "Upstream fetch error after retries").into_response();
@@ -706,6 +817,14 @@ async fn handle_stream(
     let token = StreamProxy::get_auth_token();
 
     if is_m3u8 {
+        // Task 4.1: Response body size limit for manifests
+        if let Some(len) = upstream_res.content_length() {
+            if len > MAX_M3U8_SIZE as u64 {
+                tracing::warn!(url = %target_url, len, "M3U8 manifest exceeds max allowed size");
+                return (StatusCode::BAD_GATEWAY, "Manifest too large").into_response();
+            }
+        }
+
         match upstream_res.text().await {
             Ok(manifest) => {
                 let rewritten = rewrite_m3u8(&manifest, &effective_url, token);
@@ -718,6 +837,14 @@ async fn handle_stream(
                         true,
                     )
                     .await;
+
+                tracing::info!(
+                    url = %target_url,
+                    duration_ms = req_start.elapsed().as_millis(),
+                    status = 200,
+                    is_manifest = true,
+                    "Proxy served rewritten manifest"
+                );
 
                 let mut headers = HeaderMap::new();
                 headers.insert(
@@ -740,6 +867,15 @@ async fn handle_stream(
             }
         }
     } else {
+        // Task 4.1: Response body size limit for segments
+        let content_length = upstream_res.content_length();
+        if let Some(len) = content_length {
+            if len > MAX_SEGMENT_SIZE {
+                tracing::warn!(url = %target_url, len, "Segment exceeds max allowed size");
+                return (StatusCode::BAD_GATEWAY, "Segment too large").into_response();
+            }
+        }
+
         let status = StatusCode::from_u16(upstream_status.as_u16()).unwrap_or(StatusCode::OK);
         let mut headers = HeaderMap::new();
 
@@ -768,7 +904,6 @@ async fn handle_stream(
 
         const MAX_BUFFERED_SIZE: u64 = 10 * 1024 * 1024; // 10MB
         let is_range_req = incoming_headers.contains_key(axum::http::header::RANGE);
-        let content_length = upstream_res.content_length();
 
         if !is_range_req && content_length.map_or(false, |l| l < MAX_BUFFERED_SIZE) {
             match upstream_res.bytes().await {
@@ -784,6 +919,15 @@ async fn handle_stream(
                     state
                         .set_cached(target_url.clone(), bytes.clone(), ctype, false)
                         .await;
+
+                    tracing::info!(
+                        url = %target_url,
+                        duration_ms = req_start.elapsed().as_millis(),
+                        status = status.as_u16(),
+                        cached = false,
+                        "Proxy served and cached segment"
+                    );
+
                     (status, headers, Body::from(bytes)).into_response()
                 }
                 Err(_) => {
@@ -797,6 +941,15 @@ async fn handle_stream(
             }
             let stream = upstream_res.bytes_stream();
             let body = Body::from_stream(stream);
+
+            tracing::info!(
+                url = %target_url,
+                duration_ms = req_start.elapsed().as_millis(),
+                status = status.as_u16(),
+                streamed = true,
+                "Proxy streaming segment"
+            );
+
             (status, headers, body).into_response()
         }
     }

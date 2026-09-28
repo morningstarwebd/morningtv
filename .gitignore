@@ -43,3 +43,4 @@ wsa/
 *.key.pub
 scripts/*.key
 scripts/*.key.pub
+!*.key.example

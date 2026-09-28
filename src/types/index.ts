@@ -50,3 +50,21 @@ export interface AppSettings {
 	last_played_channel_id: string | null;
 	normalize_audio?: boolean;
 }
+
+export interface IpcError {
+	code: string;
+	message: string;
+	retryable: boolean;
+}
+
+export function formatIpcError(err: unknown): string {
+	if (!err) return "Unknown error occurred";
+	if (typeof err === "string") return err;
+	if (typeof err === "object" && err !== null) {
+		const e = err as Partial<IpcError>;
+		if (e.message) {
+			return e.code ? `[${e.code}] ${e.message}` : e.message;
+		}
+	}
+	return String(err);
+}

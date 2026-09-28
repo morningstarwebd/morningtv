@@ -95,3 +95,23 @@ pub async fn get_system_network_stats(
         primary_interface: primary_iface,
     })
 }
+
+#[tauri::command]
+pub async fn get_proxy_metrics() -> Result<serde_json::Value, String> {
+    Ok(crate::network::StreamProxy::get_metrics_snapshot())
+}
+
+#[tauri::command]
+pub async fn log_frontend_error(
+    level: String,
+    context: String,
+    message: String,
+) -> Result<(), String> {
+    match level.to_lowercase().as_str() {
+        "error" => tracing::error!(context = %context, "[Frontend Error]: {}", message),
+        "warn" => tracing::warn!(context = %context, "[Frontend Warn]: {}", message),
+        "info" => tracing::info!(context = %context, "[Frontend Info]: {}", message),
+        _ => tracing::debug!(context = %context, "[Frontend Debug]: {}", message),
+    }
+    Ok(())
+}

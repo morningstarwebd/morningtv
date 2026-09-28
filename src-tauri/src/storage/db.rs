@@ -38,15 +38,25 @@ impl Database {
     }
 
     fn db_path() -> PathBuf {
-        if let Ok(appdata) = std::env::var("APPDATA") {
-            PathBuf::from(appdata).join(APP_NAME).join("morningtv.db")
-        } else {
-            PathBuf::from("morningtv.db")
-        }
+        dirs::data_dir()
+            .or_else(dirs::config_dir)
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join(APP_NAME)
+            .join("morningtv.db")
     }
 
     fn migrate(&self) -> StorageResult<()> {
-        let conn = self.conn.lock().unwrap();
+        let conn = self.conn.lock().map_err(|e| {
+            tracing::error!(error = %e, "SQLite mutex poisoned in migrate()");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
+
+        // Task 7.3: PRAGMAs for high-performance WAL concurrency
+        let _ = conn.execute_batch("PRAGMA journal_mode=WAL;");
+        let _ = conn.execute_batch("PRAGMA busy_timeout=5000;");
+        let _ = conn.execute_batch("PRAGMA synchronous=NORMAL;");
+        let _ = conn.execute_batch("PRAGMA foreign_keys=ON;");
+
         conn.execute_batch(
             "
             CREATE TABLE IF NOT EXISTS favorites (

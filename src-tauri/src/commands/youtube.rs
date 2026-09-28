@@ -1,5 +1,10 @@
 // src-tauri/src/commands/youtube.rs
-// Commands to open official YouTube and JioHotstar in unified native window with sleek top navigation
+// Commands to open official YouTube and JioHotstar in unified native window with sleek top navigation.
+//
+// LEGAL & COMPLIANCE NOTICE:
+// MorningTV only displays official third-party websites inside standard WebViews for user convenience.
+// MorningTV does NOT host, redistribute, modify, scrape, or circumvent DRM/access controls of these services.
+// All trademarks, copyrights, and intellectual property belong to their respective owners (Google LLC, Disney+ Hotstar).
 
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 

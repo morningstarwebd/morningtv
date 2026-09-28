@@ -17,7 +17,10 @@ impl HistoryRepository {
 
     pub fn record_play(&self, channel: &Channel) -> StorageResult<()> {
         let conn = self.db.conn();
-        let guard = conn.lock().unwrap();
+        let guard = conn.lock().map_err(|e| {
+            tracing::error!(error = %e, "History DB mutex poisoned");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
 
         guard
             .execute(
@@ -36,7 +39,10 @@ impl HistoryRepository {
     #[allow(dead_code)]
     pub fn get_last_played_id(&self) -> StorageResult<Option<String>> {
         let conn = self.db.conn();
-        let guard = conn.lock().unwrap();
+        let guard = conn.lock().map_err(|e| {
+            tracing::error!(error = %e, "History DB mutex poisoned");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
 
         let mut stmt = guard
             .prepare("SELECT channel_id FROM history ORDER BY last_played DESC LIMIT 1")

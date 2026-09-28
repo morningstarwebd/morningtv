@@ -35,13 +35,12 @@ impl Default for AppSettings {
 
 impl AppSettings {
     pub fn config_path() -> PathBuf {
-        if let Ok(appdata) = std::env::var("APPDATA") {
-            let dir = PathBuf::from(appdata).join(APP_NAME);
-            let _ = fs::create_dir_all(&dir);
-            dir.join("settings.json")
-        } else {
-            PathBuf::from("settings.json")
-        }
+        let dir = dirs::config_dir()
+            .or_else(dirs::data_dir)
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join(APP_NAME);
+        let _ = fs::create_dir_all(&dir);
+        dir.join("settings.json")
     }
 
     pub fn load() -> Self {

@@ -32,28 +32,39 @@ impl ResilientHttpClient {
 
     pub async fn fetch_text_with_retry(&self, url: &str, retries: usize) -> NetworkResult<String> {
         let mut attempts = 0;
+        let mut delay = Duration::from_secs(2);
         let mut last_err = None;
 
         while attempts <= retries {
+            tracing::info!(url, attempt = attempts + 1, "Attempting to fetch remote text");
             match self.inner.get(url).send().await {
                 Ok(resp) => {
                     if resp.status().is_success() {
+                        tracing::info!(url, attempt = attempts + 1, "Remote text fetched successfully");
                         return resp.text().await.map_err(NetworkError::RequestFailed);
                     } else {
+                        let status = resp.status();
+                        tracing::warn!(url, attempt = attempts + 1, %status, "HTTP error status received");
                         last_err = Some(NetworkError::Unreachable(format!(
                             "HTTP Status {}",
-                            resp.status()
+                            status
                         )));
                     }
                 }
                 Err(err) => {
+                    tracing::warn!(url, attempt = attempts + 1, error = %err, "HTTP request failed");
                     last_err = Some(NetworkError::RequestFailed(err));
                 }
             }
             attempts += 1;
-            tokio::time::sleep(Duration::from_millis(500 * (1 << attempts))).await;
+            if attempts <= retries {
+                tracing::info!(url, delay_secs = delay.as_secs(), "Backing off before retry");
+                tokio::time::sleep(delay).await;
+                delay = delay.saturating_mul(2);
+            }
         }
 
+        tracing::error!(url, attempts, "Exhausted all retries for remote text fetch");
         Err(last_err.unwrap_or(NetworkError::Timeout(30)))
     }
 }

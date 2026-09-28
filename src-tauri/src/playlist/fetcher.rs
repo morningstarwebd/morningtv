@@ -15,11 +15,11 @@ impl PlaylistFetcher {
     }
 
     pub fn cache_path() -> PathBuf {
-        if let Ok(appdata) = std::env::var("APPDATA") {
-            PathBuf::from(appdata).join(crate::config::APP_NAME).join("playlist_cache.m3u")
-        } else {
-            PathBuf::from("playlist_cache.m3u")
-        }
+        dirs::data_dir()
+            .or_else(dirs::config_dir)
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join(crate::config::APP_NAME)
+            .join("playlist_cache.m3u")
     }
 
     pub async fn load(&self, source: &str) -> PlaylistResult<Vec<Channel>> {

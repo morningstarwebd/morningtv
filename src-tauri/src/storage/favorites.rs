@@ -18,7 +18,10 @@ impl FavoritesRepository {
 
     pub fn get_all_ids(&self) -> StorageResult<HashSet<String>> {
         let conn = self.db.conn();
-        let guard = conn.lock().unwrap();
+        let guard = conn.lock().map_err(|e| {
+            tracing::error!(error = %e, "Favorites DB mutex poisoned");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
         let mut stmt = guard
             .prepare("SELECT channel_id FROM favorites")
             .map_err(StorageError::Sqlite)?;
@@ -36,7 +39,10 @@ impl FavoritesRepository {
 
     pub fn toggle(&self, channel_id: &ChannelId, channel_name: &str) -> StorageResult<bool> {
         let conn = self.db.conn();
-        let guard = conn.lock().unwrap();
+        let guard = conn.lock().map_err(|e| {
+            tracing::error!(error = %e, "Favorites DB mutex poisoned");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
 
         let exists: bool = guard
             .query_row(

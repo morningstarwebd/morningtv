@@ -5,6 +5,14 @@ edition = "2021"
 description = "MorningTV Stream Sentinel: High-Speed Tokio Live Stream Auditor"
 authors = ["MorningTV Team"]
 
+[lib]
+name = "sentinel"
+path = "src/lib.rs"
+
+[[bin]]
+name = "sentinel"
+path = "src/main.rs"
+
 [dependencies]
 tokio = { version = "1.40", features = ["rt-multi-thread", "sync", "macros", "time"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "gzip"] }

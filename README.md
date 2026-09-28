@@ -618,15 +618,18 @@ Contributions are welcomed from developers of all experience levels:
 
 1. **Fork** the repository on GitHub.
 2. **Create** a feature branch: `git checkout -b feature/stream-enhancement`.
-3. **Validate** code quality: `npm run lint` and `npm run cargo:check`.
+3. **Validate** code quality: `npm run ci` (runs linting, unit tests, frontend build, and cargo check).
 4. **Commit** with a clear message: `git commit -m "feat: add multi-bitrate quality selector"`.
 5. **Push** to your fork: `git push origin feature/stream-enhancement`.
-6. **Open** a Pull Request on GitHub.
+6. **Open** a Pull Request on GitHub using our [Pull Request Template](.github/PULL_REQUEST_TEMPLATE.md).
+
+For complete contributor guidelines, please see [CONTRIBUTING.md](CONTRIBUTING.md) and our [Code of Conduct](CODE_OF_CONDUCT.md). For security reports, refer to [SECURITY.md](SECURITY.md). For version history, see [CHANGELOG.md](CHANGELOG.md).
 
 ### Development Tips
 * Frontend hot-reload is active during `npm run tauri:dev`. TypeScript and CSS changes reflect instantly.
 * Rust backend changes require a recompile (Tauri handles this automatically in dev mode).
 * Run `npm run sync` to test the Stream Sentinel locally before pushing playlist changes.
+* Run `npm test` to execute all 54 frontend and Rust tests.
 * The Biome formatter enforces consistent code style. Run `npx biome check --write src` to auto-fix.
 
 <br/>

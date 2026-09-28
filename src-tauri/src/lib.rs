@@ -6,6 +6,7 @@ pub mod commands;
 pub mod config;
 pub mod domain;
 pub mod error;
+pub mod logging;
 pub mod network;
 pub mod playlist;
 pub mod storage;
@@ -17,6 +18,10 @@ use tokio::sync::RwLock;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // Task 2.1: Initialize structured tracing and file logging
+    logging::init_logging();
+    tracing::info!("Initializing MorningTV backend core");
+
     let state: SharedAppState = Arc::new(RwLock::new(AppState::new().expect("Failed to initialize AppState")));
 
     // Start local streaming proxy to eliminate CORS & bypass User-Agent blocks
@@ -51,6 +56,13 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .on_window_event(|_window, event| {
+            // Task 3.1: Graceful proxy shutdown on close
+            if let tauri::WindowEvent::CloseRequested { .. } = event {
+                tracing::info!("Window close requested; shutting down streaming proxy gracefully");
+                network::StreamProxy::shutdown();
+            }
+        })
         .manage(state)
         .manage(commands::NetworkMonitorState::new())
         .invoke_handler(tauri::generate_handler![
@@ -66,6 +78,8 @@ pub fn run() {
             commands::save_settings,
             commands::cycle_quality,
             commands::get_system_network_stats,
+            commands::get_proxy_metrics,
+            commands::log_frontend_error,
             commands::open_youtube,
             commands::open_hotstar,
             commands::reset_playlist,

@@ -19,6 +19,9 @@ import type {
 import { getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
 import { filterChannelsClient } from "../utils/channelFilter";
+import { createLogger } from "../utils/logger";
+
+const log = createLogger("AppStore");
 
 interface AppState {
 	// Channel & Playlist State
@@ -185,7 +188,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				set({ totalChannels: count });
 			}
 		} catch (err) {
-			console.warn("Failed to get total channel count:", err);
+			log.warn("Failed to get total channel count", { error: err });
 		}
 	},
 
@@ -305,7 +308,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 		try {
 			await updaterService.relaunchApp();
 		} catch (err) {
-			console.error("Failed to relaunch:", err);
+			log.error("Failed to relaunch", { error: err });
 			window.location.reload();
 		}
 	},
@@ -352,7 +355,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				});
 			}
 		} catch (err) {
-			console.error("Failed to init app state:", err);
+			log.error("Failed to init app state", { error: err });
 		}
 	},
 
@@ -388,7 +391,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 		try {
 			await invoke("select_channel", { id: channelId });
 		} catch (err) {
-			console.error("Failed to select channel:", err);
+			log.error("Failed to select channel", { error: err });
 		}
 	},
 
@@ -445,7 +448,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				};
 			});
 		} catch (err) {
-			console.error("Failed to toggle favorite:", err);
+			log.error("Failed to toggle favorite", { error: err });
 		}
 	},
 
@@ -506,7 +509,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 		if (settings) {
 			invoke("save_settings", {
 				settings: { ...settings, volume, is_muted: volume === 0 },
-			}).catch(console.error);
+			}).catch((err) =>
+				log.error("Failed to save volume settings", { error: err }),
+			);
 		}
 	},
 
@@ -526,7 +531,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 			if (settings) {
 				invoke("save_settings", {
 					settings: { ...settings, is_muted: isMuted },
-				}).catch(console.error);
+				}).catch((err) =>
+					log.error("Failed to save mute settings", { error: err }),
+				);
 			}
 			return { isMuted };
 		});
@@ -538,7 +545,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 			set({ currentQuality: nextQuality });
 			get().showToast(`Stream quality set to ${nextQuality}`, false);
 		} catch (err) {
-			console.error("Failed to cycle quality:", err);
+			log.error("Failed to cycle quality", { error: err });
 		}
 	},
 
@@ -684,7 +691,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				providers: providers.length > 1 ? providers : ["All"],
 			}));
 		} catch (err) {
-			console.error("Failed to reload channels:", err);
+			log.error("Failed to reload channels", { error: err });
 		}
 	},
 
@@ -798,7 +805,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 			}
 			await invoke("open_youtube");
 		} catch (err) {
-			console.error("Failed to open YouTube:", err);
+			log.error("Failed to open YouTube", { error: err });
 			get().showToast(`Failed to open YouTube: ${err}`, true);
 		}
 	},
@@ -810,7 +817,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 			if (isPlaying) set({ isPlaying: false });
 			await invoke("open_hotstar");
 		} catch (err) {
-			console.error("Failed to open Hotstar:", err);
+			log.error("Failed to open Hotstar", { error: err });
 			get().showToast(`Failed to open Hotstar: ${err}`, true);
 		}
 	},
@@ -847,3 +854,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 		);
 	},
 }));
+
+// Re-export domain store hooks and types for modular usage
+export { type ChannelState, useChannelStore } from "./channelStore";
+export { type PlayerState, usePlayerStore } from "./playerStore";
+export { type StreamState, useStreamStore } from "./streamStore";
+export { type UiState, useUiStore } from "./uiStore";
+export { type UpdateState, useUpdateStore } from "./updateStore";

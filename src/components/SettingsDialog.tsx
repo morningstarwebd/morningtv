@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { MorningTVLogo } from "./MorningTVLogo";
 
-type TabType = "playlist" | "cinema" | "audio" | "cloud" | "updates";
+type TabType = "playlist" | "cinema" | "audio" | "cloud" | "updates" | "about";
 
 export const SettingsDialog: React.FC = () => {
 	const {
@@ -154,6 +154,12 @@ export const SettingsDialog: React.FC = () => {
 			badge: isUpdateAvailable ? `UPDATE` : undefined,
 			badgeStyle:
 				"bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-black",
+		},
+		{
+			id: "about" as TabType,
+			label: "Legal & About",
+			desc: "Compliance & attribution",
+			icon: ShieldCheck,
 		},
 	];
 
@@ -841,6 +847,85 @@ export const SettingsDialog: React.FC = () => {
 											)}
 										</div>
 									)}
+								</div>
+							)}
+
+							{/* Tab: Legal & About */}
+							{activeTab === "about" && (
+								<div className="space-y-4">
+									<div>
+										<h3 className="text-sm font-black text-white">
+											Legal & Compliance Notice
+										</h3>
+										<p className="text-[11px] text-zinc-400 mt-0.5">
+											Open-source architecture, stream attributions, and privacy
+											policies
+										</p>
+									</div>
+
+									<div className="p-3.5 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+										<div className="flex items-start gap-2.5">
+											<ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+											<div className="space-y-1.5 text-xs text-zinc-300">
+												<div className="font-bold text-white">
+													Non-Hosting & Aggregation Policy
+												</div>
+												<p className="text-zinc-400 leading-relaxed text-[11px]">
+													MorningTV is an open-source client media player.
+													MorningTV does{" "}
+													<strong className="text-white">not</strong> host,
+													store, cache, distribute, or rebroadcast any video,
+													audio, or copyrighted stream content. All playlist
+													items are aggregated from publicly available IPTV
+													repositories maintained by the open-source community.
+												</p>
+											</div>
+										</div>
+
+										<div className="flex items-start gap-2.5 pt-2.5 border-t border-white/10">
+											<Globe className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+											<div className="space-y-1.5 text-xs text-zinc-300">
+												<div className="font-bold text-white">
+													Third-Party Web Services & Attribution
+												</div>
+												<p className="text-zinc-400 leading-relaxed text-[11px]">
+													The embedded YouTube and JioHotstar buttons launch
+													official provider web applications directly in native
+													sandboxed webviews. MorningTV is not affiliated with,
+													endorsed by, or sponsored by YouTube, Google LLC, Jio,
+													or Star India. All trademarks and brand assets belong
+													to their respective holders.
+												</p>
+											</div>
+										</div>
+
+										<div className="flex items-start gap-2.5 pt-2.5 border-t border-white/10">
+											<Zap className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+											<div className="space-y-1.5 text-xs text-zinc-300">
+												<div className="font-bold text-white">
+													Local Security & Privacy Guard
+												</div>
+												<p className="text-zinc-400 leading-relaxed text-[11px]">
+													MorningTV runs a hardened local Axum proxy with
+													Anti-SSRF protection, IPv4/IPv6 private range
+													blocking, and ephemeral cryptographic token
+													authentication. Zero personal tracking or viewing
+													metrics are collected or sent to external telemetry
+													servers.
+												</p>
+											</div>
+										</div>
+									</div>
+
+									<div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between text-xs text-zinc-400">
+										<div>
+											<span className="font-bold text-white">License:</span> MIT
+											Open Source
+										</div>
+										<div className="font-mono text-[11px]">
+											MorningTV v1.0.0 (Production Release)
+										</div>
+									</div>
 								</div>
 							)}
 						</div>

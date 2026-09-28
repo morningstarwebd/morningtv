@@ -8,7 +8,6 @@ on:
   push:
     paths:
       - 'crates/sentinel/**'
-      - 'scripts/sync_and_heal.mjs'
 
 permissions:
   contents: write
@@ -36,6 +35,16 @@ jobs:
           git config --local user.email "actions@github.com"
           git config --local user.name "MorningTV Sentinel Bot"
           git add playlists/
+
+          # Safety: Ensure channel count didn't drop more than 30%
+          NEW_COUNT=$(grep -c "^#EXTINF" playlists/morningtv_all.m3u 2>/dev/null || echo 0)
+          OLD_COUNT=$(git show HEAD:playlists/morningtv_all.m3u 2>/dev/null | grep -c "^#EXTINF" || echo 0)
+
+          if [ "$OLD_COUNT" -gt 0 ] && [ "$NEW_COUNT" -lt $((OLD_COUNT * 7 / 10)) ]; then
+            echo "Channel count dropped >30% ($OLD_COUNT -> $NEW_COUNT). Aborting auto-push to prevent bad upstream wipe."
+            exit 1
+          fi
+
           if git diff --staged --quiet; then
             echo "No stream updates detected. Playlists are already healthy."
           else

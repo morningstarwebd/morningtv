@@ -18,7 +18,10 @@ impl ChannelCacheRepository {
     /// Atomically saves the complete channel list to the SQLite cache
     pub fn save_all(&self, channels: &[Channel]) -> StorageResult<()> {
         let conn_arc = self.db.conn();
-        let mut conn = conn_arc.lock().unwrap();
+        let mut conn = conn_arc.lock().map_err(|e| {
+            tracing::error!(error = %e, "ChannelCache DB mutex poisoned in save_all");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
@@ -66,7 +69,10 @@ impl ChannelCacheRepository {
     /// Loads all cached channels from SQLite storage
     pub fn load_all(&self) -> StorageResult<Vec<Channel>> {
         let conn_arc = self.db.conn();
-        let conn = conn_arc.lock().unwrap();
+        let conn = conn_arc.lock().map_err(|e| {
+            tracing::error!(error = %e, "ChannelCache DB mutex poisoned in load_all");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
         let mut stmt = conn
             .prepare(
                 "SELECT id, name, url, group_title, logo, fallbacks, provider, http_user_agent, http_referrer
@@ -114,7 +120,13 @@ impl ChannelCacheRepository {
     /// Checks if the cached channels are still fresh within max_age_secs
     pub fn is_fresh(&self, max_age_secs: u64) -> bool {
         let conn_arc = self.db.conn();
-        let conn = conn_arc.lock().unwrap();
+        let conn = match conn_arc.lock() {
+            Ok(g) => g,
+            Err(e) => {
+                tracing::error!(error = %e, "ChannelCache DB mutex poisoned in is_fresh");
+                return false;
+            }
+        };
         let result: rusqlite::Result<i64> = conn.query_row(
             "SELECT cached_at FROM channels_cache ORDER BY rowid LIMIT 1",
             [],
@@ -136,7 +148,10 @@ impl ChannelCacheRepository {
     /// Persistent metadata: get last synced timestamp
     pub fn get_last_synced_at(&self) -> StorageResult<Option<String>> {
         let conn_arc = self.db.conn();
-        let conn = conn_arc.lock().unwrap();
+        let conn = conn_arc.lock().map_err(|e| {
+            tracing::error!(error = %e, "ChannelCache DB mutex poisoned in get_last_synced_at");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
         let mut stmt = conn
             .prepare("SELECT value FROM app_metadata WHERE key = 'last_synced_at'")
             .map_err(StorageError::Sqlite)?;
@@ -153,7 +168,10 @@ impl ChannelCacheRepository {
     /// Persistent metadata: set last synced timestamp
     pub fn set_last_synced_at(&self, timestamp: &str) -> StorageResult<()> {
         let conn_arc = self.db.conn();
-        let conn = conn_arc.lock().unwrap();
+        let conn = conn_arc.lock().map_err(|e| {
+            tracing::error!(error = %e, "ChannelCache DB mutex poisoned in set_last_synced_at");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
         conn.execute(
             "INSERT INTO app_metadata (key, value) VALUES ('last_synced_at', ?1)
              ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -166,7 +184,13 @@ impl ChannelCacheRepository {
     /// Cache count: returns total number of cached channels
     pub fn count(&self) -> usize {
         let conn_arc = self.db.conn();
-        let conn = conn_arc.lock().unwrap();
+        let conn = match conn_arc.lock() {
+            Ok(g) => g,
+            Err(e) => {
+                tracing::error!(error = %e, "ChannelCache DB mutex poisoned in count");
+                return 0;
+            }
+        };
         conn.query_row("SELECT COUNT(*) FROM channels_cache", [], |row| {
             row.get::<_, i64>(0)
         })
@@ -176,7 +200,10 @@ impl ChannelCacheRepository {
     /// Cache wipe
     pub fn clear(&self) -> StorageResult<()> {
         let conn_arc = self.db.conn();
-        let conn = conn_arc.lock().unwrap();
+        let conn = conn_arc.lock().map_err(|e| {
+            tracing::error!(error = %e, "ChannelCache DB mutex poisoned in clear");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
         conn.execute("DELETE FROM channels_cache", [])
             .map_err(StorageError::Sqlite)?;
         Ok(())

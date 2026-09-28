@@ -1,14 +1,24 @@
-// src/utils/proxy.ts
-// Client utility for communicating with local Axum stream proxy securely
-
 import { invoke } from "@tauri-apps/api/core";
+import { createLogger } from "./logger.ts";
+
+const log = createLogger("ProxyClient");
 
 let cachedToken: string | null = null;
+let tokenExpiry = 0;
 let tokenFetchPromise: Promise<string> | null = null;
+
 let cachedPort = 18181;
+let portExpiry = 0;
 let portFetchPromise: Promise<number> | null = null;
 
-export async function getProxyPort(): Promise<number> {
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes TTL
+
+export async function getProxyPort(forceRefresh = false): Promise<number> {
+	const now = Date.now();
+	if (!forceRefresh && cachedPort > 0 && now < portExpiry) {
+		return cachedPort;
+	}
+
 	if (portFetchPromise) return portFetchPromise;
 
 	portFetchPromise = (async () => {
@@ -16,10 +26,15 @@ export async function getProxyPort(): Promise<number> {
 			const port = await invoke<number>("get_proxy_port");
 			if (port && port > 0) {
 				cachedPort = port;
+				portExpiry = Date.now() + CACHE_TTL_MS;
+				log.debug("Proxy port refreshed", { port });
 			}
 			return cachedPort;
 		} catch (e) {
-			console.warn("Could not query dynamic proxy port, fallback to 18181:", e);
+			log.warn("Could not query dynamic proxy port, fallback to cached:", {
+				error: e,
+				cachedPort,
+			});
 			return cachedPort;
 		} finally {
 			portFetchPromise = null;
@@ -33,20 +48,30 @@ export function getCurrentProxyPort(): number {
 	return cachedPort;
 }
 
-export async function getProxyToken(): Promise<string> {
+export async function getProxyToken(forceRefresh = false): Promise<string> {
 	// Eagerly sync port as well
-	getProxyPort().catch(() => {});
+	getProxyPort(forceRefresh).catch(() => {});
 
-	if (cachedToken) return cachedToken;
+	const now = Date.now();
+	if (!forceRefresh && cachedToken && now < tokenExpiry) {
+		return cachedToken;
+	}
+
 	if (tokenFetchPromise) return tokenFetchPromise;
 
 	tokenFetchPromise = (async () => {
 		try {
 			const token = await invoke<string>("get_proxy_auth_token");
-			cachedToken = token;
+			if (token) {
+				cachedToken = token;
+				tokenExpiry = Date.now() + CACHE_TTL_MS;
+				log.debug("Proxy auth token acquired/refreshed");
+			}
 			return token;
 		} catch (e) {
-			console.error("Failed to retrieve proxy authentication token:", e);
+			log.error("Failed to retrieve proxy authentication token", { error: e });
+			cachedToken = null;
+			tokenExpiry = 0;
 			return "";
 		} finally {
 			tokenFetchPromise = null;
@@ -54,6 +79,14 @@ export async function getProxyToken(): Promise<string> {
 	})();
 
 	return tokenFetchPromise;
+}
+
+/** Invalidate cached credentials (e.g. if proxy restarted or returned 401) */
+export function invalidateProxyCache(): void {
+	log.info("Invalidating proxy cache (token & port)");
+	cachedToken = null;
+	tokenExpiry = 0;
+	portExpiry = 0;
 }
 
 export function buildProxiedUrl(
