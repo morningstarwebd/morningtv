@@ -192,3 +192,57 @@ fn test_proxy_dynamic_port_reporting() {
     assert!(port > 0, "Proxy port must be greater than 0");
 }
 
+#[test]
+fn test_urlencoding_roundtrip() {
+    use app_lib::network::proxy::{urlencoding_decode, urlencoding_encode};
+
+    let original = "https://cdn.example.com/path/to/stream.m3u8?token=xyz&expires=123456#frag";
+    let encoded = urlencoding_encode(original);
+    assert!(!encoded.contains("://"));
+    assert!(encoded.contains("%3A%2F%2F"));
+    let decoded = urlencoding_decode(&encoded);
+    assert_eq!(decoded, original);
+}
+
+#[test]
+fn test_urlencoding_special_chars() {
+    use app_lib::network::proxy::{urlencoding_decode, urlencoding_encode};
+
+    let special = "Hello World! @#$%^&*()_+~`-={}|[]\\:\";'<>?,./";
+    let encoded = urlencoding_encode(special);
+    let decoded = urlencoding_decode(&encoded);
+    assert_eq!(decoded, special);
+}
+
+#[test]
+fn test_urlencoding_unicode() {
+    use app_lib::network::proxy::{urlencoding_decode, urlencoding_encode};
+
+    let unicode_str = "https://stream.tv/লাইভ/স্ট্রীম.m3u8?channel=আনন্দ";
+    let encoded = urlencoding_encode(unicode_str);
+    let decoded = urlencoding_decode(&encoded);
+    assert_eq!(decoded, unicode_str);
+}
+
+#[test]
+fn test_urlencoding_empty() {
+    use app_lib::network::proxy::{urlencoding_decode, urlencoding_encode};
+
+    assert_eq!(urlencoding_encode(""), "");
+    assert_eq!(urlencoding_decode(""), "");
+}
+
+#[test]
+fn test_proxy_metrics_tracking() {
+    use app_lib::network::proxy::METRICS;
+    use std::sync::atomic::Ordering;
+
+    let init_reqs = METRICS.total_requests.load(Ordering::Relaxed);
+    METRICS.total_requests.fetch_add(1, Ordering::Relaxed);
+    assert_eq!(METRICS.total_requests.load(Ordering::Relaxed), init_reqs + 1);
+
+    let init_hits = METRICS.cache_hits.load(Ordering::Relaxed);
+    METRICS.cache_hits.fetch_add(1, Ordering::Relaxed);
+    assert_eq!(METRICS.cache_hits.load(Ordering::Relaxed), init_hits + 1);
+}
+

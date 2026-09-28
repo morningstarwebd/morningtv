@@ -13,11 +13,11 @@ pub mod storage;
 use app::{AppState, SharedAppState};
 use std::sync::Arc;
 use tauri::Manager;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let state: SharedAppState = Arc::new(Mutex::new(AppState::new().expect("Failed to initialize AppState")));
+    let state: SharedAppState = Arc::new(RwLock::new(AppState::new().expect("Failed to initialize AppState")));
 
     // Start local streaming proxy to eliminate CORS & bypass User-Agent blocks
     network::StreamProxy::start();
@@ -26,10 +26,10 @@ pub fn run() {
     let state_for_load = Arc::clone(&state);
     tauri::async_runtime::spawn(async move {
         let playlist_url = {
-            let guard = state_for_load.lock().await;
+            let guard = state_for_load.read().await;
             guard.settings.playlist_url.clone()
         };
-        let mut guard = state_for_load.lock().await;
+        let mut guard = state_for_load.write().await;
         let _ = guard.load_playlist(&playlist_url).await;
     });
 

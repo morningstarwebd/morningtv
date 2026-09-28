@@ -8,7 +8,7 @@ use crate::network::ResilientHttpClient;
 use crate::playlist::{ChannelFilter, PlaylistFetcher};
 use crate::storage::{ChannelCacheRepository, Database, FavoritesRepository, HistoryRepository};
 use std::sync::Arc;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 pub struct AppState {
     pub settings: AppSettings,
@@ -24,7 +24,7 @@ pub struct AppState {
     pub last_synced_at: Option<String>,
 }
 
-pub type SharedAppState = Arc<Mutex<AppState>>;
+pub type SharedAppState = Arc<RwLock<AppState>>;
 
 impl AppState {
     pub fn new() -> AppResult<Self> {

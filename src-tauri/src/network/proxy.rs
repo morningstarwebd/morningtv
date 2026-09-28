@@ -9,10 +9,11 @@ use axum::{
     http::{HeaderMap, HeaderValue, StatusCode, Uri},
     response::{IntoResponse, Response},
     routing::get,
-    Router,
+    Json, Router,
 };
 use std::collections::{HashMap, VecDeque};
 use std::net::{SocketAddr, ToSocketAddrs};
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::time::Instant;
 use tokio::sync::RwLock;
@@ -66,6 +67,7 @@ impl SegmentLruCache {
         // Evict oldest until under capacity
         while self.entries.len() >= self.capacity {
             if let Some(oldest) = self.order.pop_front() {
+                log::debug!("Evicted LRU proxy cache segment: {}", oldest);
                 self.entries.remove(&oldest);
             } else {
                 break;
@@ -105,8 +107,37 @@ impl ProxyState {
     }
 }
 
+pub struct ProxyMetrics {
+    pub total_requests: AtomicU64,
+    pub cache_hits: AtomicU64,
+    pub cache_misses: AtomicU64,
+    pub upstream_errors: AtomicU64,
+    pub ssrf_blocks: AtomicU64,
+    pub auth_failures: AtomicU64,
+}
+
+pub static METRICS: ProxyMetrics = ProxyMetrics {
+    total_requests: AtomicU64::new(0),
+    cache_hits: AtomicU64::new(0),
+    cache_misses: AtomicU64::new(0),
+    upstream_errors: AtomicU64::new(0),
+    ssrf_blocks: AtomicU64::new(0),
+    auth_failures: AtomicU64::new(0),
+};
+
+static ACTIVE_REQUESTS: AtomicUsize = AtomicUsize::new(0);
+const MAX_CONCURRENT_PROXY_REQUESTS: usize = 64;
+
+struct ActiveRequestGuard;
+impl Drop for ActiveRequestGuard {
+    fn drop(&mut self) {
+        ACTIVE_REQUESTS.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
 static PROXY_AUTH_TOKEN: OnceLock<String> = OnceLock::new();
 static PROXY_PORT: OnceLock<u16> = OnceLock::new();
+static PROXY_START_TIME: OnceLock<Instant> = OnceLock::new();
 
 pub struct StreamProxy;
 
@@ -131,6 +162,7 @@ impl StreamProxy {
     pub fn start() {
         tauri::async_runtime::spawn(async move {
             let _ = Self::get_auth_token(); // ensure initialized
+            PROXY_START_TIME.get_or_init(Instant::now);
 
             let redirect_policy = reqwest::redirect::Policy::custom(|attempt| {
                 if attempt.previous().len() >= 10 {
@@ -182,8 +214,8 @@ impl StreamProxy {
             let app = Router::new()
                 .route("/stream", get(handle_stream))
                 .route("/prewarm", get(handle_prewarm))
+                .route("/health", get(handle_health))
                 .route("/return_to_morningtv", get(handle_return))
-                .route("/return_to_novatv", get(handle_return))
                 .layer(CorsLayer::permissive())
                 .with_state(state);
 
@@ -221,6 +253,35 @@ impl StreamProxy {
 
 async fn handle_return() -> Response {
     (StatusCode::OK, "Returning to MorningTV").into_response()
+}
+
+async fn handle_health(State(state): State<ProxyState>) -> Response {
+    let uptime = PROXY_START_TIME
+        .get()
+        .map(|t| t.elapsed().as_secs())
+        .unwrap_or(0);
+    let cache_len = {
+        let cache = state.cache.read().await;
+        cache.entries.len()
+    };
+    let active = ACTIVE_REQUESTS.load(Ordering::Relaxed);
+    let body = serde_json::json!({
+        "status": "healthy",
+        "service": "MorningTV Stream Proxy",
+        "port": StreamProxy::get_port(),
+        "uptime_secs": uptime,
+        "active_requests": active,
+        "cache_entries": cache_len,
+        "metrics": {
+            "total_requests": METRICS.total_requests.load(Ordering::Relaxed),
+            "cache_hits": METRICS.cache_hits.load(Ordering::Relaxed),
+            "cache_misses": METRICS.cache_misses.load(Ordering::Relaxed),
+            "upstream_errors": METRICS.upstream_errors.load(Ordering::Relaxed),
+            "ssrf_blocks": METRICS.ssrf_blocks.load(Ordering::Relaxed),
+            "auth_failures": METRICS.auth_failures.load(Ordering::Relaxed),
+        }
+    });
+    (StatusCode::OK, Json(body)).into_response()
 }
 
 /// Validates whether the incoming request contains the valid ephemeral proxy token
@@ -492,8 +553,23 @@ async fn handle_stream(
     incoming_headers: HeaderMap,
     uri: Uri,
 ) -> Response {
+    METRICS.total_requests.fetch_add(1, Ordering::Relaxed);
+
+    // Concurrency limit to protect system resources
+    let active = ACTIVE_REQUESTS.fetch_add(1, Ordering::Relaxed);
+    if active >= MAX_CONCURRENT_PROXY_REQUESTS {
+        ACTIVE_REQUESTS.fetch_sub(1, Ordering::Relaxed);
+        return (
+            StatusCode::TOO_MANY_REQUESTS,
+            "Too many concurrent proxy requests",
+        )
+            .into_response();
+    }
+    let _req_guard = ActiveRequestGuard;
+
     // 0. AUTHENTICATION & ACCESS CONTROL
     if !verify_auth(&uri, &incoming_headers) {
+        METRICS.auth_failures.fetch_add(1, Ordering::Relaxed);
         return (
             StatusCode::FORBIDDEN,
             "Forbidden: Invalid or missing proxy token",
@@ -509,12 +585,14 @@ async fn handle_stream(
 
     // 1. ANTI-SSRF TARGET URL VALIDATION (ASYNC WITH DNS REBINDING DEFENSE)
     if let Err(err_msg) = validate_target_url_async(&target_url).await {
+        METRICS.ssrf_blocks.fetch_add(1, Ordering::Relaxed);
         log::warn!("SSRF or invalid URL blocked by stream proxy: {} ({})", target_url, err_msg);
         return (StatusCode::BAD_REQUEST, err_msg).into_response();
     }
 
     // 2. FAST PATH: In-Memory RAM Cache (Instant sub-millisecond return!)
     if let Some(cached) = state.get_cached(&target_url).await {
+        METRICS.cache_hits.fetch_add(1, Ordering::Relaxed);
         let mut headers = HeaderMap::new();
         if let Ok(val) = HeaderValue::from_str(&cached.content_type) {
             headers.insert(axum::http::header::CONTENT_TYPE, val);
@@ -541,6 +619,7 @@ async fn handle_stream(
         );
         return (StatusCode::OK, headers, Body::from(cached.data)).into_response();
     }
+    METRICS.cache_misses.fetch_add(1, Ordering::Relaxed);
 
     let lower = target_url.to_lowercase();
     let mut req_builder = state.client
@@ -600,18 +679,13 @@ async fn handle_stream(
     let upstream_res = match upstream_res {
         Some(res) => res,
         None => {
-            match req_builder.send().await {
-                Ok(res) => res,
-                Err(e) => {
-                    log::warn!(
-                        "Stream proxy fetch exhausted retries for {}: {:?} (last: {:?})",
-                        target_url,
-                        e,
-                        last_err
-                    );
-                    return (StatusCode::BAD_GATEWAY, "Upstream fetch error").into_response();
-                }
-            }
+            log::warn!(
+                "Stream proxy exhausted 3 retries for {}: {:?}",
+                target_url,
+                last_err
+            );
+            METRICS.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            return (StatusCode::BAD_GATEWAY, "Upstream fetch error after retries").into_response();
         }
     };
 
@@ -660,7 +734,10 @@ async fn handle_stream(
                 );
                 (headers, Body::from(bytes)).into_response()
             }
-            Err(_) => (StatusCode::BAD_GATEWAY, "Failed to read manifest text").into_response(),
+            Err(_) => {
+                METRICS.upstream_errors.fetch_add(1, Ordering::Relaxed);
+                (StatusCode::BAD_GATEWAY, "Failed to read manifest text").into_response()
+            }
         }
     } else {
         let status = StatusCode::from_u16(upstream_status.as_u16()).unwrap_or(StatusCode::OK);
@@ -689,10 +766,11 @@ async fn handle_stream(
             HeaderValue::from_static("*"),
         );
 
+        const MAX_BUFFERED_SIZE: u64 = 10 * 1024 * 1024; // 10MB
         let is_range_req = incoming_headers.contains_key(axum::http::header::RANGE);
         let content_length = upstream_res.content_length();
 
-        if !is_range_req && content_length.map_or(true, |l| l < 6 * 1024 * 1024) {
+        if !is_range_req && content_length.map_or(false, |l| l < MAX_BUFFERED_SIZE) {
             match upstream_res.bytes().await {
                 Ok(bytes) => {
                     headers.insert(
@@ -708,7 +786,10 @@ async fn handle_stream(
                         .await;
                     (status, headers, Body::from(bytes)).into_response()
                 }
-                Err(_) => (StatusCode::BAD_GATEWAY, "Failed reading upstream segment").into_response(),
+                Err(_) => {
+                    METRICS.upstream_errors.fetch_add(1, Ordering::Relaxed);
+                    (StatusCode::BAD_GATEWAY, "Failed reading upstream segment").into_response()
+                }
             }
         } else {
             if let Some(len) = content_length {

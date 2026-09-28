@@ -3,7 +3,7 @@
 
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
-const NAV_SCRIPT: &str = r##"
+const NAV_SCRIPT_TEMPLATE: &str = r##"
 (function() {
     if (window.__morningtv_nav_active) return;
     window.__morningtv_nav_active = true;
@@ -91,7 +91,7 @@ const NAV_SCRIPT: &str = r##"
         };
         btnLive.onclick = function(e) {
             e.stopPropagation();
-            window.location.href = 'http://127.0.0.1:18181/return_to_morningtv';
+            window.location.href = 'http://127.0.0.1:__MORNINGTV_PROXY_PORT__/return_to_morningtv';
         };
         leftBox.appendChild(btnLive);
 
@@ -107,7 +107,7 @@ const NAV_SCRIPT: &str = r##"
             if (window.history.length > 1) {
                 window.history.back();
             } else {
-                window.location.href = 'http://127.0.0.1:18181/return_to_morningtv';
+                window.location.href = 'http://127.0.0.1:__MORNINGTV_PROXY_PORT__/return_to_morningtv';
             }
         };
         leftBox.appendChild(btnBack);
@@ -157,7 +157,7 @@ const NAV_SCRIPT: &str = r##"
         btnClose.onmouseleave = function() { btnClose.style.background = 'rgba(239,68,68,0.2)'; btnClose.style.color = '#fca5a5'; };
         btnClose.onclick = function(e) {
             e.stopPropagation();
-            window.location.href = 'http://127.0.0.1:18181/return_to_morningtv';
+            window.location.href = 'http://127.0.0.1:__MORNINGTV_PROXY_PORT__/return_to_morningtv';
         };
         rightBox.appendChild(btnClose);
 
@@ -189,7 +189,7 @@ const NAV_SCRIPT: &str = r##"
                 document.activeElement.blur();
                 return;
             }
-            window.location.href = 'http://127.0.0.1:18181/return_to_morningtv';
+            window.location.href = 'http://127.0.0.1:__MORNINGTV_PROXY_PORT__/return_to_morningtv';
         }
     });
 
@@ -201,6 +201,10 @@ const NAV_SCRIPT: &str = r##"
     setInterval(buildNav, 1500);
 })();
 "##;
+
+pub fn build_nav_script(port: u16) -> String {
+    NAV_SCRIPT_TEMPLATE.replace("__MORNINGTV_PROXY_PORT__", &port.to_string())
+}
 
 #[tauri::command]
 pub async fn open_youtube(app: AppHandle) -> Result<(), String> {
@@ -249,10 +253,13 @@ pub async fn open_youtube(app: AppHandle) -> Result<(), String> {
             .map_err(|e| format!("Failed to attach parent window: {}", e))?;
     }
 
+    let proxy_port = crate::network::proxy::StreamProxy::get_port();
+    let nav_script = build_nav_script(proxy_port);
+
     let window = builder
         .on_navigation(move |nav_url| {
             let s = nav_url.as_str();
-            if s.contains("return_to_morningtv") || s.contains("return_to_novatv") || s.contains("close_window") || nav_url.scheme() == "morningtv" || nav_url.scheme() == "novatv" {
+            if s.contains("return_to_morningtv") || s.contains("close_window") || nav_url.scheme() == "morningtv" {
                 if let Some(main) = app_handle.get_webview_window("main") {
                     let _ = main.show();
                     let _ = main.unminimize();
@@ -265,7 +272,7 @@ pub async fn open_youtube(app: AppHandle) -> Result<(), String> {
             }
             true
         })
-        .initialization_script(NAV_SCRIPT)
+        .initialization_script(&nav_script)
         .build()
         .map_err(|e| format!("Failed to create YouTube window: {}", e))?;
 
@@ -322,10 +329,13 @@ pub async fn open_hotstar(app: AppHandle) -> Result<(), String> {
             .map_err(|e| format!("Failed to attach parent window: {}", e))?;
     }
 
+    let proxy_port = crate::network::proxy::StreamProxy::get_port();
+    let nav_script = build_nav_script(proxy_port);
+
     let window = builder
         .on_navigation(move |nav_url| {
             let s = nav_url.as_str();
-            if s.contains("return_to_morningtv") || s.contains("return_to_novatv") || s.contains("close_window") || nav_url.scheme() == "morningtv" || nav_url.scheme() == "novatv" {
+            if s.contains("return_to_morningtv") || s.contains("close_window") || nav_url.scheme() == "morningtv" {
                 if let Some(main) = app_handle.get_webview_window("main") {
                     let _ = main.show();
                     let _ = main.unminimize();
@@ -338,7 +348,7 @@ pub async fn open_hotstar(app: AppHandle) -> Result<(), String> {
             }
             true
         })
-        .initialization_script(NAV_SCRIPT)
+        .initialization_script(&nav_script)
         .build()
         .map_err(|e| format!("Failed to create JioHotstar window: {}", e))?;
 

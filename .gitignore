@@ -40,5 +40,6 @@ wsa/
 
 # Secrets & Private Keys
 *.key
+*.key.pub
 scripts/*.key
-
+scripts/*.key.pub

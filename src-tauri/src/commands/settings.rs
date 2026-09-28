@@ -8,13 +8,13 @@ use tauri::State;
 
 #[tauri::command]
 pub async fn get_settings(state: State<'_, SharedAppState>) -> Result<AppSettings, String> {
-    let guard = state.lock().await;
+    let guard = state.read().await;
     Ok(guard.settings.clone())
 }
 
 #[tauri::command]
 pub async fn save_settings(settings: AppSettings, state: State<'_, SharedAppState>) -> Result<AppSettings, String> {
-    let mut guard = state.lock().await;
+    let mut guard = state.write().await;
     let url_changed = guard.settings.playlist_url != settings.playlist_url;
     guard.settings = settings.clone();
     guard.settings.save().map_err(|e| e.to_string())?;
@@ -30,7 +30,7 @@ pub async fn save_settings(settings: AppSettings, state: State<'_, SharedAppStat
 
 #[tauri::command]
 pub async fn cycle_quality(state: State<'_, SharedAppState>) -> Result<QualityTier, String> {
-    let mut guard = state.lock().await;
+    let mut guard = state.write().await;
     Ok(guard.cycle_quality())
 }
 

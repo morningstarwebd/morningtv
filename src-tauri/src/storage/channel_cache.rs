@@ -15,7 +15,7 @@ impl ChannelCacheRepository {
         Self { db }
     }
 
-    /// Channel list সম্পূর্ণ replace করে SQLite-এ save করো (atomic transaction)
+    /// Atomically saves the complete channel list to the SQLite cache
     pub fn save_all(&self, channels: &[Channel]) -> StorageResult<()> {
         let conn_arc = self.db.conn();
         let mut conn = conn_arc.lock().unwrap();
@@ -63,7 +63,7 @@ impl ChannelCacheRepository {
         Ok(())
     }
 
-    /// SQLite থেকে সব channel load করো
+    /// Loads all cached channels from SQLite storage
     pub fn load_all(&self) -> StorageResult<Vec<Channel>> {
         let conn_arc = self.db.conn();
         let conn = conn_arc.lock().unwrap();
@@ -111,7 +111,7 @@ impl ChannelCacheRepository {
             .map_err(StorageError::Sqlite)
     }
 
-    /// Cache কি এখনো fresh? max_age_secs এর মধ্যে আছে?
+    /// Checks if the cached channels are still fresh within max_age_secs
     pub fn is_fresh(&self, max_age_secs: u64) -> bool {
         let conn_arc = self.db.conn();
         let conn = conn_arc.lock().unwrap();
