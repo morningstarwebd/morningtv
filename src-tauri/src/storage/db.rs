@@ -63,14 +63,16 @@ impl Database {
             );
 
             CREATE TABLE IF NOT EXISTS channels_cache (
-                id          TEXT    PRIMARY KEY,
-                name        TEXT    NOT NULL,
-                url         TEXT    NOT NULL,
-                group_title TEXT    NOT NULL DEFAULT 'General',
-                logo        TEXT,
-                fallbacks   TEXT    NOT NULL DEFAULT '[]',
-                provider    TEXT,
-                cached_at   INTEGER NOT NULL
+                id              TEXT    PRIMARY KEY,
+                name            TEXT    NOT NULL,
+                url             TEXT    NOT NULL,
+                group_title     TEXT    NOT NULL DEFAULT 'General',
+                logo            TEXT,
+                fallbacks       TEXT    NOT NULL DEFAULT '[]',
+                provider        TEXT,
+                http_user_agent TEXT,
+                http_referrer   TEXT,
+                cached_at       INTEGER NOT NULL
             );
 
             CREATE INDEX IF NOT EXISTS idx_cache_group
@@ -78,9 +80,19 @@ impl Database {
 
             CREATE INDEX IF NOT EXISTS idx_cache_time
                 ON channels_cache(cached_at);
+
+            CREATE TABLE IF NOT EXISTS app_metadata (
+                key   TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
             ",
         )
         .map_err(StorageError::Sqlite)?;
+
+        // Non-destructive column additions for existing databases
+        let _ = conn.execute("ALTER TABLE channels_cache ADD COLUMN http_user_agent TEXT", []);
+        let _ = conn.execute("ALTER TABLE channels_cache ADD COLUMN http_referrer TEXT", []);
+
         Ok(())
     }
 

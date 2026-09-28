@@ -39,3 +39,8 @@ pub fn get_proxy_auth_token() -> String {
     crate::network::proxy::StreamProxy::get_auth_token().to_string()
 }
 
+#[tauri::command]
+pub fn get_proxy_port() -> u16 {
+    crate::network::proxy::StreamProxy::get_port()
+}
+

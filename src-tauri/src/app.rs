@@ -34,6 +34,8 @@ impl AppState {
         let history_repo = HistoryRepository::new(db.clone());
         let channel_cache_repo = ChannelCacheRepository::new(db);
 
+        let last_synced_at = channel_cache_repo.get_last_synced_at().unwrap_or(None);
+
         Ok(Self {
             settings,
             all_channels: Vec::new(),
@@ -45,7 +47,7 @@ impl AppState {
             favorites_repo,
             history_repo,
             channel_cache_repo,
-            last_synced_at: None,
+            last_synced_at,
         })
     }
 
@@ -102,6 +104,9 @@ impl AppState {
 
         // ── STEP C: Save to SQLite cache ──
         let _ = self.channel_cache_repo.save_all(&self.all_channels);
+        let now_str = chrono::Utc::now().to_rfc3339();
+        let _ = self.channel_cache_repo.set_last_synced_at(&now_str);
+        self.last_synced_at = Some(now_str);
 
         Ok(())
     }

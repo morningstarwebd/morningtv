@@ -33,8 +33,8 @@ impl ChannelCacheRepository {
             let mut stmt = tx
                 .prepare(
                     "INSERT INTO channels_cache
-                 (id, name, url, group_title, logo, fallbacks, provider, cached_at)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8)",
+                 (id, name, url, group_title, logo, fallbacks, provider, http_user_agent, http_referrer, cached_at)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
                 )
                 .map_err(StorageError::Sqlite)?;
 
@@ -50,6 +50,8 @@ impl ChannelCacheRepository {
                     ch.logo,
                     fallbacks_json,
                     ch.provider,
+                    ch.http_user_agent,
+                    ch.http_referrer,
                     now,
                 ])
                 .map_err(StorageError::Sqlite)?;
@@ -67,7 +69,7 @@ impl ChannelCacheRepository {
         let conn = conn_arc.lock().unwrap();
         let mut stmt = conn
             .prepare(
-                "SELECT id, name, url, group_title, logo, fallbacks, provider
+                "SELECT id, name, url, group_title, logo, fallbacks, provider, http_user_agent, http_referrer
              FROM channels_cache ORDER BY rowid",
             )
             .map_err(StorageError::Sqlite)?;
@@ -83,6 +85,8 @@ impl ChannelCacheRepository {
                     .get::<_, String>(5)
                     .unwrap_or_else(|_| "[]".to_string());
                 let provider: Option<String> = row.get(6)?;
+                let http_user_agent: Option<String> = row.get(7)?;
+                let http_referrer: Option<String> = row.get(8)?;
 
                 let fallback_urls: Vec<String> =
                     serde_json::from_str(&fallbacks_json).unwrap_or_default();
@@ -95,8 +99,8 @@ impl ChannelCacheRepository {
                     logo,
                     fallback_urls,
                     provider,
-                    http_user_agent: None,
-                    http_referrer: None,
+                    http_user_agent,
+                    http_referrer,
                     is_favorite: false,
                 })
             })
@@ -127,6 +131,36 @@ impl ChannelCacheRepository {
             }
             Err(_) => false, // table empty = not fresh
         }
+    }
+
+    /// Persistent metadata: get last synced timestamp
+    pub fn get_last_synced_at(&self) -> StorageResult<Option<String>> {
+        let conn_arc = self.db.conn();
+        let conn = conn_arc.lock().unwrap();
+        let mut stmt = conn
+            .prepare("SELECT value FROM app_metadata WHERE key = 'last_synced_at'")
+            .map_err(StorageError::Sqlite)?;
+
+        let mut rows = stmt.query([]).map_err(StorageError::Sqlite)?;
+        if let Some(row) = rows.next().map_err(StorageError::Sqlite)? {
+            let val: String = row.get(0).map_err(StorageError::Sqlite)?;
+            Ok(Some(val))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Persistent metadata: set last synced timestamp
+    pub fn set_last_synced_at(&self, timestamp: &str) -> StorageResult<()> {
+        let conn_arc = self.db.conn();
+        let conn = conn_arc.lock().unwrap();
+        conn.execute(
+            "INSERT INTO app_metadata (key, value) VALUES ('last_synced_at', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            rusqlite::params![timestamp],
+        )
+        .map_err(StorageError::Sqlite)?;
+        Ok(())
     }
 
     /// Cache count: returns total number of cached channels

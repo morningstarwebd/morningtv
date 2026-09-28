@@ -73,6 +73,7 @@ pub fn run() {
             commands::check_playlist_update,
             commands::background_refresh_playlist,
             commands::get_proxy_auth_token,
+            commands::get_proxy_port,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,4 +1,4 @@
-name: MorningTV Stream Sentinel Auto-Heal
+name: MorningTV Stream Sentinel Auto-Heal (Node.js Engine)
 
 on:
   schedule:

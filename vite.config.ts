@@ -20,4 +20,20 @@ export default defineConfig({
       ],
     },
   },
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules')) {
+            if (id.includes('hls.js')) return 'vendor-hls';
+            if (id.includes('react-dom') || id.includes('/react/') || id.endsWith('/react')) return 'vendor-react';
+            if (id.includes('lucide-react')) return 'vendor-lucide';
+            if (id.includes('@tauri-apps')) return 'vendor-tauri';
+            return 'vendor';
+          }
+        },
+      },
+    },
+  },
 })

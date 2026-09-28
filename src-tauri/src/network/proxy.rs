@@ -106,12 +106,19 @@ impl ProxyState {
 }
 
 static PROXY_AUTH_TOKEN: OnceLock<String> = OnceLock::new();
+static PROXY_PORT: OnceLock<u16> = OnceLock::new();
 
 pub struct StreamProxy;
 
 impl StreamProxy {
-    pub const PORT: u16 = 18181;
+    pub const DEFAULT_PORT: u16 = 18181;
+    pub const PORT: u16 = 18181; // backwards compatibility
     pub const MAX_CACHE_SEGMENTS: usize = 50;
+
+    /// Returns the currently bound port, or DEFAULT_PORT if not yet bound
+    pub fn get_port() -> u16 {
+        *PROXY_PORT.get().unwrap_or(&Self::DEFAULT_PORT)
+    }
 
     /// Returns the active ephemeral session auth token.
     /// Generated randomly on first call using UUID v4.
@@ -123,7 +130,6 @@ impl StreamProxy {
 
     pub fn start() {
         tauri::async_runtime::spawn(async move {
-            let addr = SocketAddr::from(([127, 0, 0, 1], Self::PORT));
             let _ = Self::get_auth_token(); // ensure initialized
 
             let client = reqwest::Client::builder()
@@ -150,14 +156,33 @@ impl StreamProxy {
                 .layer(CorsLayer::permissive())
                 .with_state(state);
 
-            match tokio::net::TcpListener::bind(addr).await {
-                Ok(listener) => {
-                    log::info!("Axum streaming proxy listening on http://{} (Secured with Ephemeral Token + Anti-SSRF)", addr);
-                    let _ = axum::serve(listener, app).await;
+            // Attempt to bind to candidate ports with dynamic fallback to OS ephemeral port (0)
+            let candidate_ports = [18181, 18182, 18183, 18184, 18185, 0];
+            let mut bound_listener = None;
+
+            for port in candidate_ports {
+                let addr = SocketAddr::from(([127, 0, 0, 1], port));
+                match tokio::net::TcpListener::bind(addr).await {
+                    Ok(listener) => {
+                        let actual_port = listener.local_addr().map(|a| a.port()).unwrap_or(port);
+                        let _ = PROXY_PORT.set(actual_port);
+                        log::info!(
+                            "Axum streaming proxy listening on http://127.0.0.1:{} (Secured with Ephemeral Token + Anti-SSRF)",
+                            actual_port
+                        );
+                        bound_listener = Some(listener);
+                        break;
+                    }
+                    Err(e) => {
+                        log::warn!("Port {} unavailable for Axum proxy: {}", port, e);
+                    }
                 }
-                Err(e) => {
-                    log::error!("Failed to bind Axum stream proxy on {}: {}", addr, e);
-                }
+            }
+
+            if let Some(listener) = bound_listener {
+                let _ = axum::serve(listener, app).await;
+            } else {
+                log::error!("CRITICAL: Failed to bind Axum stream proxy on any candidate port");
             }
         });
     }
@@ -194,7 +219,50 @@ pub fn verify_auth(uri: &Uri, headers: &HeaderMap) -> bool {
     false
 }
 
-/// Anti-SSRF filter: Rejects localhost, loopback, link-local, and RFC1918 private IP ranges
+/// Robust query parameter extractor that safely preserves target URLs containing '&'
+pub fn extract_target_url(query_str: &str) -> Option<String> {
+    if query_str.is_empty() {
+        return None;
+    }
+    if let Some(idx) = query_str.find("url=") {
+        let after = &query_str[idx + 4..];
+        let raw_url = if let Some(token_pos) = after.find("&token=") {
+            &after[..token_pos]
+        } else if let Some(amp_pos) = after.find('&') {
+            &after[..amp_pos]
+        } else {
+            after
+        };
+        let decoded = urlencoding_decode(raw_url);
+        if !decoded.is_empty() {
+            return Some(decoded);
+        }
+    }
+    None
+}
+
+/// Checks whether an IP address belongs to loopback, private, link-local, multicast or broadcast ranges
+pub fn is_private_or_loopback_ip(ip: &std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            v4.is_loopback()            // 127.0.0.0/8
+                || v4.is_private()      // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+                || v4.is_link_local()   // 169.254.0.0/16 (Cloud metadata)
+                || v4.is_broadcast()    // 255.255.255.255
+                || v4.is_multicast()    // 224.0.0.0/4
+                || v4.octets()[0] == 0  // 0.0.0.0/8
+        }
+        std::net::IpAddr::V6(v6) => {
+            v6.is_loopback()            // ::1
+                || v6.is_multicast()    // ff00::/8
+                || v6.is_unspecified()  // ::
+                || ((v6.segments()[0] & 0xfe00) == 0xfc00) // fc00::/7 (unique local)
+                || ((v6.segments()[0] & 0xffc0) == 0xfe80) // fe80::/10 (link-local)
+        }
+    }
+}
+
+/// Anti-SSRF literal filter: Rejects localhost, loopback, link-local, and RFC1918 private IP ranges
 pub fn is_private_or_loopback_host(host: &str) -> bool {
     let lower = host.trim().to_lowercase();
     if lower.is_empty()
@@ -208,27 +276,13 @@ pub fn is_private_or_loopback_host(host: &str) -> bool {
     }
 
     if let Ok(ip) = lower.parse::<std::net::IpAddr>() {
-        return match ip {
-            std::net::IpAddr::V4(v4) => {
-                v4.is_loopback()            // 127.0.0.0/8
-                    || v4.is_private()      // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
-                    || v4.is_link_local()   // 169.254.0.0/16 (Cloud metadata)
-                    || v4.is_broadcast()    // 255.255.255.255
-                    || v4.is_multicast()    // 224.0.0.0/4
-                    || v4.octets()[0] == 0  // 0.0.0.0/8
-            }
-            std::net::IpAddr::V6(v6) => {
-                v6.is_loopback()            // ::1
-                    || v6.is_multicast()    // ff00::/8
-                    || ((v6.segments()[0] & 0xfe00) == 0xfc00) // fc00::/7 (unique local)
-                    || ((v6.segments()[0] & 0xffc0) == 0xfe80) // fe80::/10 (link-local)
-            }
-        };
+        return is_private_or_loopback_ip(&ip);
     }
 
     false
 }
 
+/// Synchronous validation for structural correctness
 pub fn validate_target_url(target_url: &str) -> Result<Url, &'static str> {
     let parsed = Url::parse(target_url).map_err(|_| "Invalid URL format")?;
     let scheme = parsed.scheme();
@@ -239,6 +293,25 @@ pub fn validate_target_url(target_url: &str) -> Result<Url, &'static str> {
     if is_private_or_loopback_host(host) {
         return Err("Target host resolves to a private, loopback, or metadata address (SSRF blocked)");
     }
+    Ok(parsed)
+}
+
+/// Asynchronous validation that actively performs DNS lookup to prevent DNS-rebinding SSRF
+pub async fn validate_target_url_async(target_url: &str) -> Result<Url, &'static str> {
+    let parsed = validate_target_url(target_url)?;
+    let host = parsed.host_str().ok_or("Target URL has no host")?;
+
+    // Perform DNS lookup to detect hostnames resolving to private/loopback/cloud metadata IPs
+    let port = parsed.port_or_known_default().unwrap_or(80);
+    let host_port = format!("{}:{}", host, port);
+    if let Ok(mut addrs) = tokio::net::lookup_host(&host_port).await {
+        if let Some(first) = addrs.next() {
+            if is_private_or_loopback_ip(&first.ip()) {
+                return Err("Target host resolves to a private, loopback, or metadata address (SSRF blocked)");
+            }
+        }
+    }
+
     Ok(parsed)
 }
 
@@ -253,23 +326,12 @@ async fn handle_prewarm(
     }
 
     let query_str = uri.query().unwrap_or("");
-    let target_url = match query_str.find("url=") {
-        Some(idx) => {
-            let raw = &query_str[idx + 4..];
-            let raw_url = match raw.find('&') {
-                Some(amp_idx) => &raw[..amp_idx],
-                None => raw,
-            };
-            let decoded = urlencoding_decode(raw_url);
-            if decoded.is_empty() {
-                return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response();
-            }
-            decoded
-        }
+    let target_url = match extract_target_url(query_str) {
+        Some(url) => url,
         None => return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response(),
     };
 
-    if let Err(err) = validate_target_url(&target_url) {
+    if let Err(err) = validate_target_url_async(&target_url).await {
         return (StatusCode::BAD_REQUEST, err).into_response();
     }
 
@@ -405,24 +467,13 @@ async fn handle_stream(
     }
 
     let query_str = uri.query().unwrap_or("");
-    let target_url = match query_str.find("url=") {
-        Some(idx) => {
-            let raw = &query_str[idx + 4..];
-            let raw_url = match raw.find('&') {
-                Some(amp_idx) => &raw[..amp_idx],
-                None => raw,
-            };
-            let decoded = urlencoding_decode(raw_url);
-            if decoded.is_empty() {
-                return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response();
-            }
-            decoded
-        }
-        None => return (StatusCode::NOT_FOUND, "Not Found").into_response(),
+    let target_url = match extract_target_url(query_str) {
+        Some(url) => url,
+        None => return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response(),
     };
 
-    // 1. ANTI-SSRF TARGET URL VALIDATION
-    if let Err(err_msg) = validate_target_url(&target_url) {
+    // 1. ANTI-SSRF TARGET URL VALIDATION (ASYNC WITH DNS REBINDING DEFENSE)
+    if let Err(err_msg) = validate_target_url_async(&target_url).await {
         log::warn!("SSRF or invalid URL blocked by stream proxy: {} ({})", target_url, err_msg);
         return (StatusCode::BAD_REQUEST, err_msg).into_response();
     }
@@ -636,6 +687,7 @@ async fn handle_stream(
 }
 
 pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
+    let port = StreamProxy::get_port();
     let base_url = Url::parse(base_url_str).ok();
     let mut output = String::with_capacity(manifest.len() + 1024);
 
@@ -660,7 +712,7 @@ pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
                         };
                         let proxied = format!(
                             "http://127.0.0.1:{}/stream?url={}&token={}",
-                            StreamProxy::PORT,
+                            port,
                             urlencoding_encode(&resolved_uri),
                             token
                         );
@@ -694,7 +746,7 @@ pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
 
         output.push_str(&format!(
             "http://127.0.0.1:{}/stream?url={}&token={}\n",
-            StreamProxy::PORT,
+            port,
             urlencoding_encode(&resolved),
             token
         ));

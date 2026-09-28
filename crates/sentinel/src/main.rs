@@ -357,12 +357,13 @@ async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResult {
                     }
 
                     // Check for HLS manifest or MPEG-TS sync byte (0x47)
-                    let is_hls = head.contains("#extm3u")
-                        || head.contains("#ext-x-")
-                        || url.contains(".m3u8")
-                        || effective_url.contains(".m3u8");
+                    let is_hls = head.contains("#extm3u") || head.contains("#ext-x-");
 
-                    let is_ts = bytes.starts_with(b"\x47") || bytes.iter().take(188).any(|&b| b == 0x47);
+                    let is_ts = if bytes.len() >= 188 {
+                        bytes[0] == 0x47 && (bytes.len() < 376 || bytes[188] == 0x47)
+                    } else {
+                        bytes.starts_with(b"\x47")
+                    };
 
                     if is_hls || is_ts {
                         return ProbeResult {
@@ -499,16 +500,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
 
     let all_candidates: Vec<ChannelItem> = channel_map.into_values().collect();
-    let (fast_channels, community_channels): (Vec<ChannelItem>, Vec<ChannelItem>) =
-        all_candidates.into_iter().partition(|c| c.is_fast_cdn);
+    let total_candidates = all_candidates.len();
 
     println!(
-        "💎 Fast CDN channels (Instant-trusted: Samsung, Pluto, Free-TV, Plex): {}",
-        fast_channels.len()
-    );
-    println!(
-        "🌐 Community channels to probe (IPTV-Org): {}",
-        community_channels.len()
+        "💎 Total deduplicated channel candidates to audit: {}",
+        total_candidates
     );
 
     // 3. Parallel probing with Tokio Semaphore (120 parallel tasks)
@@ -517,13 +513,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let progress_completed = Arc::new(AtomicUsize::new(0));
     let dead_counter = Arc::new(AtomicUsize::new(0));
     let healed_counter = Arc::new(AtomicUsize::new(0));
-    let total_community = community_channels.len();
 
-    println!("\n🔍 Probing {} streams concurrently using Tokio (120 parallel workers)...", total_community);
+    println!("\n🔍 Probing 100% of streams ({} total candidates) concurrently using Tokio (120 parallel workers)...", total_candidates);
 
-    let mut tasks = Vec::with_capacity(community_channels.len());
+    let mut tasks = Vec::with_capacity(total_candidates);
 
-    for ch in community_channels {
+    for ch in all_candidates {
         let sem = Arc::clone(&semaphore);
         let cli = Arc::clone(&client);
         let comp = Arc::clone(&progress_completed);
@@ -535,8 +530,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let res = probe_single_url(&cli, &ch.url).await;
 
             let c = comp.fetch_add(1, Ordering::Relaxed) + 1;
-            if c % 250 == 0 || c == total_community {
-                eprint!("   -> Verified: {} / {} streams...\r", c, total_community);
+            if c % 250 == 0 || c == total_candidates {
+                eprint!("   -> Verified: {} / {} streams...\r", c, total_candidates);
             }
 
             if res.ok {
@@ -564,10 +559,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }));
     }
 
-    let mut verified_community = Vec::with_capacity(total_community);
+    let mut final_channels = Vec::with_capacity(total_candidates);
     for task in tasks {
         if let Ok(Some(ch)) = task.await {
-            verified_community.push(ch);
+            final_channels.push(ch);
         }
     }
 
@@ -577,15 +572,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "\n✅ Probing completed in {:.2}s! Playable: {}, Dead purged: {}, Mirrors healed: {}",
         probe_start.elapsed().as_secs_f64(),
-        verified_community.len(),
+        final_channels.len(),
         dead_total,
         healed_total
     );
-
-    // Merge Fast CDN + Verified Community
-    let verified_community_count = verified_community.len();
-    let mut final_channels = fast_channels;
-    final_channels.extend(verified_community);
 
     // Sort channels: VIP first, then India/Bangla, then News, Sports, Movies, Entertainment
     final_channels.sort_by(|a, b| {
@@ -689,10 +679,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "updated_at": chrono::Utc::now().to_rfc3339(),
         "engine": "MorningTV Rust Tokio Sentinel 3.0",
         "total_raw_scanned": total_raw_count,
-        "unique_candidates": final_channels.len() + dead_total,
+        "unique_candidates": total_candidates,
         "verified_playable": final_channels.len(),
-        "fast_cdn_channels": final_channels.len() - verified_community_count,
-        "community_playable": verified_community_count,
         "dead_purged": dead_total,
         "mirrors_healed": healed_total,
         "providers": provider_counts,

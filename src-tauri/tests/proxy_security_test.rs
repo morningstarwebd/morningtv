@@ -121,3 +121,53 @@ fn test_quality_tier_mappings() {
     assert_eq!(QualityTier::High.display_name(), "1080p (FHD)");
     assert_eq!(QualityTier::Medium.display_name(), "720p (HD)");
 }
+
+#[test]
+fn test_extract_target_url_with_nested_params() {
+    use app_lib::network::proxy::extract_target_url;
+
+    // Normal query
+    let q1 = "url=https%3A%2F%2Fexample.com%2Flive.m3u8&token=abc123";
+    assert_eq!(extract_target_url(q1), Some("https://example.com/live.m3u8".to_string()));
+
+    // Target URL containing nested query parameters and tokens
+    let q2 = "url=https%3A%2F%2Fcdn.provider.com%2Fstream.m3u8%3Fauth%3Dsecret%26exp%3D12345&token=abc123";
+    assert_eq!(
+        extract_target_url(q2),
+        Some("https://cdn.provider.com/stream.m3u8?auth=secret&exp=12345".to_string())
+    );
+
+    // Empty query
+    assert_eq!(extract_target_url(""), None);
+    assert_eq!(extract_target_url("foo=bar"), None);
+}
+
+#[tokio::test]
+async fn test_validate_target_url_async_dns_ssrf_blocking() {
+    use app_lib::network::proxy::validate_target_url_async;
+
+    // Direct loopback IP
+    assert!(validate_target_url_async("http://127.0.0.1:8080/manifest.m3u8").await.is_err());
+    assert!(validate_target_url_async("http://127.0.0.99:8080/manifest.m3u8").await.is_err());
+
+    // Hostname resolving to loopback
+    assert!(validate_target_url_async("http://localhost:8080/manifest.m3u8").await.is_err());
+
+    // Link-local cloud metadata
+    assert!(validate_target_url_async("http://169.254.169.254/latest/meta-data/").await.is_err());
+
+    // Private RFC1918
+    assert!(validate_target_url_async("http://10.0.0.1/stream.m3u8").await.is_err());
+    assert!(validate_target_url_async("http://192.168.1.100/stream.m3u8").await.is_err());
+    assert!(validate_target_url_async("http://172.16.0.5/stream.m3u8").await.is_err());
+
+    // Allowed public streaming URL
+    assert!(validate_target_url_async("https://example.com/live.m3u8").await.is_ok());
+}
+
+#[test]
+fn test_proxy_dynamic_port_reporting() {
+    let port = StreamProxy::get_port();
+    assert!(port > 0, "Proxy port must be greater than 0");
+}
+

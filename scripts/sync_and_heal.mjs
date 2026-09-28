@@ -324,10 +324,6 @@ async function probeSingleUrl(url) {
 
     const finalUrl = res.url || url;
     if (!res.ok && res.status !== 206) {
-      // 403 Forbidden or 401 Unauthorized indicates bot protection or geo-blocking, not a dead stream. Keep it!
-      if (res.status === 403 || res.status === 401) {
-        return { ok: true, activeUrl: url };
-      }
       return { ok: false };
     }
 

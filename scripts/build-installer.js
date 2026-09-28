@@ -34,11 +34,16 @@ function prepareOutputDir() {
 async function run() {
   log('Starting Professional Windows Installer & Update Builder...');
 
-  if (!fs.existsSync(keyPath)) {
-    error(`Signing key not found at: ${keyPath}. Run 'npm run signer:gen' first.`);
+  let privateKey = process.env.TAURI_SIGNING_PRIVATE_KEY;
+  if (!privateKey && fs.existsSync(keyPath)) {
+    privateKey = fs.readFileSync(keyPath, 'utf8').trim();
   }
 
-  const privateKey = fs.readFileSync(keyPath, 'utf8').trim();
+  if (!privateKey) {
+    log('⚠️  No release signing key found (checked TAURI_SIGNING_PRIVATE_KEY env and scripts/morningtv.key).');
+    log('   Building unsigned installer. Run "npm run signer:gen" to generate a local key if signing is needed.');
+  }
+
   const pkg = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8'));
   const version = pkg.version;
 
@@ -56,9 +61,11 @@ async function run() {
   log('2/3 Compiling Rust binary and packaging NSIS Installer...');
   const buildEnv = {
     ...process.env,
-    TAURI_SIGNING_PRIVATE_KEY: privateKey,
-    TAURI_SIGNING_PRIVATE_KEY_PATH: keyPath,
-    TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+    ...(privateKey ? {
+      TAURI_SIGNING_PRIVATE_KEY: privateKey,
+      TAURI_SIGNING_PRIVATE_KEY_PATH: fs.existsSync(keyPath) ? keyPath : undefined,
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || ''
+    } : {})
   };
 
   execSync('npm run tauri:build', {

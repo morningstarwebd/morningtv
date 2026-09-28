@@ -1,0 +1,55 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend-check:
+    name: Frontend Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Lint (Biome & ESLint)
+        run: npm run lint
+
+      - name: Frontend Unit Tests
+        run: npm run test:frontend
+
+      - name: Build Frontend
+        run: npm run build
+
+  rust-check:
+    name: Rust Backend Tests & Checks
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Cargo Check Tauri Backend
+        run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Cargo Check Sentinel
+        run: cargo check --manifest-path crates/sentinel/Cargo.toml
+
+      - name: Cargo Test Backend (Integration & Security Tests)
+        run: cargo test --manifest-path src-tauri/Cargo.toml

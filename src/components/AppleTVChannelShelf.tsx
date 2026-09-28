@@ -105,7 +105,7 @@ export const AppleTVChannelShelf: React.FC = () => {
 		activeCategory,
 		activeProvider,
 		searchQuery,
-		displayChannels.length,
+		displayChannels,
 		activeChannelId,
 	]);
 

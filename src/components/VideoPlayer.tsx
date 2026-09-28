@@ -5,7 +5,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
-import { buildPrewarmUrl, buildProxiedUrl, getProxyToken } from "../utils/proxy";
+import {
+	buildPrewarmUrl,
+	buildProxiedUrl,
+	getProxyToken,
+} from "../utils/proxy";
 import { formatBytesPerSec } from "../utils/speedFormatter";
 import { MorningTVLogo } from "./MorningTVLogo";
 
@@ -343,7 +347,7 @@ export const VideoPlayer: React.FC = () => {
 
 	// Predictive RAM Pre-Warming: Pre-buffers neighbor channels into local Rust RAM
 	useEffect(() => {
-		if (!activeChannel || channels.length <= 1) return;
+		if (!activeChannel || channels.length <= 1 || !proxyToken) return;
 		const currentIdx = channels.findIndex(
 			(c) => getChannelIdString(c.id) === getChannelIdString(activeChannel.id),
 		);
@@ -355,25 +359,23 @@ export const VideoPlayer: React.FC = () => {
 
 		const timer = setTimeout(() => {
 			if (nextCh?.url) {
-				fetch(
-					buildPrewarmUrl(nextCh.url, proxyToken),
-					{ priority: "low" } as any,
-				).catch(() => {});
+				fetch(buildPrewarmUrl(nextCh.url, proxyToken), {
+					priority: "low",
+				} as any).catch(() => {});
 			}
 			if (prevCh?.url) {
-				fetch(
-					buildPrewarmUrl(prevCh.url, proxyToken),
-					{ priority: "low" } as any,
-				).catch(() => {});
+				fetch(buildPrewarmUrl(prevCh.url, proxyToken), {
+					priority: "low",
+				} as any).catch(() => {});
 			}
 		}, 1000);
 
 		return () => clearTimeout(timer);
-	}, [activeChannel, channels]);
+	}, [activeChannel, channels, proxyToken]);
 
 	// HLS stream loader with 3G Anti-Fallback & Extreme Buffer Resilience
 	useEffect(() => {
-		if (!currentUrl || !videoRef.current) {
+		if (!currentUrl || !videoRef.current || !proxyToken) {
 			if (hlsRef.current) {
 				hlsRef.current.destroy();
 				hlsRef.current = null;
@@ -477,8 +479,9 @@ export const VideoPlayer: React.FC = () => {
 					}
 				}
 
-				audioBooster.attach(video, isMuted ? 0 : soundBoost);
-				if (useAppStore.getState().isPlaying) {
+				const appState = useAppStore.getState();
+				audioBooster.attach(video, appState.isMuted ? 0 : appState.soundBoost);
+				if (appState.isPlaying) {
 					video.play().catch(() => {});
 				}
 			});
@@ -666,8 +669,7 @@ export const VideoPlayer: React.FC = () => {
 			video.src = proxiedUrl;
 			video.addEventListener("loadedmetadata", () => {
 				setIsBuffering(false);
-				audioBooster.attach(video, isMuted ? 0 : soundBoost);
-				if (isPlaying) video.play().catch(() => {});
+				video.play().catch(() => {});
 			});
 			video.addEventListener("error", () => tryNextFallback());
 		}
@@ -678,7 +680,13 @@ export const VideoPlayer: React.FC = () => {
 				hlsRef.current = null;
 			}
 		};
-	}, [currentUrl, proxyToken, tryNextFallback]);
+	}, [
+		currentUrl,
+		proxyToken,
+		tryNextFallback,
+		setIsChannelLoading,
+		setStreamHealthStatus,
+	]);
 
 	// Dynamically switch quality when user chooses a level in the Stream Quality HUD
 	useEffect(() => {
@@ -930,6 +938,7 @@ export const VideoPlayer: React.FC = () => {
 		setStreamHealthStatus,
 		incrementStallCount,
 		setAbrTier,
+		setTelemetryStats,
 		tryNextFallback,
 	]);
 

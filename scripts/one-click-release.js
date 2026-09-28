@@ -64,12 +64,16 @@ async function runRelease() {
 
     // 0. Verify signing key
     log('Step 0: Validating Minisign release signing key...');
-    if (!fs.existsSync(keyPath)) {
-      throw new Error(`Signing key not found at ${keyPath}`);
+    let privateKey = process.env.TAURI_SIGNING_PRIVATE_KEY;
+    if (!privateKey && fs.existsSync(keyPath)) {
+      privateKey = fs.readFileSync(keyPath, 'utf8').trim();
     }
-    const privateKey = fs.readFileSync(keyPath, 'utf8').trim();
     if (!privateKey) {
-      throw new Error(`Signing key at ${keyPath} is empty`);
+      if (shouldPublish) {
+        throw new Error('Signing key not found in process.env.TAURI_SIGNING_PRIVATE_KEY or scripts/morningtv.key. A private key is required to sign updates for release.');
+      } else {
+        log('⚠️  Warning: No signing key found. Proceeding with unsigned local build.');
+      }
     }
 
     // 1. Version resolution
@@ -144,9 +148,11 @@ async function runRelease() {
       log('Step 4: Compiling native Rust binary and packaging signed NSIS installer...');
       const buildEnv = {
         ...process.env,
-        TAURI_SIGNING_PRIVATE_KEY: privateKey,
-        TAURI_SIGNING_PRIVATE_KEY_PATH: keyPath,
-        TAURI_SIGNING_PRIVATE_KEY_PASSWORD: '',
+        ...(privateKey ? {
+          TAURI_SIGNING_PRIVATE_KEY: privateKey,
+          TAURI_SIGNING_PRIVATE_KEY_PATH: fs.existsSync(keyPath) ? keyPath : undefined,
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: process.env.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '',
+        } : {}),
       };
 
       execSync('npx tauri build --ignore-version-mismatches', {
