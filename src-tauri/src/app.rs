@@ -56,7 +56,7 @@ impl AppState {
         if self.channel_cache_repo.is_fresh(cache_max_age) {
             if let Ok(cached) = self.channel_cache_repo.load_all() {
                 if cached.len() > 500 {
-                    // Loaded from cache — populate favorites
+                    // Loaded from cache: populate favorites
                     let mut channels = cached;
                     if let Ok(fav_ids) = self.favorites_repo.get_all_ids() {
                         for ch in &mut channels {
@@ -66,12 +66,12 @@ impl AppState {
                     self.categories = ChannelFilter::extract_categories(&channels);
                     self.all_channels = channels;
                     self.refresh_filtered_channels();
-                    return Ok(()); // ✅ Cache hit — network call bypassed
+                    return Ok(()); // Cache hit: network call bypassed
                 }
             }
         }
 
-        // ── STEP B: Cache miss — fetch from GitHub / source ──
+        // Step B: Cache miss, fetch from GitHub or remote source
         let client = ResilientHttpClient::new()?;
         let fetcher = PlaylistFetcher::new(client);
 

@@ -129,7 +129,7 @@ impl ChannelCacheRepository {
         }
     }
 
-    /// Cache count — কতটা channel আছে
+    /// Cache count: returns total number of cached channels
     pub fn count(&self) -> usize {
         let conn_arc = self.db.conn();
         let conn = conn_arc.lock().unwrap();

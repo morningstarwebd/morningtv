@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 
 pub const APP_NAME: &str = "MorningTV";
-pub const APP_VERSION: &str = "1.0.2";
+pub const APP_VERSION: &str = "1.0.0";
 
 // Default remote verified master IPTV playlist
 pub const DEFAULT_PLAYLIST_URL: &str = "https://raw.githubusercontent.com/morningstarwebd/morningtv/main/playlists/morningtv_all.m3u";

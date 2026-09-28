@@ -1,10 +1,10 @@
 ; ==============================================================================
-; MorningTV NSIS Installer Hooks — Process Tree Terminator
+; MorningTV NSIS Installer Hooks: Process Tree Terminator
 ; Prevents "Error opening file for writing" during install/update/uninstall
 ;
 ; Uses Windows-native `taskkill /F /T` to forcibly kill the ENTIRE process tree
-; (main binary + WebView2 renderers + local proxy threads + GPU helpers).
-; The `/T` flag is critical — terminates child processes holding file locks.
+; (main binary, WebView2 renderers, local proxy threads, GPU helpers).
+; The `/T` flag terminates child processes holding file locks.
 ; ==============================================================================
 
 !macro NSIS_HOOK_PREINSTALL

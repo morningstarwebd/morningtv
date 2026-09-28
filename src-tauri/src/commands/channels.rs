@@ -111,7 +111,7 @@ pub async fn force_refresh_channels(
     Ok(guard.filtered_channels.clone())
 }
 
-/// status.json check করে — update আছে কিনা বলে
+/// Checks status.json to detect remote playlist updates
 #[tauri::command]
 pub async fn check_playlist_update(
     state: State<'_, SharedAppState>,

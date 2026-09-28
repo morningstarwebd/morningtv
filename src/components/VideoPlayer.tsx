@@ -190,7 +190,7 @@ export const VideoPlayer: React.FC = () => {
 			setStreamHealthStatus("degraded");
 			setMirrorIndex(nextAvailableIndex);
 		} else {
-			// All URLs in the pool failed — enter reconnect backoff loop
+			// All URLs in the pool failed: enter reconnect backoff loop
 			const delay = backoffDelayRef.current;
 			setStreamHealthStatus("reconnecting");
 			showToast(

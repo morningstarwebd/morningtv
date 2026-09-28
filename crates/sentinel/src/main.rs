@@ -1,5 +1,5 @@
 // src-tauri/src/bin/sentinel.rs
-// MorningTV Stream Sentinel 3.0 — Ultra-High-Speed Tokio Multi-Threaded Channel Auditor
+// MorningTV Stream Sentinel 3.0: High-Speed Tokio Multi-Threaded Channel Auditor
 // Concurrently probes 10,000+ live streams in parallel with deep byte inspection (0x47 TS sync byte & #EXTM3U)
 // Runs in ~30-45 seconds (down from 5+ minutes in Node.js)
 

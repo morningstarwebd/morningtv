@@ -15,24 +15,24 @@ export function useBackgroundRefresh() {
 				const hasUpdate = await invoke<boolean>("check_playlist_update");
 
 				if (hasUpdate) {
-					// Background-এ refresh — user টের পাবে না
+					// Background refresh without interrupting playback
 					await invoke("background_refresh_playlist");
 				}
 			} catch (e) {
-				// Silent fail — network না থাকলেও app চলবে
+				// Silent fail: app continues playing if network is unreachable
 				console.warn("Background refresh failed:", e);
 			}
 		};
 
-		// App start-এ একবার check (যদি 6h+ আগের cache হয়)
+		// Initial check if cached data is stale
 		checkAndRefresh();
 
-		// তারপর প্রতি 6 ঘণ্টায়
+		// Check every 6 hours
 		const interval = setInterval(checkAndRefresh, SIX_HOURS);
 
-		// Rust-এর "playlist_updated" event listen করো
+		// Listen to Rust playlist_updated event
 		const unlistenPromise = listen("playlist_updated", () => {
-			// SQLite already updated — শুধু UI reload করো
+			// SQLite updated: reload UI state
 			loadChannels();
 		});
 
