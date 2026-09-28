@@ -41,10 +41,14 @@ jobs:
       - name: Build and bundle Tauri app
         shell: pwsh
         env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets['TAURI_SIGNING_PRIVATE_KEY'] }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets['TAURI_SIGNING_PRIVATE_KEY_PASSWORD'] }}
+          SECRETS_JSON: ${{ toJson(secrets) }}
         run: |
-          if ($env:TAURI_SIGNING_PRIVATE_KEY) {
+          $sec = $env:SECRETS_JSON | ConvertFrom-Json
+          if ($sec -and $sec.TAURI_SIGNING_PRIVATE_KEY) {
+            $env:TAURI_SIGNING_PRIVATE_KEY = $sec.TAURI_SIGNING_PRIVATE_KEY
+            if ($sec.TAURI_SIGNING_PRIVATE_KEY_PASSWORD) {
+              $env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD = $sec.TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+            }
             Write-Host "Tauri signing key detected. Building signed distribution..."
             npx tauri build
           } else {
