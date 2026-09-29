@@ -12,7 +12,7 @@
 [![Framework](https://img.shields.io/badge/GUI_Framework-Tauri_v2-7C4DFF?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app)
 [![License](https://img.shields.io/badge/License-MIT-FFD600?style=for-the-badge&logoColor=black)](LICENSE)
 [![Production Audit](https://img.shields.io/badge/Audit_Score-READY_100%2F100-00E676?style=for-the-badge&logo=shield&logoColor=white)](#-production-readiness--security)
-[![Tests](https://img.shields.io/badge/Tests-61%2F61_Passing-7C4DFF?style=for-the-badge&logo=githubactions&logoColor=white)](#%EF%B8%8F-building-from-source)
+[![Tests](https://img.shields.io/badge/Tests-81%2F81_Passing-7C4DFF?style=for-the-badge&logo=githubactions&logoColor=white)](#%EF%B8%8F-building-from-source)
 
 <br/>
 
@@ -20,7 +20,7 @@ MorningTV is a native Windows desktop application for watching live television w
 
 <br/>
 
-[📥 Download Windows Setup (Offline Embedded)](https://github.com/morningstarwebd/morningtv/releases/latest) • [📋 Copy Playlists](#-one-click-copy-playlists) • [🔬 Architecture](#-system-architecture-deep-dive) • [⌨️ Controls](#%EF%B8%8F-keyboard-shortcuts) • [🛠️ Build](#%EF%B8%8F-building-from-source) • [📜 License](#-license)
+[📥 Download Windows Setup (~5.1 MB)](https://github.com/morningstarwebd/morningtv/releases/latest) • [📋 Copy Playlists](#-one-click-copy-playlists) • [🔬 Architecture](#-system-architecture-deep-dive) • [⌨️ Controls](#%EF%B8%8F-keyboard-shortcuts) • [🛠️ Build](#%EF%B8%8F-building-from-source) • [📜 License](#-license)
 
 </div>
 
@@ -82,7 +82,7 @@ https://raw.githubusercontent.com/morningstarwebd/morningtv/main/playlists/morni
 
 | # | Feature | What It Does |
 | :---: | :--- | :--- |
-| 1 | **100% Offline Embedded Installer** | The NSIS setup executable bundles the complete Microsoft Edge WebView2 runtime (~209 MB). Fresh Windows machines install and launch MorningTV with zero internet downloads. |
+| 1 | **Ultra-Lightweight High-Speed Installer** | The streamlined NSIS setup executable is only ~5.1 MB. It features an automated WebView2 runtime bootstrapper that provisions required dependencies seamlessly on Windows 10/11. |
 | 2 | **In-Process Tokio Axum Stream Proxy** | A full HTTP streaming server runs inside the application on `127.0.0.1:18181`. It rewrites upstream headers, injects broadcast User-Agent strings, bypasses CORS, and caches transport segments in RAM. |
 | 3 | **YouTube-Style Dynamic Adaptive Buffering** | Buffer cushion starts at 5 seconds for instant playback, then dynamically expands to 30 seconds during stable broadband. ISP packet jitter is absorbed without any video stutter. |
 | 4 | **Predictive RAM Pre-Warming** | Background Tokio tasks silently pre-fetch manifests and first video segments of adjacent channels. Channel switching completes in under 50 milliseconds. |
@@ -405,8 +405,8 @@ The Sentinel is a standalone Rust binary ([`crates/sentinel/`](crates/sentinel/)
 
 ### Standard Installation
 1. Open the [Official GitHub Releases](https://github.com/morningstarwebd/morningtv/releases/latest) page.
-2. Download `MorningTV_1.0.0_x64-setup.exe` (~209 MB).
-3. Run the installer. The embedded WebView2 runtime installs automatically on machines that lack it. No internet connection is required.
+2. Download `MorningTV_1.0.0_x64-setup.exe` (only ~5.1 MB).
+3. Run the installer. The setup wizard automatically configures MorningTV and bootstraps the Microsoft Edge WebView2 runtime if needed.
 
 ### Silent / Automated Enterprise Deployment
 ```powershell
