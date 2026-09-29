@@ -57,6 +57,9 @@ impl AppSettings {
 
     pub fn save(&self) -> AppResult<()> {
         let path = Self::config_path();
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).map_err(|e| ConfigError::WriteFailed(e.to_string()))?;
+        }
         let content = serde_json::to_string_pretty(self)
             .map_err(|e| ConfigError::WriteFailed(e.to_string()))?;
         fs::write(&path, content).map_err(|e| ConfigError::WriteFailed(e.to_string()))?;

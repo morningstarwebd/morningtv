@@ -1,0 +1,20 @@
+#!/bin/sh
+# MorningTV Security Pre-Commit Hook: Block sensitive private keys & credentials
+BLOCKED=$(git diff --cached --name-only | grep -E '\.(key|pem|p12|pfx|pkcs12)$' | grep -v '\.example$')
+if [ -n "$BLOCKED" ]; then
+    echo "❌ [SECURITY ERROR] Staged private key files detected:"
+    echo "$BLOCKED"
+    echo "Aborting commit. Unstage sensitive keys using: git reset HEAD <file>"
+    exit 1
+fi
+
+# Block accidental staging of .env files (except .env.example)
+BLOCKED_ENV=$(git diff --cached --name-only | grep -E '(^|/)\.env(\.[^.]+)?$' | grep -v '\.env\.example$')
+if [ -n "$BLOCKED_ENV" ]; then
+    echo "❌ [SECURITY ERROR] Staged environment secrets file detected:"
+    echo "$BLOCKED_ENV"
+    echo "Aborting commit. Unstage .env using: git reset HEAD <file>"
+    exit 1
+fi
+
+exit 0

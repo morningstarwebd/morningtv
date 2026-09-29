@@ -22,7 +22,9 @@ pub async fn save_settings(settings: AppSettings, state: State<'_, SharedAppStat
     if url_changed {
         let _ = guard.channel_cache_repo.clear();
         let new_url = guard.settings.playlist_url.clone();
-        let _ = guard.load_playlist(&new_url).await;
+        if let Err(e) = guard.load_playlist(&new_url).await {
+            tracing::warn!("Failed to reload playlist after settings URL change: {}", e);
+        }
     }
 
     Ok(settings)

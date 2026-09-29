@@ -2,8 +2,8 @@
 // Integration tests covering the proxy pipeline, health, metrics, and security boundaries
 
 use app_lib::network::proxy::{
-    is_private_or_loopback_ip, rewrite_m3u8, validate_target_url_async, verify_auth, StreamProxy,
-    MAX_M3U8_SIZE, MAX_SEGMENT_SIZE,
+    extract_target_url, is_private_or_loopback_ip, rewrite_m3u8, sanitize_url_for_log,
+    validate_target_url_async, verify_auth, StreamProxy, MAX_M3U8_SIZE, MAX_SEGMENT_SIZE,
 };
 use axum::http::{HeaderMap, HeaderValue, Uri};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
@@ -113,4 +113,40 @@ fn test_m3u8_rewriting_with_nested_tokens_and_queries() {
     assert!(rewritten.contains("http://127.0.0.1:"));
     assert!(rewritten.contains("/stream?url="));
     assert!(rewritten.contains("&token=test_token_123"));
+}
+
+#[test]
+fn test_sanitize_url_for_log() {
+    let clean = "https://example.com/live/stream.m3u8";
+    assert_eq!(sanitize_url_for_log(clean), clean);
+
+    let with_amp_token = "https://example.com/live/stream.m3u8?param=1&token=secret123";
+    assert_eq!(
+        sanitize_url_for_log(with_amp_token),
+        "https://example.com/live/stream.m3u8?param=1[TOKEN_REDACTED]"
+    );
+
+    let with_q_token = "https://example.com/live/stream.m3u8?token=secret123";
+    assert_eq!(
+        sanitize_url_for_log(with_q_token),
+        "https://example.com/live/stream.m3u8[TOKEN_REDACTED]"
+    );
+}
+
+#[test]
+fn test_extract_target_url_edge_cases() {
+    assert_eq!(extract_target_url(""), None);
+    assert_eq!(extract_target_url("random_string_without_url"), None);
+    assert_eq!(extract_target_url("url="), None);
+
+    let query = "url=https%3A%2F%2Fcdn.example.com%2Fstream.m3u8&token=my_secret_token";
+    let extracted = extract_target_url(query);
+    assert_eq!(extracted, Some("https://cdn.example.com/stream.m3u8".to_string()));
+}
+
+#[test]
+fn test_handle_malformed_m3u8_robustness() {
+    let garbage = "NOT_A_VALID_MANIFEST\n<html><head>Error</head><body>Forbidden</body></html>";
+    let rewritten = rewrite_m3u8(garbage, "https://example.com/stream.m3u8", "tok_xyz");
+    assert!(rewritten.contains("http://127.0.0.1:"));
 }

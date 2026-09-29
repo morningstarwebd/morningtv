@@ -48,6 +48,11 @@ impl SegmentLruCache {
         if let Some(item) = self.entries.get(url) {
             let max_age_secs = if item.is_manifest { 4 } else { 30 };
             if item.created_at.elapsed().as_secs() < max_age_secs {
+                // Promote to most-recently-used position in order queue
+                if let Some(pos) = self.order.iter().position(|k| k == url) {
+                    self.order.remove(pos);
+                    self.order.push_back(url.to_string());
+                }
                 return Some(item.clone());
             }
         }
@@ -95,8 +100,33 @@ pub struct ProxyState {
     cache: Arc<RwLock<SegmentLruCache>>,
 }
 
+/// Sanitizes a URL for secure logging by removing any ephemeral authentication tokens
+pub fn sanitize_url_for_log(url: &str) -> String {
+    if let Some(idx) = url.find("&token=") {
+        format!("{}[TOKEN_REDACTED]", &url[..idx])
+    } else if let Some(idx) = url.find("?token=") {
+        format!("{}[TOKEN_REDACTED]", &url[..idx])
+    } else {
+        url.to_string()
+    }
+}
+
 impl ProxyState {
     async fn get_cached(&self, url: &str) -> Option<CachedItem> {
+        // Phase 1: Read-only freshness check without holding a write lock
+        {
+            let cache = self.cache.read().await;
+            match cache.entries.get(url) {
+                Some(item) => {
+                    let max_age_secs = if item.is_manifest { 4 } else { 30 };
+                    if item.created_at.elapsed().as_secs() >= max_age_secs {
+                        return None;
+                    }
+                }
+                None => return None,
+            }
+        }
+        // Phase 2: Promote item in LRU queue with write lock on hit
         let mut cache = self.cache.write().await;
         cache.get(url)
     }
@@ -154,8 +184,24 @@ impl Drop for OriginGuard {
     }
 }
 
+static ACTIVE_PREWARM_REQUESTS: AtomicUsize = AtomicUsize::new(0);
+pub const MAX_CONCURRENT_PREWARM: usize = 6;
+
+struct PrewarmGuard;
+impl Drop for PrewarmGuard {
+    fn drop(&mut self) {
+        ACTIVE_PREWARM_REQUESTS.fetch_sub(1, Ordering::Relaxed);
+    }
+}
+
 fn try_acquire_origin(origin: &str) -> Option<OriginGuard> {
     let limits = get_origin_limits();
+
+    // Prevent unbounded memory growth over long uptime
+    if limits.len() > 128 {
+        limits.retain(|_, counter| counter.load(Ordering::Relaxed) > 0);
+    }
+
     let counter = limits
         .entry(origin.to_string())
         .or_insert_with(|| Arc::new(AtomicUsize::new(0)))
@@ -212,9 +258,11 @@ impl StreamProxy {
         serde_json::json!({
             "status": "healthy",
             "service": "MorningTV Stream Proxy",
+            "version": crate::config::APP_VERSION,
             "port": StreamProxy::get_port(),
             "uptime_secs": uptime,
             "active_requests": ACTIVE_REQUESTS.load(Ordering::Relaxed),
+            "origin_limits_size": get_origin_limits().len(),
             "total_requests": METRICS.total_requests.load(Ordering::Relaxed),
             "cache_hits": METRICS.cache_hits.load(Ordering::Relaxed),
             "cache_misses": METRICS.cache_misses.load(Ordering::Relaxed),
@@ -231,6 +279,16 @@ impl StreamProxy {
 
             let _ = Self::get_auth_token(); // ensure initialized
             PROXY_START_TIME.get_or_init(Instant::now);
+
+            // Periodic background cleanup of idle origin rate-limit counters (every 5 minutes)
+            tokio::spawn(async move {
+                let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
+                loop {
+                    interval.tick().await;
+                    let limits = get_origin_limits();
+                    limits.retain(|_, counter| counter.load(Ordering::Relaxed) > 0);
+                }
+            });
 
             let redirect_policy = reqwest::redirect::Policy::custom(|attempt| {
                 if attempt.previous().len() >= 10 {
@@ -330,7 +388,18 @@ async fn handle_return() -> Response {
     (StatusCode::OK, "Returning to MorningTV").into_response()
 }
 
-async fn handle_health(State(state): State<ProxyState>) -> Response {
+async fn handle_health(uri: Uri, headers: HeaderMap, State(state): State<ProxyState>) -> Response {
+    if !verify_auth(&uri, &headers) {
+        return (
+            StatusCode::OK,
+            Json(serde_json::json!({
+                "status": "healthy",
+                "service": "MorningTV Stream Proxy"
+            })),
+        )
+            .into_response();
+    }
+
     let uptime = PROXY_START_TIME
         .get()
         .map(|t| t.elapsed().as_secs())
@@ -343,10 +412,12 @@ async fn handle_health(State(state): State<ProxyState>) -> Response {
     let body = serde_json::json!({
         "status": "healthy",
         "service": "MorningTV Stream Proxy",
+        "version": crate::config::APP_VERSION,
         "port": StreamProxy::get_port(),
         "uptime_secs": uptime,
         "active_requests": active,
         "cache_entries": cache_len,
+        "origin_limits_size": get_origin_limits().len(),
         "metrics": {
             "total_requests": METRICS.total_requests.load(Ordering::Relaxed),
             "cache_hits": METRICS.cache_hits.load(Ordering::Relaxed),
@@ -486,9 +557,9 @@ pub async fn validate_target_url_async(target_url: &str) -> Result<Url, &'static
     // Perform DNS lookup to detect hostnames resolving to private/loopback/cloud metadata IPs
     let port = parsed.port_or_known_default().unwrap_or(80);
     let host_port = format!("{}:{}", host, port);
-    if let Ok(mut addrs) = tokio::net::lookup_host(&host_port).await {
-        if let Some(first) = addrs.next() {
-            if is_private_or_loopback_ip(&first.ip()) {
+    if let Ok(addrs) = tokio::net::lookup_host(&host_port).await {
+        for addr in addrs {
+            if is_private_or_loopback_ip(&addr.ip()) {
                 return Err("Target host resolves to a private, loopback, or metadata address (SSRF blocked)");
             }
         }
@@ -507,10 +578,19 @@ async fn handle_prewarm(
         return (StatusCode::FORBIDDEN, "Forbidden: Invalid or missing proxy token").into_response();
     }
 
+    let active_prewarm = ACTIVE_PREWARM_REQUESTS.fetch_add(1, Ordering::Relaxed);
+    if active_prewarm >= MAX_CONCURRENT_PREWARM {
+        ACTIVE_PREWARM_REQUESTS.fetch_sub(1, Ordering::Relaxed);
+        return (StatusCode::TOO_MANY_REQUESTS, "Prewarm queue capacity reached").into_response();
+    }
+    let guard = PrewarmGuard;
+
     let query_str = uri.query().unwrap_or("");
     let target_url = match extract_target_url(query_str) {
         Some(url) => url,
-        None => return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response(),
+        None => {
+            return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response();
+        }
     };
 
     if let Err(err) = validate_target_url_async(&target_url).await {
@@ -519,6 +599,7 @@ async fn handle_prewarm(
 
     let state_clone = state.clone();
     tokio::spawn(async move {
+        let _guard = guard;
         prewarm_stream_into_ram(state_clone, target_url).await;
     });
 
@@ -673,7 +754,7 @@ async fn handle_stream(
     // 1. ANTI-SSRF TARGET URL VALIDATION (ASYNC WITH DNS REBINDING DEFENSE)
     if let Err(err_msg) = validate_target_url_async(&target_url).await {
         METRICS.ssrf_blocks.fetch_add(1, Ordering::Relaxed);
-        tracing::warn!("SSRF or invalid URL blocked by stream proxy: {} ({})", target_url, err_msg);
+        tracing::warn!("SSRF or invalid URL blocked by stream proxy: {} ({})", sanitize_url_for_log(&target_url), err_msg);
         return (StatusCode::BAD_REQUEST, err_msg).into_response();
     }
 
@@ -699,7 +780,7 @@ async fn handle_stream(
     if let Some(cached) = state.get_cached(&target_url).await {
         METRICS.cache_hits.fetch_add(1, Ordering::Relaxed);
         tracing::debug!(
-            url = %target_url,
+            url = %sanitize_url_for_log(&target_url),
             duration_ms = req_start.elapsed().as_millis(),
             cached = true,
             "Served from RAM cache"
@@ -775,7 +856,7 @@ async fn handle_stream(
             Err(e) => {
                 tracing::warn!(
                     attempt = attempt + 1,
-                    url = %target_url,
+                    url = %sanitize_url_for_log(&target_url),
                     error = %e,
                     "Stream proxy attempt failed"
                 );
@@ -791,7 +872,7 @@ async fn handle_stream(
         Some(res) => res,
         None => {
             tracing::warn!(
-                url = %target_url,
+                url = %sanitize_url_for_log(&target_url),
                 error = ?last_err,
                 "Stream proxy exhausted 3 retries"
             );
@@ -820,7 +901,7 @@ async fn handle_stream(
         // Task 4.1: Response body size limit for manifests
         if let Some(len) = upstream_res.content_length() {
             if len > MAX_M3U8_SIZE as u64 {
-                tracing::warn!(url = %target_url, len, "M3U8 manifest exceeds max allowed size");
+                tracing::warn!(url = %sanitize_url_for_log(&target_url), len, "M3U8 manifest exceeds max allowed size");
                 return (StatusCode::BAD_GATEWAY, "Manifest too large").into_response();
             }
         }
@@ -839,7 +920,7 @@ async fn handle_stream(
                     .await;
 
                 tracing::info!(
-                    url = %target_url,
+                    url = %sanitize_url_for_log(&target_url),
                     duration_ms = req_start.elapsed().as_millis(),
                     status = 200,
                     is_manifest = true,
@@ -871,7 +952,7 @@ async fn handle_stream(
         let content_length = upstream_res.content_length();
         if let Some(len) = content_length {
             if len > MAX_SEGMENT_SIZE {
-                tracing::warn!(url = %target_url, len, "Segment exceeds max allowed size");
+                tracing::warn!(url = %sanitize_url_for_log(&target_url), len, "Segment exceeds max allowed size");
                 return (StatusCode::BAD_GATEWAY, "Segment too large").into_response();
             }
         }
@@ -921,7 +1002,7 @@ async fn handle_stream(
                         .await;
 
                     tracing::info!(
-                        url = %target_url,
+                        url = %sanitize_url_for_log(&target_url),
                         duration_ms = req_start.elapsed().as_millis(),
                         status = status.as_u16(),
                         cached = false,
@@ -943,7 +1024,7 @@ async fn handle_stream(
             let body = Body::from_stream(stream);
 
             tracing::info!(
-                url = %target_url,
+                url = %sanitize_url_for_log(&target_url),
                 duration_ms = req_start.elapsed().as_millis(),
                 status = status.as_u16(),
                 streamed = true,
@@ -956,6 +1037,8 @@ async fn handle_stream(
 }
 
 pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
+    use std::fmt::Write as _;
+
     let port = StreamProxy::get_port();
     let base_url = Url::parse(base_url_str).ok();
     let mut output = String::with_capacity(manifest.len() + 1024);
@@ -979,17 +1062,15 @@ pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
                         } else {
                             raw_uri.to_string()
                         };
-                        let proxied = format!(
+                        output.push_str(&trimmed[..prefix_len]);
+                        let _ = write!(
+                            output,
                             "http://127.0.0.1:{}/stream?url={}&token={}",
                             port,
                             urlencoding_encode(&resolved_uri),
                             token
                         );
-                        let mut new_line = String::with_capacity(trimmed.len() + 120);
-                        new_line.push_str(&trimmed[..prefix_len]);
-                        new_line.push_str(&proxied);
-                        new_line.push_str(&after_prefix[end..]);
-                        output.push_str(&new_line);
+                        output.push_str(&after_prefix[end..]);
                         output.push('\n');
                         continue;
                     }
@@ -1013,12 +1094,13 @@ pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
             trimmed.to_string()
         };
 
-        output.push_str(&format!(
+        let _ = write!(
+            output,
             "http://127.0.0.1:{}/stream?url={}&token={}\n",
             port,
             urlencoding_encode(&resolved),
             token
-        ));
+        );
     }
 
     output

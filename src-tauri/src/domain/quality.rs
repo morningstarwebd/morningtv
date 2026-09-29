@@ -1,8 +1,6 @@
 // src/domain/quality.rs
 // Stream quality tiers and adaptive bitrate representations
 
-#![allow(dead_code)]
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -16,6 +14,7 @@ pub enum QualityTier {
 }
 
 impl QualityTier {
+    #[allow(dead_code)]
     pub fn display_name(&self) -> &'static str {
         match self {
             Self::Auto => "Auto",
@@ -23,16 +22,6 @@ impl QualityTier {
             Self::Low => "480p (SD)",
             Self::Medium => "720p (HD)",
             Self::High => "1080p (FHD)",
-        }
-    }
-
-    pub fn to_mpv_hls_bitrate(&self) -> &'static str {
-        match self {
-            Self::Auto => "auto",
-            Self::UltraLow => "min",
-            Self::Low => "800000",
-            Self::Medium => "2500000",
-            Self::High => "max",
         }
     }
 

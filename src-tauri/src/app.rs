@@ -29,7 +29,13 @@ pub type SharedAppState = Arc<RwLock<AppState>>;
 impl AppState {
     pub fn new() -> AppResult<Self> {
         let settings = AppSettings::load();
-        let db = Database::open().unwrap_or_else(|_| Database::open_in_memory().unwrap());
+        let db = match Database::open() {
+            Ok(d) => d,
+            Err(e) => {
+                tracing::warn!("Failed to open persistent SQLite database ({}). Falling back to in-memory store.", e);
+                Database::open_in_memory()?
+            }
+        };
         let favorites_repo = FavoritesRepository::new(db.clone());
         let history_repo = HistoryRepository::new(db.clone());
         let channel_cache_repo = ChannelCacheRepository::new(db);
@@ -157,7 +163,14 @@ impl AppState {
         };
 
         self.settings.preferred_quality = next_tier;
-        let _ = self.settings.save();
+        if let Err(e) = self.settings.save() {
+            tracing::warn!("Failed to persist settings after quality cycle: {}", e);
+        }
         next_tier
+    }
+
+    /// Truncates SQLite WAL and executes graceful database checkpointing
+    pub fn checkpoint(&self) {
+        self.channel_cache_repo.db().checkpoint();
     }
 }

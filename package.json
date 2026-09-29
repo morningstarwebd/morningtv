@@ -20,7 +20,8 @@
     "test": "npm run test:frontend && npm run test:rust",
     "ci": "npm run lint && npm run test && npm run build && npm run cargo:check",
     "lint": "eslint src && biome check src",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.3",

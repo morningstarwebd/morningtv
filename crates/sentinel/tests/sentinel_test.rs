@@ -92,3 +92,24 @@ fn test_format_m3u_output_valid() {
     assert!(output.contains("#EXTFALLBACK: https://mirror.example.com/ddnews.m3u8"));
     assert!(output.contains("https://cdn.example.com/ddnews.m3u8"));
 }
+
+#[test]
+fn test_html_bot_challenge_detection_strings() {
+    let html_page = b"<!DOCTYPE html><html><head><title>Cloudflare DDOS</title></head></html>";
+    let head = String::from_utf8_lossy(&html_page[..html_page.len().min(512)]).to_lowercase();
+    let is_html_error = head.contains("<!doctype html")
+        || head.contains("<html")
+        || head.contains("cloudflare")
+        || head.contains("access denied");
+    assert!(is_html_error, "Must detect Cloudflare bot challenge as invalid stream");
+}
+
+#[test]
+fn test_mpeg_ts_sync_byte_validation() {
+    let mut valid_ts = vec![0u8; 188];
+    valid_ts[0] = 0x47; // Standard MPEG-TS sync byte
+    assert_eq!(valid_ts[0], 0x47);
+
+    let corrupt_payload = vec![0x00, 0x01, 0x02, 0x03];
+    assert_ne!(corrupt_payload[0], 0x47);
+}

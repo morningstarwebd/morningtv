@@ -109,4 +109,12 @@ impl Database {
     pub fn conn(&self) -> Arc<Mutex<Connection>> {
         Arc::clone(&self.conn)
     }
+
+    /// Flushes and truncates the SQLite write-ahead log (WAL) file cleanly
+    pub fn checkpoint(&self) {
+        if let Ok(conn) = self.conn.lock() {
+            let _ = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);");
+            tracing::info!("SQLite WAL checkpoint completed");
+        }
+    }
 }

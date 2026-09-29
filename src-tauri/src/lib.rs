@@ -38,6 +38,8 @@ pub fn run() {
         let _ = guard.load_playlist(&playlist_url).await;
     });
 
+    let state_for_close = Arc::clone(&state);
+
     tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::default()
@@ -56,11 +58,16 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .on_window_event(|_window, event| {
-            // Task 3.1: Graceful proxy shutdown on close
+        .on_window_event(move |_window, event| {
+            // Task 3.1 & 3.2: Graceful proxy shutdown and SQLite WAL checkpoint on close
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                tracing::info!("Window close requested; shutting down streaming proxy gracefully");
+                tracing::info!("Window close requested; shutting down streaming proxy and checkpointing DB");
                 network::StreamProxy::shutdown();
+                let state_clone = Arc::clone(&state_for_close);
+                tauri::async_runtime::spawn(async move {
+                    let guard = state_clone.read().await;
+                    guard.checkpoint();
+                });
             }
         })
         .manage(state)

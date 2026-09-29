@@ -1,6 +1,8 @@
 // src/types/index.ts
 // TypeScript interfaces mirroring Rust domain entities and UI state
 
+export const APP_VERSION = "1.0.0";
+
 export interface ChannelId {
 	0: string;
 }

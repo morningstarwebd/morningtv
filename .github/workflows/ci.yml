@@ -53,3 +53,6 @@ jobs:
 
       - name: Cargo Test Backend (Integration & Security Tests)
         run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Cargo Test Sentinel Engine
+        run: cargo test --manifest-path crates/sentinel/Cargo.toml

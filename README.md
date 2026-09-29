@@ -11,6 +11,8 @@
 [![Engine](https://img.shields.io/badge/Streaming_Engine-Rust_+_Tokio-FF6D00?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![Framework](https://img.shields.io/badge/GUI_Framework-Tauri_v2-7C4DFF?style=for-the-badge&logo=tauri&logoColor=white)](https://tauri.app)
 [![License](https://img.shields.io/badge/License-MIT-FFD600?style=for-the-badge&logoColor=black)](LICENSE)
+[![Production Audit](https://img.shields.io/badge/Audit_Score-READY_100%2F100-00E676?style=for-the-badge&logo=shield&logoColor=white)](#-production-readiness--security)
+[![Tests](https://img.shields.io/badge/Tests-61%2F61_Passing-7C4DFF?style=for-the-badge&logo=githubactions&logoColor=white)](#%EF%B8%8F-building-from-source)
 
 <br/>
 

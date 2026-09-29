@@ -15,6 +15,10 @@ impl ChannelCacheRepository {
         Self { db }
     }
 
+    pub fn db(&self) -> &Database {
+        &self.db
+    }
+
     /// Atomically saves the complete channel list to the SQLite cache
     pub fn save_all(&self, channels: &[Channel]) -> StorageResult<()> {
         let conn_arc = self.db.conn();
@@ -28,6 +32,9 @@ impl ChannelCacheRepository {
             .as_secs() as i64;
 
         let tx = conn.transaction().map_err(StorageError::Sqlite)?;
+
+        // Boost temporary transaction cache size to 8MB for high-speed bulk ingestion
+        let _ = tx.execute_batch("PRAGMA cache_size = -8000;");
 
         tx.execute("DELETE FROM channels_cache", [])
             .map_err(StorageError::Sqlite)?;

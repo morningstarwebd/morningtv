@@ -19,6 +19,8 @@ export interface StreamFailoverOptions {
 	setReconnectCountdown: (countdown: number | null) => void;
 }
 
+const INITIAL_BACKOFF_DELAY_SECS = 10;
+
 export function useStreamFailover(options: StreamFailoverOptions): {
 	tryNextFallback: () => void;
 	resetFailover: () => void;
@@ -41,7 +43,7 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 	const reconnectIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
 		null,
 	);
-	const backoffDelayRef = useRef<number>(10);
+	const backoffDelayRef = useRef<number>(INITIAL_BACKOFF_DELAY_SECS);
 
 	const clearReconnectTimers = useCallback(() => {
 		if (reconnectTimerRef.current) {
@@ -57,7 +59,7 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 
 	const resetFailover = useCallback(() => {
 		failedUrlsRef.current.clear();
-		backoffDelayRef.current = 10;
+		backoffDelayRef.current = INITIAL_BACKOFF_DELAY_SECS;
 		clearReconnectTimers();
 	}, [clearReconnectTimers]);
 
@@ -83,7 +85,10 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 		);
 
 		if (nextAvailableIndex !== -1) {
-			showToast("Switching to backup stream...", false);
+			showToast(
+				`Switching to backup mirror (${nextAvailableIndex + 1}/${allUrls.length})...`,
+				false,
+			);
 			setStreamHealthStatus("degraded");
 			setMirrorIndex(nextAvailableIndex);
 		} else {

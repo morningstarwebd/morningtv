@@ -84,22 +84,45 @@ pub async fn set_category(category: String, state: State<'_, SharedAppState>) ->
 
 #[tauri::command]
 pub async fn search_channels(query: String, state: State<'_, SharedAppState>) -> Result<Vec<Channel>, String> {
+    let bounded_query = if query.len() > 200 {
+        query.chars().take(200).collect()
+    } else {
+        query
+    };
     let mut guard = state.write().await;
-    guard.search_query = query;
+    guard.search_query = bounded_query;
     guard.refresh_filtered_channels();
     Ok(guard.filtered_channels.clone())
 }
 
 #[tauri::command]
 pub async fn load_playlist(url: String, state: State<'_, SharedAppState>) -> Result<Vec<Channel>, String> {
-    {
-        let mut guard = state.write().await;
-        guard.settings.playlist_url = url.clone();
-        let _ = guard.settings.save();
+    let trimmed = url.trim();
+    if trimmed.is_empty() {
+        return Err("Playlist URL cannot be empty".to_string());
+    }
+
+    if trimmed.len() > 2048 {
+        return Err("Playlist URL too long (maximum 2048 characters permitted)".to_string());
+    }
+
+    if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
+        if let Err(msg) = crate::network::proxy::validate_target_url(trimmed) {
+            return Err(format!("Invalid playlist URL: {}", msg));
+        }
+    } else {
+        let is_m3u = trimmed.ends_with(".m3u") || trimmed.ends_with(".m3u8");
+        if !is_m3u || trimmed.contains("..") || trimmed.contains('\0') {
+            return Err("Invalid playlist URL or path. Please provide an HTTP/HTTPS stream URL or valid .m3u file.".to_string());
+        }
     }
 
     let mut guard = state.write().await;
-    guard.load_playlist(&url).await.map_err(|e| e.to_string())?;
+    guard.settings.playlist_url = trimmed.to_string();
+    if let Err(e) = guard.settings.save() {
+        tracing::warn!("Failed to persist settings after playlist load: {}", e);
+    }
+    guard.load_playlist(trimmed).await.map_err(|e| e.to_string())?;
     Ok(guard.filtered_channels.clone())
 }
 
@@ -110,14 +133,11 @@ pub async fn reset_playlist(state: State<'_, SharedAppState>) -> Result<Vec<Chan
     if cache_file.exists() {
         let _ = std::fs::remove_file(cache_file);
     }
-    {
-        let mut guard = state.write().await;
-        let _ = guard.channel_cache_repo.clear();
-        guard.settings.playlist_url = default_url.clone();
-        let _ = guard.settings.save();
-    }
 
     let mut guard = state.write().await;
+    let _ = guard.channel_cache_repo.clear();
+    guard.settings.playlist_url = default_url.clone();
+    let _ = guard.settings.save();
     guard.load_playlist(&default_url).await.map_err(|e| e.to_string())?;
     Ok(guard.filtered_channels.clone())
 }

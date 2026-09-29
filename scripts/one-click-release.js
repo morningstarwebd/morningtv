@@ -130,6 +130,14 @@ async function runRelease() {
       fs.writeFileSync(settingsPath, settingsContent, 'utf8');
     }
 
+    // 2f. src/types/index.ts
+    const typesPath = path.join(ROOT, 'src', 'types', 'index.ts');
+    if (fs.existsSync(typesPath)) {
+      let typesContent = fs.readFileSync(typesPath, 'utf8');
+      typesContent = typesContent.replace(/export const APP_VERSION = "[^"]+";/, `export const APP_VERSION = "${nextVersion}";`);
+      fs.writeFileSync(typesPath, typesContent, 'utf8');
+    }
+
     prepareOutputDir();
 
     // 3. Quality Gate & Frontend Build
@@ -257,6 +265,7 @@ async function runRelease() {
       'src-tauri/Cargo.toml',
       'src-tauri/Cargo.lock',
       'src-tauri/src/config/defaults.rs',
+      'src/types/index.ts',
       'src/components/SettingsDialog.tsx',
       'assets/morningtv-installer.nsi',
       'latest.json',

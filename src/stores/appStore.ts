@@ -16,7 +16,7 @@ import type {
 	QualityTier,
 	StreamHealthStatus,
 } from "../types";
-import { getChannelIdString } from "../types";
+import { APP_VERSION, getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
 import { filterChannelsClient } from "../utils/channelFilter";
 import { createLogger } from "../utils/logger";
@@ -259,7 +259,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 					if (res.error) {
 						get().showToast(`Update check failed: ${res.error}`, true);
 					} else {
-						get().showToast("✅ MorningTV is completely up to date! (v1.0.0)");
+						get().showToast(
+							`✅ MorningTV is completely up to date! (v${APP_VERSION})`,
+						);
 					}
 				}
 				setTimeout(() => {

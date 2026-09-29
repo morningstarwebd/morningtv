@@ -99,3 +99,16 @@ test('filterChannelsClient edge cases: empty input and whitespace query', () => 
   const nonExistent = filterChannelsClient(mockChannels, 'All', 'non-existent-channel-xyz');
   assert.equal(nonExistent.length, 0);
 });
+
+test('filterChannelsClient handles special characters and symbols safely', () => {
+  const brackets = filterChannelsClient(mockChannels, 'All', 'HD (Science)');
+  assert.equal(brackets.length, 0);
+
+  const symbols = filterChannelsClient(mockChannels, 'All', '.*+?^${}()|[]\\');
+  assert.equal(symbols.length, 0);
+});
+
+test('filterChannelsClient handles non-existent category gracefully', () => {
+  const result = filterChannelsClient(mockChannels, 'NonExistentCategory999', '');
+  assert.equal(result.length, 0);
+});

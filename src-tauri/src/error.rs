@@ -1,10 +1,9 @@
 // src/error.rs
 // Global typed error definitions for MorningTV
 
-#![allow(dead_code)]
-
 use thiserror::Error;
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum AppError {
     #[error("Playlist Error: {0}")]
@@ -27,6 +26,7 @@ pub enum AppError {
 }
 
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum PlaylistError {
     #[error("Empty or invalid M3U playlist format")]
@@ -45,6 +45,7 @@ pub enum PlaylistError {
     ChannelNotFound(String),
 }
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum NetworkError {
     #[error("HTTP request failed: {0}")]
@@ -60,6 +61,7 @@ pub enum NetworkError {
     BufferUnderrun,
 }
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum StorageError {
     #[error("SQLite database error: {0}")]
@@ -75,6 +77,7 @@ pub enum StorageError {
     Serialization(#[from] serde_json::Error),
 }
 
+#[allow(dead_code)]
 #[derive(Error, Debug)]
 pub enum ConfigError {
     #[error("Failed to read settings file: {0}")]
@@ -87,6 +90,7 @@ pub enum ConfigError {
     InvalidValue(String),
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct IpcError {
     pub code: String,

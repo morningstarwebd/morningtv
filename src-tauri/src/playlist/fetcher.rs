@@ -45,6 +45,14 @@ impl PlaylistFetcher {
             }
         } else {
             let path = Path::new(source);
+            let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
+            if !ext.eq_ignore_ascii_case("m3u") && !ext.eq_ignore_ascii_case("m3u8") {
+                return Err(PlaylistError::InvalidFormat);
+            }
+            if source.contains("..") {
+                return Err(PlaylistError::FileNotFound("Path traversal not permitted".to_string()));
+            }
+
             if path.exists() {
                 fs::read_to_string(path).map_err(|e| PlaylistError::FileNotFound(e.to_string()))?
             } else {

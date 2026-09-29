@@ -55,10 +55,10 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 					stallTicksRef.current += 1;
 					const ticks = stallTicksRef.current;
 
-					// 4s stall: downshift to lowest bitrate level
-					if (ticks === 4) {
+					// 3s stall: downshift to lowest bitrate level
+					if (ticks === 3) {
 						log.warn(
-							"Playback stall detected (4s) - forcing lowest quality tier",
+							"Playback stall detected (3s) - forcing lowest quality tier",
 						);
 						if (hlsRef.current && hlsRef.current.currentLevel > 0) {
 							hlsRef.current.currentLevel = 0;
@@ -69,10 +69,10 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 						setStreamHealthStatus("stalled");
 					}
 
-					// 8s stall: nudge video element forward (+0.15s) to bypass corrupt timestamp
-					if (ticks === 8) {
+					// 6s stall: nudge video element forward (+0.15s) to bypass corrupt timestamp
+					if (ticks === 6) {
 						log.warn(
-							"Playback stall persists (8s) - nudging video timestamp forward",
+							"Playback stall persists (6s) - nudging video timestamp forward",
 						);
 						try {
 							video.currentTime += 0.15;
@@ -82,19 +82,19 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 						}
 					}
 
-					// 15s stall: trigger internal HLS media error recovery
-					if (ticks === 15) {
+					// 9s stall: trigger internal HLS media error recovery
+					if (ticks === 9) {
 						log.warn(
-							"Playback stall critical (15s) - triggering media error recovery",
+							"Playback stall critical (9s) - triggering media error recovery",
 						);
 						hlsRef.current?.recoverMediaError();
 						hlsRef.current?.startLoad();
 					}
 
-					// 30s stall: persistent freeze, cycle to next mirror
-					if (ticks >= 30) {
+					// 14s stall: persistent freeze, cycle to next mirror
+					if (ticks >= 14) {
 						log.error(
-							"Playback freeze unrecoverable (30s) - failing over to next mirror",
+							"Playback freeze unrecoverable (14s) - failing over to backup mirror",
 						);
 						stallTicksRef.current = 0;
 						tryNextFallback();

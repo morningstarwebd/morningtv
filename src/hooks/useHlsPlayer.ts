@@ -236,8 +236,8 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 					switch (data.type) {
 						case Hls.ErrorTypes.NETWORK_ERROR:
 							retryCountRef.current += 1;
-							if (retryCountRef.current <= 6) {
-								const backoff = Math.min(5000, retryCountRef.current * 800);
+							if (retryCountRef.current <= 2) {
+								const backoff = Math.min(2000, retryCountRef.current * 500);
 								setTimeout(() => {
 									if (hlsRef.current) {
 										hls.startLoad();
@@ -252,16 +252,21 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 							break;
 						case Hls.ErrorTypes.MEDIA_ERROR:
 							retryCountRef.current += 1;
-							if (retryCountRef.current <= 3) {
+							if (retryCountRef.current <= 2) {
 								hls.recoverMediaError();
-							} else {
+							} else if (retryCountRef.current === 3) {
 								hls.swapAudioCodec();
 								hls.recoverMediaError();
+							} else {
+								retryCountRef.current = 0;
+								hls.destroy();
+								hlsRef.current = null;
+								tryNextFallback();
 							}
 							break;
 						default:
 							retryCountRef.current += 1;
-							if (retryCountRef.current <= 4) {
+							if (retryCountRef.current <= 2) {
 								hls.startLoad();
 							} else {
 								retryCountRef.current = 0;
@@ -275,11 +280,22 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 			});
 		} else if (video.canPlayType("application/vnd.apple.mpegurl")) {
 			video.src = proxiedUrl;
-			video.addEventListener("loadedmetadata", () => {
+			const onLoadedMeta = () => {
 				setIsBuffering(false);
 				video.play().catch(() => {});
-			});
-			video.addEventListener("error", () => tryNextFallback());
+			};
+			const onError = () => tryNextFallback();
+			video.addEventListener("loadedmetadata", onLoadedMeta);
+			video.addEventListener("error", onError);
+
+			return () => {
+				if (hlsRef.current) {
+					hlsRef.current.destroy();
+					hlsRef.current = null;
+				}
+				video.removeEventListener("loadedmetadata", onLoadedMeta);
+				video.removeEventListener("error", onError);
+			};
 		}
 
 		return () => {

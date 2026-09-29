@@ -207,6 +207,38 @@ const NAV_SCRIPT_TEMPLATE: &str = r##"
 })();
 "##;
 
+fn is_allowed_youtube_navigation(url: &url::Url) -> bool {
+    if let Some(host) = url.host_str() {
+        let h = host.to_lowercase();
+        h == "youtube.com"
+            || h.ends_with(".youtube.com")
+            || h == "youtu.be"
+            || h == "google.com"
+            || h.ends_with(".google.com")
+            || h.ends_with(".googlevideo.com")
+            || h.ends_with(".ytimg.com")
+            || h.ends_with(".gstatic.com")
+            || (h == "127.0.0.1" && url.path().contains("return_to_morningtv"))
+    } else {
+        false
+    }
+}
+
+fn is_allowed_hotstar_navigation(url: &url::Url) -> bool {
+    if let Some(host) = url.host_str() {
+        let h = host.to_lowercase();
+        h == "hotstar.com"
+            || h.ends_with(".hotstar.com")
+            || h == "jiohotstar.com"
+            || h.ends_with(".jiohotstar.com")
+            || h.ends_with(".disneyplus.com")
+            || h.ends_with(".akamaized.net")
+            || (h == "127.0.0.1" && url.path().contains("return_to_morningtv"))
+    } else {
+        false
+    }
+}
+
 pub fn build_nav_script(port: u16) -> String {
     NAV_SCRIPT_TEMPLATE.replace("__MORNINGTV_PROXY_PORT__", &port.to_string())
 }
@@ -275,6 +307,12 @@ pub async fn open_youtube(app: AppHandle) -> Result<(), String> {
                 }
                 return false;
             }
+
+            if !is_allowed_youtube_navigation(nav_url) {
+                tracing::warn!("Blocked navigation to non-allowed domain in YouTube view: {}", s);
+                return false;
+            }
+
             true
         })
         .initialization_script(&nav_script)
@@ -351,6 +389,12 @@ pub async fn open_hotstar(app: AppHandle) -> Result<(), String> {
                 }
                 return false;
             }
+
+            if !is_allowed_hotstar_navigation(nav_url) {
+                tracing::warn!("Blocked navigation to non-allowed domain in Hotstar view: {}", s);
+                return false;
+            }
+
             true
         })
         .initialization_script(&nav_script)

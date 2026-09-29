@@ -43,5 +43,30 @@ pub fn init_logging() {
         .with(file_layer)
         .try_init();
 
+    cleanup_old_logs(&log_dir);
+
     tracing::info!(log_dir = %log_dir.display(), "Structured tracing logger initialized");
+}
+
+/// Prunes log files older than 7 days to prevent unbounded disk usage
+fn cleanup_old_logs(log_dir: &std::path::Path) {
+    let retention_period = std::time::Duration::from_secs(7 * 24 * 3600);
+    let now = std::time::SystemTime::now();
+
+    if let Ok(entries) = std::fs::read_dir(log_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_file() {
+                if let Ok(meta) = entry.metadata() {
+                    if let Ok(modified) = meta.modified() {
+                        if let Ok(age) = now.duration_since(modified) {
+                            if age > retention_period {
+                                let _ = std::fs::remove_file(&path);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
