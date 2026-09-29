@@ -3,8 +3,8 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { create } from "zustand";
-import type { Channel } from "../types";
-import { getChannelIdString } from "../types";
+import type { Channel } from "../types/index.ts";
+import { getChannelIdString } from "../types/index.ts";
 import { filterChannelsClient } from "../utils/channelFilter.ts";
 import { createLogger } from "../utils/logger.ts";
 

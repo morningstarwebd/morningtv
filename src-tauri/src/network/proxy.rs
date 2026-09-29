@@ -469,23 +469,24 @@ pub fn extract_target_url(query_str: &str) -> Option<String> {
     if query_str.is_empty() {
         return None;
     }
-    if let Some(idx) = query_str.find("url=") {
-        let after = &query_str[idx + 4..];
-        // Check if query_str has token= after url= (trailing proxy auth token)
-        let has_trailing_token = query_str.find("token=").map_or(false, |tok_idx| tok_idx > idx);
-        let raw_url = if has_trailing_token {
-            if let Some(token_pos) = after.rfind("&token=") {
-                &after[..token_pos]
-            } else {
-                after
-            }
-        } else {
-            after
-        };
-        let decoded = urlencoding_decode(raw_url);
-        if !decoded.is_empty() {
-            return Some(decoded);
-        }
+    let idx = if query_str.starts_with("url=") {
+        Some(4)
+    } else if let Some(pos) = query_str.find("&url=") {
+        Some(pos + 5)
+    } else {
+        None
+    }?;
+
+    let after = &query_str[idx..];
+    // Check if query_str has token= after url= (trailing proxy auth token)
+    let raw_url = if let Some(token_pos) = after.rfind("&token=") {
+        &after[..token_pos]
+    } else {
+        after
+    };
+    let decoded = urlencoding_decode(raw_url);
+    if !decoded.is_empty() {
+        return Some(decoded);
     }
     None
 }
@@ -898,6 +899,18 @@ async fn handle_stream(
     let token = StreamProxy::get_auth_token();
 
     if is_m3u8 {
+        if !upstream_status.is_success() {
+            let status = StatusCode::from_u16(upstream_status.as_u16())
+                .unwrap_or(StatusCode::BAD_GATEWAY);
+            tracing::warn!(
+                url = %sanitize_url_for_log(&target_url),
+                status = upstream_status.as_u16(),
+                "Upstream returned non-success HTTP status for manifest"
+            );
+            METRICS.upstream_errors.fetch_add(1, Ordering::Relaxed);
+            return (status, "Upstream stream error").into_response();
+        }
+
         // Task 4.1: Response body size limit for manifests
         if let Some(len) = upstream_res.content_length() {
             if len > MAX_M3U8_SIZE as u64 {
@@ -1058,7 +1071,14 @@ pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
                     let raw_uri = &after_prefix[..end];
                     if !raw_uri.starts_with("http://127.0.0.1:") {
                         let resolved_uri = if let Some(ref base) = base_url {
-                            base.join(raw_uri).map(|u| u.to_string()).unwrap_or_else(|_| raw_uri.to_string())
+                            if let Ok(mut u) = base.join(raw_uri) {
+                                if u.query().is_none() && base.query().is_some() {
+                                    u.set_query(base.query());
+                                }
+                                u.to_string()
+                            } else {
+                                raw_uri.to_string()
+                            }
                         } else {
                             raw_uri.to_string()
                         };
@@ -1089,7 +1109,14 @@ pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
         }
 
         let resolved = if let Some(ref base) = base_url {
-            base.join(trimmed).map(|u| u.to_string()).unwrap_or_else(|_| trimmed.to_string())
+            if let Ok(mut u) = base.join(trimmed) {
+                if u.query().is_none() && base.query().is_some() {
+                    u.set_query(base.query());
+                }
+                u.to_string()
+            } else {
+                trimmed.to_string()
+            }
         } else {
             trimmed.to_string()
         };

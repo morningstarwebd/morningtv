@@ -4,6 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { useChannelStore } from '../src/stores/channelStore.ts';
 import { usePlayerStore } from '../src/stores/playerStore.ts';
 import { useStreamStore } from '../src/stores/streamStore.ts';
 import { useUiStore } from '../src/stores/uiStore.ts';
@@ -122,4 +123,38 @@ test('useUpdateStore tracks updater lifecycle state', () => {
   assert.equal(store.getState().updateInfo, null);
   assert.equal(store.getState().updateStatus, 'idle');
   assert.equal(store.getState().updateProgress, 0);
+});
+
+test('useChannelStore manages categories, providers, and channel search query', () => {
+  const store = useChannelStore;
+
+  // Initial state check
+  assert.equal(store.getState().activeCategory, 'All');
+  assert.equal(store.getState().activeProvider, 'All');
+  assert.equal(store.getState().searchQuery, '');
+
+  // Updating category and provider
+  store.getState().setCategory('Sports');
+  assert.equal(store.getState().activeCategory, 'Sports');
+
+  store.getState().setActiveProvider('Pluto TV');
+  assert.equal(store.getState().activeProvider, 'Pluto TV');
+
+  store.getState().setSearchQuery('Star Jalsha');
+  assert.equal(store.getState().searchQuery, 'Star Jalsha');
+
+  // Channel collection and active channel
+  const sampleChannels = [
+    { id: 'ch-1', name: 'DD National', group: 'India', url: 'https://cdn.example.com/dd.m3u8' },
+    { id: 'ch-2', name: 'ABP Ananda', group: 'News', url: 'https://cdn.example.com/abp.m3u8' }
+  ];
+  store.getState().setAllChannels(sampleChannels);
+  assert.equal(store.getState().allChannels.length, 2);
+
+  store.getState().setActiveChannel(sampleChannels[1]);
+  assert.equal(store.getState().activeChannel?.name, 'ABP Ananda');
+
+  // Reset
+  store.getState().setActiveChannel(null);
+  assert.equal(store.getState().activeChannel, null);
 });

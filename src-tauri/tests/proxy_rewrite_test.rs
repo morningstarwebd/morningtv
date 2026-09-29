@@ -104,3 +104,22 @@ fn test_rewrite_m3u8_comment_only_manifest() {
     assert!(rewritten.contains("#EXT-X-TARGETDURATION:10"));
     assert!(!rewritten.contains("/stream?url="));
 }
+
+#[test]
+fn test_rewrite_m3u8_preserves_query_params_on_relative_urls() {
+    let manifest = "\
+#EXTM3U
+#EXTINF:6.0,
+segment01.ts
+#EXTINF:6.0,
+segment02.ts?custom=param
+";
+    let base_url = "https://cdn.example.com/hls/live.m3u8?token=secret123&exp=999999";
+    let token = "proxy_tok";
+
+    let rewritten = rewrite_m3u8(manifest, base_url, token);
+    // segment01.ts lacks query params, so it must inherit token=secret123&exp=999999 from base_url
+    assert!(rewritten.contains("segment01.ts%3Ftoken%3Dsecret123%26exp%3D999999"));
+    // segment02.ts has its own custom query param, so it retains its own query param
+    assert!(rewritten.contains("segment02.ts%3Fcustom%3Dparam"));
+}

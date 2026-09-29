@@ -16,7 +16,7 @@ import type {
 	QualityTier,
 	StreamHealthStatus,
 } from "../types";
-import { APP_VERSION, getChannelIdString } from "../types";
+import { APP_VERSION, formatIpcError, getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
 import { filterChannelsClient } from "../utils/channelFilter";
 import { createLogger } from "../utils/logger";
@@ -273,7 +273,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 		} catch (e: unknown) {
 			set({ isCheckingUpdate: false, updateStatus: "error" });
 			if (manual) {
-				const msg = e instanceof Error ? e.message : String(e);
+				const msg = formatIpcError(e);
 				get().showToast(`Update check failed: ${msg}`, true);
 			}
 			setTimeout(() => {
@@ -295,7 +295,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 			set({ updateStatus: "ready", updateProgress: 100 });
 			get().showToast("🎉 Update downloaded! Restart to apply changes.", false);
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : String(err);
+			const msg = formatIpcError(err);
 			set({ updateStatus: "error" });
 			get().showToast(`Update download failed: ${msg}`, true);
 		}
@@ -506,11 +506,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 	},
 
 	setVolume: (volume: number) => {
-		set({ volume, isMuted: volume === 0 });
+		const clamped = Math.max(0, Math.min(100, volume));
+		set({ volume: clamped, isMuted: clamped === 0 });
 		const { settings } = get();
 		if (settings) {
 			invoke("save_settings", {
-				settings: { ...settings, volume, is_muted: volume === 0 },
+				settings: { ...settings, volume: clamped, is_muted: clamped === 0 },
 			}).catch((err) =>
 				log.error("Failed to save volume settings", { error: err }),
 			);
@@ -856,10 +857,3 @@ export const useAppStore = create<AppState>((set, get) => ({
 		);
 	},
 }));
-
-// Re-export domain store hooks and types for modular usage
-export { type ChannelState, useChannelStore } from "./channelStore";
-export { type PlayerState, usePlayerStore } from "./playerStore";
-export { type StreamState, useStreamStore } from "./streamStore";
-export { type UiState, useUiStore } from "./uiStore";
-export { type UpdateState, useUpdateStore } from "./updateStore";

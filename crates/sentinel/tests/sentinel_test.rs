@@ -2,7 +2,8 @@
 // Unit tests for the MorningTV Sentinel Engine
 
 use sentinel::{
-    extract_attribute, format_m3u, is_vip_channel, normalize_channel_key, parse_m3u, ChannelItem,
+    extract_attribute, format_m3u, is_valid_stream_payload, is_vip_channel, normalize_channel_key,
+    parse_m3u, ChannelItem,
 };
 
 #[test]
@@ -106,10 +107,44 @@ fn test_html_bot_challenge_detection_strings() {
 
 #[test]
 fn test_mpeg_ts_sync_byte_validation() {
-    let mut valid_ts = vec![0u8; 188];
-    valid_ts[0] = 0x47; // Standard MPEG-TS sync byte
-    assert_eq!(valid_ts[0], 0x47);
+    // Aligned 3-packet MPEG-TS payload (188 bytes each, all starting with 0x47)
+    let mut valid_ts = vec![0u8; 188 * 3];
+    valid_ts[0] = 0x47;
+    valid_ts[188] = 0x47;
+    valid_ts[376] = 0x47;
+    assert!(is_valid_stream_payload(&valid_ts), "Should accept aligned MPEG-TS stream");
+
+    // Random non-TS payload containing single 'G' byte (0x47) in the middle
+    let mut random_data = vec![0x10u8; 400];
+    random_data[42] = 0x47; // 'G'
+    assert!(!is_valid_stream_payload(&random_data), "Should reject random payload containing isolated 0x47");
 
     let corrupt_payload = vec![0x00, 0x01, 0x02, 0x03];
-    assert_ne!(corrupt_payload[0], 0x47);
+    assert!(!is_valid_stream_payload(&corrupt_payload));
+}
+
+#[test]
+fn test_hls_stream_payload_validation() {
+    let valid_media_playlist = b"#EXTM3U\n#EXT-X-VERSION:3\n#EXTINF:10.0,\nseg1.ts\n";
+    assert!(is_valid_stream_payload(valid_media_playlist));
+
+    let valid_master_playlist = b"#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1280000\nchunklist.m3u8\n";
+    assert!(is_valid_stream_payload(valid_master_playlist));
+
+    // String containing .m3u8 without valid HLS header or directives
+    let fake_m3u8 = b"Hello world! This is a link to stream.m3u8 but not a playlist.";
+    assert!(!is_valid_stream_payload(fake_m3u8));
+
+    // HTML error response
+    let html_404 = b"<!DOCTYPE html><html><body>404 Not Found</body></html>";
+    assert!(!is_valid_stream_payload(html_404));
+}
+
+#[test]
+fn test_fmp4_payload_validation() {
+    // fMP4 box header: 4 bytes length, followed by "ftyp"
+    let mut fmp4 = vec![0u8; 32];
+    fmp4[0..4].copy_from_slice(&[0x00, 0x00, 0x00, 0x20]);
+    fmp4[4..8].copy_from_slice(b"ftyp");
+    assert!(is_valid_stream_payload(&fmp4));
 }

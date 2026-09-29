@@ -80,3 +80,32 @@ test('buildPrewarmUrl constructs valid prewarm URLs', () => {
   assert.ok(prewarm.includes(encodeURIComponent(target)));
   assert.ok(prewarm.includes('token=' + encodeURIComponent(token)));
 });
+
+// Test IPC error formatting
+import { formatIpcError } from '../src/types/index.ts';
+
+test('formatIpcError formats strings, objects, and unknown errors safely', () => {
+  assert.equal(formatIpcError(null), 'Unknown error occurred');
+  assert.equal(formatIpcError(undefined), 'Unknown error occurred');
+  assert.equal(formatIpcError('Simple error message'), 'Simple error message');
+  assert.equal(formatIpcError({ message: 'Database locked' }), 'Database locked');
+  assert.equal(formatIpcError({ code: 'ERR_SSRF', message: 'Address blocked' }), '[ERR_SSRF] Address blocked');
+  assert.equal(formatIpcError(500), '500');
+});
+
+// Test proxy cache management
+import { getCurrentProxyPort, invalidateProxyCache, getProxyPort } from '../src/utils/proxy.ts';
+
+test('getCurrentProxyPort and invalidateProxyCache manage proxy runtime state', async () => {
+  const port = getCurrentProxyPort();
+  assert.equal(typeof port, 'number');
+  assert.ok(port > 0);
+
+  // Invalidate proxy cache does not throw
+  invalidateProxyCache();
+
+  // Querying getProxyPort fallback in Node test returns cached port
+  const p = await getProxyPort();
+  assert.equal(typeof p, 'number');
+  assert.ok(p > 0);
+});

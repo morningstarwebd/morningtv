@@ -6,17 +6,6 @@ import type React from "react";
 import { useEffect, useRef } from "react";
 import { useAppStore } from "../stores/appStore";
 
-export interface StreamTelemetryOptions {
-	videoRef: React.RefObject<HTMLVideoElement | null>;
-	hlsRef: React.RefObject<Hls | null>;
-	setBufferSecs: (secs: number) => void;
-	setTelemetryStats: (
-		stats: Parameters<
-			ReturnType<typeof useAppStore.getState>["setTelemetryStats"]
-		>[0],
-	) => void;
-}
-
 export function useStreamTelemetry(
 	videoRef: React.RefObject<HTMLVideoElement | null>,
 	hlsRef: React.RefObject<Hls | null>,

@@ -303,6 +303,7 @@ pub async fn open_youtube(app: AppHandle) -> Result<(), String> {
                     let _ = main.set_focus();
                 }
                 if let Some(yt) = app_handle.get_webview_window("youtube") {
+                    let _ = yt.eval("document.querySelectorAll('video, audio').forEach(el => { try { el.pause(); } catch(_) {} });");
                     let _ = yt.hide();
                 }
                 return false;
@@ -385,6 +386,7 @@ pub async fn open_hotstar(app: AppHandle) -> Result<(), String> {
                     let _ = main.set_focus();
                 }
                 if let Some(hs) = app_handle.get_webview_window("hotstar") {
+                    let _ = hs.eval("document.querySelectorAll('video, audio').forEach(el => { try { el.pause(); } catch(_) {} });");
                     let _ = hs.hide();
                 }
                 return false;

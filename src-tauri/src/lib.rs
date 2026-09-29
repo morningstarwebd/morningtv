@@ -59,15 +59,24 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .on_window_event(move |_window, event| {
-            // Task 3.1 & 3.2: Graceful proxy shutdown and SQLite WAL checkpoint on close
+            // Task 3.1 & 3.2: Graceful proxy shutdown, SQLite WAL checkpoint, and complete process termination on close
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                tracing::info!("Window close requested; shutting down streaming proxy and checkpointing DB");
-                network::StreamProxy::shutdown();
-                let state_clone = Arc::clone(&state_for_close);
-                tauri::async_runtime::spawn(async move {
-                    let guard = state_clone.read().await;
-                    guard.checkpoint();
-                });
+                if _window.label() == "main" {
+                    tracing::info!("Main window close requested; shutting down streaming proxy, checkpointing DB, and terminating application cleanly");
+                    network::StreamProxy::shutdown();
+                    let state_clone = Arc::clone(&state_for_close);
+                    tauri::async_runtime::spawn(async move {
+                        let guard = state_clone.read().await;
+                        guard.checkpoint();
+                    });
+                    if let Some(yt) = _window.app_handle().get_webview_window("youtube") {
+                        let _ = yt.close();
+                    }
+                    if let Some(hs) = _window.app_handle().get_webview_window("hotstar") {
+                        let _ = hs.close();
+                    }
+                    _window.app_handle().exit(0);
+                }
             }
         })
         .manage(state)

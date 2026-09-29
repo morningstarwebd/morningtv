@@ -53,7 +53,7 @@ export interface AppSettings {
 	normalize_audio?: boolean;
 }
 
-export interface IpcError {
+interface IpcError {
 	code: string;
 	message: string;
 	retryable: boolean;

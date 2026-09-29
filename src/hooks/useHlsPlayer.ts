@@ -7,7 +7,11 @@ import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { audioBooster } from "../utils/audioBooster";
 import { createLogger } from "../utils/logger";
-import { buildProxiedUrl, getCurrentProxyPort } from "../utils/proxy";
+import {
+	buildProxiedUrl,
+	getCurrentProxyPort,
+	invalidateProxyCache,
+} from "../utils/proxy";
 import { formatBytesPerSec } from "../utils/speedFormatter";
 
 const log = createLogger("HlsPlayer");
@@ -235,6 +239,9 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 				if (data.fatal) {
 					switch (data.type) {
 						case Hls.ErrorTypes.NETWORK_ERROR:
+							if (data.response?.code === 401 || data.response?.code === 403) {
+								invalidateProxyCache();
+							}
 							retryCountRef.current += 1;
 							if (retryCountRef.current <= 2) {
 								const backoff = Math.min(2000, retryCountRef.current * 500);
@@ -245,6 +252,7 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 								}, backoff);
 							} else {
 								retryCountRef.current = 0;
+								invalidateProxyCache();
 								hls.destroy();
 								hlsRef.current = null;
 								tryNextFallback();

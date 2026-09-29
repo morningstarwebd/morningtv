@@ -15,6 +15,7 @@ import { VideoPlayer } from "./components/VideoPlayer";
 import { YouTubeModal } from "./components/YouTubeModal";
 import { useBackgroundRefresh } from "./hooks/useBackgroundRefresh";
 import { useAppStore } from "./stores/appStore";
+import { logger } from "./utils/logger";
 
 const App: React.FC = () => {
 	const {
@@ -27,6 +28,7 @@ const App: React.FC = () => {
 	useBackgroundRefresh();
 
 	useEffect(() => {
+		logger.info("MorningTV application initialized");
 		init();
 		// Silently check for app updates 3 seconds after launch
 		const timer = setTimeout(() => {

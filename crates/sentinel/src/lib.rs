@@ -315,6 +315,69 @@ pub fn extract_attribute(line: &str, attr: &str) -> Option<String> {
     None
 }
 
+/// Validates whether a response payload is a legitimate media stream (HLS manifest, MPEG-TS, or fMP4)
+/// and not an HTML error/challenge or random text response.
+pub fn is_valid_stream_payload(bytes: &[u8]) -> bool {
+    if bytes.is_empty() {
+        return false;
+    }
+
+    let check_len = bytes.len().min(1024);
+    let slice = &bytes[..check_len];
+    let head = String::from_utf8_lossy(&slice[..slice.len().min(512)]).to_lowercase();
+
+    // Check for HTML bot-challenge or error pages
+    if head.contains("<!doctype html")
+        || head.contains("<html")
+        || head.contains("cloudflare")
+        || head.contains("access denied")
+        || head.contains("error 404")
+        || head.contains("404 not found")
+    {
+        return false;
+    }
+
+    // 1. Valid HLS manifest (#EXTM3U with standard HLS tags)
+    if head.contains("#extm3u") {
+        if head.contains("#extinf")
+            || head.contains("#ext-x-stream-inf")
+            || head.contains("#ext-x-targetduration")
+            || head.contains("#ext-x-media-sequence")
+            || head.contains("#ext-x-version")
+        {
+            return true;
+        }
+    }
+
+    // 2. MPEG-TS stream with verified 188-byte packet synchronization
+    let len = slice.len();
+    if len >= 188 {
+        for offset in 0..188.min(len.saturating_sub(187)) {
+            if slice[offset] == 0x47 {
+                let second = offset + 188;
+                let third = offset + 376;
+                if second < len && slice[second] == 0x47 {
+                    if third >= len || slice[third] == 0x47 {
+                        return true;
+                    }
+                } else if len < 376 {
+                    return true;
+                }
+            }
+        }
+    }
+
+    // 3. fMP4 / CMAF initialization or media segment
+    if len >= 8 {
+        let box_type = &slice[4..8];
+        if box_type == b"ftyp" || box_type == b"moof" || box_type == b"styp" {
+            return true;
+        }
+    }
+
+    false
+}
+
 pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResult {
     let res = client
         .get(url)
@@ -334,32 +397,7 @@ pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResul
 
             if status.is_success() || status.as_u16() == 206 {
                 if let Ok(bytes) = resp.bytes().await {
-                    if bytes.is_empty() {
-                        return ProbeResult {
-                            ok: false,
-                            active_url: url.to_string(),
-                        };
-                    }
-
-                    // Check for HTML bot-challenge or error pages
-                    let head = String::from_utf8_lossy(&bytes[..bytes.len().min(512)]).to_lowercase();
-                    if head.contains("<!doctype html")
-                        || head.contains("<html")
-                        || head.contains("cloudflare")
-                        || head.contains("access denied")
-                    {
-                        return ProbeResult {
-                            ok: false,
-                            active_url: url.to_string(),
-                        };
-                    }
-
-                    // Valid HLS manifest (#EXTM3U) or MPEG-TS sync byte (0x47)
-                    if head.contains("#extm3u")
-                        || bytes[0] == 0x47
-                        || bytes.windows(188).any(|w| w[0] == 0x47)
-                        || url.contains(".m3u8")
-                    {
+                    if is_valid_stream_payload(&bytes) {
                         return ProbeResult {
                             ok: true,
                             active_url: effective_url,
