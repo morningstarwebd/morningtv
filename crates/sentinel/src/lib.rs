@@ -433,6 +433,47 @@ pub fn format_m3u(channels: &[ChannelItem]) -> String {
     out
 }
 
+#[derive(serde::Deserialize, Default, Debug, Clone)]
+pub struct DmcaBlacklist {
+    #[serde(default)]
+    pub blocked_channels: Vec<String>,
+    #[serde(default)]
+    pub blocked_domains: Vec<String>,
+}
+
+impl DmcaBlacklist {
+    pub fn load_from_dir(dir: &Path) -> Self {
+        let path = dir.join("dmca_blacklist.json");
+        if let Ok(content) = fs::read_to_string(&path) {
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            Self::default()
+        }
+    }
+
+    pub fn is_blocked(&self, name: &str, id: &str, url: &str) -> bool {
+        let n = name.to_lowercase();
+        let i = id.to_lowercase();
+        let u = url.to_lowercase();
+
+        for b in &self.blocked_channels {
+            let b_lower = b.trim().to_lowercase();
+            if !b_lower.is_empty() && (n.contains(&b_lower) || i.contains(&b_lower)) {
+                return true;
+            }
+        }
+
+        for d in &self.blocked_domains {
+            let d_lower = d.trim().to_lowercase();
+            if !d_lower.is_empty() && u.contains(&d_lower) {
+                return true;
+            }
+        }
+
+        false
+    }
+}
+
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     println!("===============================================================");
     println!("🌅 MorningTV Stream Sentinel 3.0 (Native Tokio Rust Engine)");
@@ -443,8 +484,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // 1. Initialize persistent HTTP client with large connection pool
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(4))
-        .connect_timeout(std::time::Duration::from_secs(3))
+        .timeout(std::time::Duration::from_secs(6))
+        .connect_timeout(std::time::Duration::from_secs(4))
         .redirect(reqwest::redirect::Policy::limited(6))
         .pool_max_idle_per_host(30)
         .tcp_keepalive(std::time::Duration::from_secs(15))
@@ -530,7 +571,20 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         channel_map.len()
     );
 
-    let all_candidates: Vec<ChannelItem> = channel_map.into_values().collect();
+    let blacklist = DmcaBlacklist::load_from_dir(&playlists_dir);
+    if !blacklist.blocked_channels.is_empty() || !blacklist.blocked_domains.is_empty() {
+        println!(
+            "🛡️  DMCA Persistent Exclusion Filter active: {} channels, {} domains blacklisted",
+            blacklist.blocked_channels.len(),
+            blacklist.blocked_domains.len()
+        );
+    }
+
+    let raw_candidates: Vec<ChannelItem> = channel_map.into_values().collect();
+    let all_candidates: Vec<ChannelItem> = raw_candidates
+        .into_iter()
+        .filter(|ch| !blacklist.is_blocked(&ch.name, &ch.id, &ch.url))
+        .collect();
     let total_candidates = all_candidates.len();
 
     println!(
@@ -538,14 +592,14 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         total_candidates
     );
 
-    // 3. Parallel probing with Tokio Semaphore (120 parallel tasks)
+    // 3. Parallel probing with Tokio Semaphore (20 polite workers for high accuracy & zero CDN bans)
     let probe_start = Instant::now();
-    let semaphore = Arc::new(Semaphore::new(120));
+    let semaphore = Arc::new(Semaphore::new(20));
     let progress_completed = Arc::new(AtomicUsize::new(0));
     let dead_counter = Arc::new(AtomicUsize::new(0));
     let healed_counter = Arc::new(AtomicUsize::new(0));
 
-    println!("\n🔍 Probing 100% of streams ({} total candidates) concurrently using Tokio (120 parallel workers)...", total_candidates);
+    println!("\n🔍 Probing 100% of streams ({} total candidates) concurrently using Tokio (20 polite workers)...", total_candidates);
 
     let mut tasks = Vec::with_capacity(total_candidates);
 

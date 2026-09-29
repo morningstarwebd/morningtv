@@ -1,0 +1,7 @@
+{
+  "version": "1.0",
+  "description": "MorningTV Persistent Stream Exclusion & DMCA Takedown Database. Only channels or domains with verified legal notices will be added here to permanently skip them during automated builds.",
+  "updated_at": "2026-09-29T21:48:00Z",
+  "blocked_channels": [],
+  "blocked_domains": []
+}

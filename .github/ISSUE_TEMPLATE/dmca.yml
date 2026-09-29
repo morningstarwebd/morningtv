@@ -1,0 +1,58 @@
+name: DMCA / Content Removal Request
+description: Request the permanent exclusion of an indexed channel or stream
+title: "[Takedown Request]: "
+labels: ["dmca-takedown", "stream-exclusion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Stream Removal & DMCA Notice Form
+        MorningTV is an automated stream health auditor and native player client. We do not host, broadcast, or store any media streams.
+        All indexed streams originate algorithmically from public upstream directories (e.g., iptv-org).
+        
+        Upon verified submission, offending streams will be permanently added to our `dmca_blacklist.json` database and purged from all future builds within 24–48 hours.
+
+  - type: input
+    id: channel_name
+    attributes:
+      label: Channel / Stream Name
+      description: The exact channel name or identifier as shown in the MorningTV channel guide.
+      placeholder: "e.g., Channel XYZ HD"
+    validations:
+      required: true
+
+  - type: input
+    id: stream_url
+    attributes:
+      label: Stream URL / Domain (if known)
+      description: The underlying .m3u8, domain, or playlist entry to be excluded.
+      placeholder: "e.g., https://example.com/live/stream.m3u8"
+    validations:
+      required: false
+
+  - type: input
+    id: copyright_owner
+    attributes:
+      label: Copyright Holder / Authorized Agent
+      description: Name of the copyright holder or authorized representative.
+      placeholder: "e.g., Network Media Corp"
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Infringement Details & Proof of Authorization
+      description: Please provide relevant evidence, official contact email, or registration details proving rightsholder authorization.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Declarations
+      options:
+        - label: I have a good faith belief that the indexed link is unauthorized.
+          required: true
+        - label: I declare under penalty of perjury that the information in this notice is accurate and that I am authorized to act on behalf of the copyright owner.
+          required: true
