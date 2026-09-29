@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-09-29
+
+### Added & Enhanced
+- **Sub-Millisecond Host Security Cache**: Caches verified public IP and domain validation results in-memory with a 30-minute TTL, eliminating the ~4.9s blocking DNS latency on every transport segment (.ts) chunk while keeping 100% of Anti-SSRF protections active.
+- **Deep Adaptive Forward Buffer (35s–60s)**: Expanded HLS forward buffer cushion up to 60 seconds (up from 8s) with a 30s finite back-buffer. Network dips and ISP jitter of up to 30 seconds are smoothly absorbed in RAM without video stalling.
+- **Broadcaster TLS Tolerance**: Enabled certificate quirk tolerance on the internal media streaming relay, ensuring legacy and free public broadcasters with self-signed or expired certs play flawlessly.
+- **Non-Destructive Watchdog**: De-escalated playback watchdog to prevent destructive quality downgrades or timestamp nudges during transient network hiccups, allowing HLS.js native ABR to adapt bitrates smoothly.
+- **Concurrency Scaling**: Increased per-origin request limit from 12 to 64 to eliminate queue contention during parallel segment pre-fetching.
+
 ## [1.0.0] - 2026-09-29
 
 ### Added

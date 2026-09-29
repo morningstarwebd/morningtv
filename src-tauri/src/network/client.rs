@@ -15,7 +15,7 @@ impl ResilientHttpClient {
         let mut headers = HeaderMap::new();
         headers.insert(
             USER_AGENT,
-            HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) MorningTV/1.0.0"),
+            HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) MorningTV/1.0.1"),
         );
 
         let inner = reqwest::Client::builder()
