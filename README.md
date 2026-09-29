@@ -424,7 +424,7 @@ MorningTV checks for updates 3 seconds after launch. When a new version is avail
 
 ### Prerequisites
 * Windows 10 or Windows 11 (64-bit)
-* Node.js 20 or higher
+* Node.js 22 LTS or higher
 * Rust 1.77.2 or higher (install via [rustup.rs](https://rustup.rs))
 * Visual Studio Build Tools with the **Desktop development with C++** workload
 
@@ -444,12 +444,13 @@ npm run tauri:dev
 # 4. Run code quality validation
 npm run lint            # ESLint + Biome check
 npm run cargo:check     # Rust compiler diagnostics
+npm test                # Run 81 frontend and Rust tests
 ```
 
 ### Production Release Build
 
 ```powershell
-# Build the signed NSIS installer with embedded WebView2 and publish to GitHub Releases
+# Build the signed lightweight NSIS installer (~5.1 MB) and publish to GitHub Releases
 npm run release
 ```
 
@@ -457,7 +458,7 @@ This single command performs the full pipeline:
 1. TypeScript type checking (`tsc -b`)
 2. Vite production bundle (`vite build`)
 3. Rust release compilation (`cargo build --release`)
-4. NSIS installer packaging with offline WebView2 embedding
+4. NSIS installer packaging with automated WebView2 runtime bootstrapper
 5. Minisign cryptographic signature generation
 6. `latest.json` auto-updater manifest creation
 7. Git commit, tag, and push to origin
@@ -468,9 +469,6 @@ This single command performs the full pipeline:
 ```powershell
 # Run the Rust Tokio multi-threaded stream auditor
 npm run sync
-
-# Alternatively, the legacy Node.js auditor (slower, but functional)
-npm run sync:node
 ```
 
 <br/>
@@ -607,7 +605,7 @@ morningtv/
 | **Auto-Updater** | tauri-plugin-updater | 2.13 | Signed binary delta updates from GitHub Releases |
 | **Signing** | Minisign | Ed25519 | Cryptographic release artifact verification |
 | **CI/CD** | GitHub Actions | N/A | Automated Sentinel runs and playlist maintenance |
-| **Installer** | NSIS | 3.x | Windows installer with offline WebView2 embedding |
+| **Installer** | NSIS | 3.x | Ultra-lightweight Windows setup (~5.1 MB) with WebView2 bootstrapper |
 | **Icons** | Lucide React | 1.47 | Consistent open-source SVG icon library |
 
 <br/>
@@ -631,7 +629,7 @@ For complete contributor guidelines, please see [CONTRIBUTING.md](CONTRIBUTING.m
 * Frontend hot-reload is active during `npm run tauri:dev`. TypeScript and CSS changes reflect instantly.
 * Rust backend changes require a recompile (Tauri handles this automatically in dev mode).
 * Run `npm run sync` to test the Stream Sentinel locally before pushing playlist changes.
-* Run `npm test` to execute all 54 frontend and Rust tests.
+* Run `npm test` to execute all 81 frontend and Rust tests.
 * The Biome formatter enforces consistent code style. Run `npx biome check --write src` to auto-fix.
 
 <br/>
