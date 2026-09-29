@@ -41,14 +41,6 @@ pub fn run() {
     let state_for_close = Arc::clone(&state);
 
     tauri::Builder::default()
-        .plugin(
-            tauri_plugin_log::Builder::default()
-                .level(log::LevelFilter::Info)
-                .level_for("reqwest", log::LevelFilter::Warn)
-                .level_for("hyper", log::LevelFilter::Warn)
-                .level_for("tiny_http", log::LevelFilter::Warn)
-                .build(),
-        )
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
