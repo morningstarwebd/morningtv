@@ -36,13 +36,6 @@ export function useStreamTelemetry(
 			const roundedBuffer = Math.round(bufferSecs * 10) / 10;
 			useAppStore.getState().setBufferSecs(roundedBuffer);
 
-			// Buffer Starvation Guard: If buffer dips under 2.0s, tighten buffer window
-			if (bufferSecs > 0 && bufferSecs < 2.0 && hlsRef.current) {
-				if (hlsRef.current.config.maxBufferLength > 8) {
-					hlsRef.current.config.maxBufferLength = 8;
-				}
-			}
-
 			// 2. Hardware decoded resolution detection
 			if (video.videoWidth > 0 && video.videoHeight > 0) {
 				const detectedRes = `${video.videoHeight}p (${video.videoWidth}×${video.videoHeight})`;

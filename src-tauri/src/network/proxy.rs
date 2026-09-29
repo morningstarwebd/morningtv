@@ -166,9 +166,15 @@ impl Drop for ActiveRequestGuard {
 }
 
 static ORIGIN_LIMITS: OnceLock<dashmap::DashMap<String, Arc<AtomicUsize>>> = OnceLock::new();
-pub const MAX_CONCURRENT_PER_ORIGIN: usize = 12;
+pub const MAX_CONCURRENT_PER_ORIGIN: usize = 64;
 pub const MAX_M3U8_SIZE: usize = 10 * 1024 * 1024;    // 10 MB
 pub const MAX_SEGMENT_SIZE: u64 = 60 * 1024 * 1024;  // 60 MB
+
+static HOST_SECURITY_CACHE: OnceLock<dashmap::DashMap<String, (Instant, bool)>> = OnceLock::new();
+
+fn get_host_security_cache() -> &'static dashmap::DashMap<String, (Instant, bool)> {
+    HOST_SECURITY_CACHE.get_or_init(dashmap::DashMap::new)
+}
 
 fn get_origin_limits() -> &'static dashmap::DashMap<String, Arc<AtomicUsize>> {
     ORIGIN_LIMITS.get_or_init(dashmap::DashMap::new)
@@ -325,6 +331,7 @@ impl StreamProxy {
                 .timeout(std::time::Duration::from_secs(60))
                 .connect_timeout(std::time::Duration::from_secs(30))
                 .redirect(redirect_policy)
+                .danger_accept_invalid_certs(true)
                 .pool_max_idle_per_host(40)
                 .pool_idle_timeout(std::time::Duration::from_secs(60))
                 .tcp_keepalive(std::time::Duration::from_secs(30))
@@ -550,22 +557,38 @@ pub fn validate_target_url(target_url: &str) -> Result<Url, &'static str> {
     Ok(parsed)
 }
 
-/// Asynchronous validation that actively performs DNS lookup to prevent DNS-rebinding SSRF
+/// Asynchronous validation that actively performs DNS lookup with an in-memory security cache
 pub async fn validate_target_url_async(target_url: &str) -> Result<Url, &'static str> {
     let parsed = validate_target_url(target_url)?;
     let host = parsed.host_str().ok_or("Target URL has no host")?;
-
-    // Perform DNS lookup to detect hostnames resolving to private/loopback/cloud metadata IPs
     let port = parsed.port_or_known_default().unwrap_or(80);
-    let host_port = format!("{}:{}", host, port);
-    if let Ok(addrs) = tokio::net::lookup_host(&host_port).await {
-        for addr in addrs {
-            if is_private_or_loopback_ip(&addr.ip()) {
+
+    let cache = get_host_security_cache();
+    let cache_key = format!("{}:{}", host, port);
+
+    if let Some(entry) = cache.get(&cache_key) {
+        let (cached_at, is_safe) = *entry.value();
+        if cached_at.elapsed() < std::time::Duration::from_secs(1800) {
+            if is_safe {
+                return Ok(parsed);
+            } else {
                 return Err("Target host resolves to a private, loopback, or metadata address (SSRF blocked)");
             }
         }
     }
 
+    // Perform DNS lookup only if not in cache or expired
+    let host_port = format!("{}:{}", host, port);
+    if let Ok(addrs) = tokio::net::lookup_host(&host_port).await {
+        for addr in addrs {
+            if is_private_or_loopback_ip(&addr.ip()) {
+                cache.insert(cache_key, (Instant::now(), false));
+                return Err("Target host resolves to a private, loopback, or metadata address (SSRF blocked)");
+            }
+        }
+    }
+
+    cache.insert(cache_key, (Instant::now(), true));
     Ok(parsed)
 }
 

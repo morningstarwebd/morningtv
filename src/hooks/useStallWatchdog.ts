@@ -1,5 +1,5 @@
 // src/hooks/useStallWatchdog.ts
-// Intelligent multi-tier stall detection, micro-nudge recovery, and fallback cascade
+// Production-grade resilient stall detection and non-destructive recovery
 
 import type Hls from "hls.js";
 import type React from "react";
@@ -42,59 +42,25 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 
 			const currentTime = video.currentTime;
 			if (isPlaying && !video.paused && !video.ended) {
-				// Buffer starvation guard: auto-cap to lowest level if under 2.5s
-				if (bufferSecs > 0 && bufferSecs < 2.5 && hlsRef.current) {
-					if (hlsRef.current.currentLevel > 0) {
-						hlsRef.current.autoLevelCapping = 0;
-						hlsRef.current.currentLevel = 0;
-						setStreamHealthStatus("degraded");
-					}
-				}
-
 				if (currentTime === lastTimeRef.current && currentTime > 0) {
 					stallTicksRef.current += 1;
 					const ticks = stallTicksRef.current;
 
-					// 3s stall: downshift to lowest bitrate level
-					if (ticks === 3) {
-						log.warn(
-							"Playback stall detected (3s) - forcing lowest quality tier",
+					// 5s stall: gentle buffer load reload without clearing MSE or forcing quality changes
+					if (ticks === 5) {
+						log.info(
+							"Playback stall detected (5s) - triggering gentle startLoad()",
 						);
-						if (hlsRef.current && hlsRef.current.currentLevel > 0) {
-							hlsRef.current.currentLevel = 0;
-						}
 						hlsRef.current?.startLoad();
 						setIsBuffering(true);
 						incrementStallCount();
 						setStreamHealthStatus("stalled");
 					}
 
-					// 6s stall: nudge video element forward (+0.15s) to bypass corrupt timestamp
-					if (ticks === 6) {
+					// 16s persistent stall: genuine stream outage, cycle to fallback mirror
+					if (ticks >= 16) {
 						log.warn(
-							"Playback stall persists (6s) - nudging video timestamp forward",
-						);
-						try {
-							video.currentTime += 0.15;
-							hlsRef.current?.startLoad();
-						} catch {
-							// Ignored
-						}
-					}
-
-					// 9s stall: trigger internal HLS media error recovery
-					if (ticks === 9) {
-						log.warn(
-							"Playback stall critical (9s) - triggering media error recovery",
-						);
-						hlsRef.current?.recoverMediaError();
-						hlsRef.current?.startLoad();
-					}
-
-					// 14s stall: persistent freeze, cycle to next mirror
-					if (ticks >= 14) {
-						log.error(
-							"Playback freeze unrecoverable (14s) - failing over to backup mirror",
+							"Playback unrecoverable after 16s - cycling to next mirror",
 						);
 						stallTicksRef.current = 0;
 						tryNextFallback();
@@ -102,9 +68,9 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 				} else {
 					stallTicksRef.current = 0;
 					lastTimeRef.current = currentTime;
-					if (bufferSecs >= 6.0) {
+					if (bufferSecs >= 10.0) {
 						setStreamHealthStatus("good");
-					} else if (bufferSecs >= 2.5) {
+					} else if (bufferSecs >= 3.0) {
 						setStreamHealthStatus("degraded");
 					} else {
 						setStreamHealthStatus("critical");
