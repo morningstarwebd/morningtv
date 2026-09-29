@@ -65,7 +65,7 @@ https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8
 https://702e2e484b144c71ba38bca0d41f37cd.msvdn.net/bpk-tv/ERTSports3/default/index.mpd
 #EXTINF:-1 tvg-id="ERTSports4.gr" tvg-name="ERT Sports 4" tvg-logo="https://i.imgur.com/gebWmAB.png" group-title="Greece" provider="Free-TV",ERT Sports 4
 #EXTFALLBACK: https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8
-https://702e2e484b144c71ba38bca0d41f37cd.msvdn.net/bpk-tv/ERTSports4/default/index.mpd
+https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8
 #EXTINF:-1 tvg-id="GTV.mn" tvg-name="Gandan TV" tvg-logo="" group-title="Mongolia" provider="Free-TV",Gandan TV
 https://cdn4.skygo.mn/live/disk1/GTV/HLSv3-FTA/GTV.m3u8
 #EXTINF:-1 tvg-id="GugbangTV.kr@SD" tvg-name="Gugbang TV (1080p) [Not 24/7]" tvg-logo="https://i.imgur.com/f1tz5fg.png" group-title="News" provider="IPTV-Org",Gugbang TV (1080p) [Not 24/7]
@@ -126,8 +126,6 @@ https://cloudplay-sonyliv.pages.dev/ten4hd.m3u8
 https://cloudplay-sonyliv.pages.dev/ten5hd.m3u8
 #EXTINF:-1 tvg-id="SonyWah.in@SD" tvg-name="Sony Wah (1080p)" tvg-logo="https://dtil.tmsimg.com/assets/s157974_ld_h15_aa.png?lock=720x540" group-title="Movies" provider="IPTV-Org",Sony Wah (1080p)
 https://cloudplay-sonyliv.pages.dev/wah.m3u8
-#EXTINF:-1 tvg-id="SonyYay.in@SD" tvg-name="Sony Yay! (1080p)" tvg-logo="https://dtil.tmsimg.com/assets/s159100_ld_h15_aa.png?lock=720x540" group-title="Animation;Kids" provider="IPTV-Org",Sony Yay! (1080p)
-https://cloudplay-sonyliv.pages.dev/yay.m3u8
 #EXTINF:-1 tvg-id="StarJalsha.in@SD" tvg-name="Star Jalsha (576p) [Geo-blocked]" tvg-logo="https://i.imgur.com/IlufzR5.png" group-title="Entertainment" provider="IPTV-Org Bangladesh",Star Jalsha (576p) [Geo-blocked]
 #EXTFALLBACK: http://cdn98.com/play/live.php?mac=00:1A:79:99:54:11&stream=225805&extension=ts&play_token=o1cczsG9wV
 https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starjalsha.smil/chunklist_b1928000.m3u8
@@ -153,11 +151,11 @@ https://amg01448-samsungin-tv9bangla-samsungin-9lgnh.amagi.tv/playlist/amg01448-
 #EXTINF:-1 tvg-id="TV9Bangla.in@SD" tvg-name="TV9 Bangla (720p)" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_TV9_BANGLA/images/LOGO_HD/image.png" group-title="News" provider="IPTV-Org",TV9 Bangla (720p)
 https://dyjmyiv3bp2ez.cloudfront.net/pub-iotv9banaen8yq/liveabr/playlist.m3u8
 #EXTINF:-1 tvg-id="VinhLongTV1.vn@SD" tvg-name="Vinh Long TV 1 (720p)" tvg-logo="https://i.imgur.com/5YFsqPx.png" group-title="General;News" provider="IPTV-Org",Vinh Long TV 1 (720p)
-https://livecdn-vthcm-bp.vieon.vn/b7ec16be297e84a830d2b6dad28f49db/1790723164000/livetv/group-02/b39935eee4d0c52fd9a5357c4ade8cc2/playlist.m3u8?c=a
+https://livecdn-vthcm-bp.vieon.vn/f2f380e57c880e32f5786f3397ddb595/1790745019000/livetv/group-02/b39935eee4d0c52fd9a5357c4ade8cc2/playlist.m3u8?c=a
 #EXTINF:-1 tvg-id="VinhLongTV3.vn@SD" tvg-name="Vinh Long TV 3 (720p)" tvg-logo="https://i.imgur.com/OQXEhqu.png" group-title="Entertainment;Movies" provider="IPTV-Org",Vinh Long TV 3 (720p)
-https://livecdn-vthcm-bp.vieon.vn/7e08a7a0cdee14bd2e64891eae0fd84f/1790723144000/livetv/group-02/d163c8c091b5c937a0b5789d2be251b4/playlist.m3u8?c=a
+https://livecdn-vthcm-bp.vieon.vn/acbd5bd344b1a2be236590c8b6e6801e/1790745022000/livetv/group-02/d163c8c091b5c937a0b5789d2be251b4/playlist.m3u8?c=a
 #EXTINF:-1 tvg-id="VinhLongTV4.vn@SD" tvg-name="Vinh Long TV 4 (720p)" tvg-logo="https://i.imgur.com/ARhIkvR.png" group-title="Culture;Entertainment;Sports;Travel" provider="IPTV-Org",Vinh Long TV 4 (720p)
-https://livecdn-vthcm-bp.vieon.vn/3dc14d67d544a258b1e26e1c3b591166/1790723143000/livetv/group-02/759df25e7b439639ed0c2588b776735b/playlist.m3u8?c=a
+https://livecdn-vthcm-bp.vieon.vn/96041e26689eb066f32fd942556843b8/1790745043000/livetv/group-02/759df25e7b439639ed0c2588b776735b/playlist.m3u8?c=a
 #EXTINF:-1 tvg-id="INBD400003GE" tvg-name="Zee 24 Ghanta" tvg-logo="https://tvpnlogopus.samsungcloud.tv/platform/image/sourcelogo/vc/00/02/34/INBD400003GE_20260623T013259SQUARE.png" group-title="Regional News" provider="Samsung TV Plus",Zee 24 Ghanta
 https://amg01448-samsungin-zee24ghanta-samsungin-ad-sc.amagi.tv/playlist/amg01448-samsungin-zee24ghanta-samsungin/playlist.m3u8?ads.did=%7BPSID%7D&ads.dnt=%7BTARGETOPT%7D&ads.app_domain=%7BAPP_DOMAIN%7D&ads.app_name=%7BAPP_NAME%7D&ads.coppa=0
 #EXTINF:-1 tvg-id="ZeeBangla.in@HD" tvg-name="Zee Bangla HD (720p)" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ZEE_BANGLA/images/LOGO_HD/LOGO_HD_image.png" group-title="Entertainment" provider="IPTV-Org Bangladesh",Zee Bangla HD (720p)
