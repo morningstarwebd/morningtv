@@ -274,7 +274,7 @@ async function runRelease() {
 
     try {
       runGit(['add', '-A']);
-      runGit(['commit', '-m', `Release v${nextVersion}: Native Windows live TV player with offline embedded installer`]);
+      runGit(['commit', '-m', `Release v${nextVersion}: High-performance native Windows IPTV player`]);
     } catch (e) {
       log('Git commit note: working tree clean or already committed.');
     }
