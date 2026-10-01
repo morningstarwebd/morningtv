@@ -275,7 +275,7 @@ export const SettingsDialog: React.FC = () => {
 							</span>
 						</div>
 						<span className="text-[9px] font-mono text-zinc-400 font-bold">
-							v1.0.1
+							v1.1.0
 						</span>
 					</div>
 				</div>
@@ -837,7 +837,7 @@ export const SettingsDialog: React.FC = () => {
 																MorningTV Desktop
 															</h4>
 															<span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold font-mono">
-																v1.0.1
+																v1.1.0
 															</span>
 														</div>
 														<p className="text-xs text-zinc-400 mt-0.5">
@@ -1099,7 +1099,7 @@ export const SettingsDialog: React.FC = () => {
 											Open Source
 										</div>
 										<div className="font-mono text-[11px]">
-											MorningTV v1.0.1 (Production Release)
+											MorningTV v1.1.0 (Production Release)
 										</div>
 									</div>
 								</div>
