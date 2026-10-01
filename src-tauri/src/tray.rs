@@ -80,7 +80,8 @@ pub fn setup_tray(app: &AppHandle, shared_state: crate::app::SharedAppState) -> 
     let autostart_init = is_autostart_enabled();
 
     // Build Tray Menu Items
-    let title_item = MenuItemBuilder::with_id("title", "MorningTV Live TV v1.0.1")
+    let title = format!("MorningTV Live TV v{}", crate::config::APP_VERSION);
+    let title_item = MenuItemBuilder::with_id("title", &title)
         .enabled(false)
         .build(app)?;
 
