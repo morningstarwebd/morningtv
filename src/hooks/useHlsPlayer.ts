@@ -149,7 +149,12 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 				}
 
 				const appState = useAppStore.getState();
-				audioBooster.attach(video, appState.isMuted ? 0 : appState.soundBoost);
+				audioBooster.attach(
+					video,
+					appState.volume,
+					appState.soundBoost,
+					appState.isMuted,
+				);
 				if (appState.isPlaying) {
 					video.play().catch(() => {});
 				}

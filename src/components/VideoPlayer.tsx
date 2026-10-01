@@ -14,7 +14,6 @@ import { useStreamTelemetry } from "../hooks/useStreamTelemetry";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { useAppStore } from "../stores/appStore";
 import { getProxyToken } from "../utils/proxy";
-import { EpgTimelineOverlay } from "./EpgTimelineOverlay";
 import { MorningTVLogo } from "./MorningTVLogo";
 
 export const VideoPlayer: React.FC = () => {
@@ -318,9 +317,6 @@ export const VideoPlayer: React.FC = () => {
 							</div>
 						</div>
 					)}
-
-					{/* Electronic Program Guide (EPG) Live Timeline Overlay */}
-					<EpgTimelineOverlay />
 				</div>
 			) : (
 				/* Clean Welcome Screen with MorningTV Branding */

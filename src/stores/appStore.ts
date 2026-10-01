@@ -98,6 +98,8 @@ interface AppState {
 	togglePlayPause: () => void;
 	stopPlayback: () => void;
 	setVolume: (volume: number) => void;
+	increaseVolume: () => void;
+	decreaseVolume: () => void;
 	setSoundBoost: (boost: number) => void;
 	toggleMute: () => void;
 	cycleQuality: () => Promise<void>;
@@ -550,6 +552,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 	setVolume: (volume: number) => {
 		const clamped = Math.max(0, Math.min(100, volume));
 		set({ volume: clamped, isMuted: clamped === 0 });
+		audioBooster.setVolume(clamped);
+		audioBooster.setMuted(clamped === 0);
 		const { settings } = get();
 		if (settings) {
 			invoke("save_settings", {
@@ -558,6 +562,20 @@ export const useAppStore = create<AppState>((set, get) => ({
 				log.error("Failed to save volume settings", { error: err }),
 			);
 		}
+	},
+
+	increaseVolume: () => {
+		const current = get().volume;
+		const next = Math.min(100, current + 5);
+		get().setVolume(next);
+		get().showToast(`🔊 Volume: ${next}%`, false);
+	},
+
+	decreaseVolume: () => {
+		const current = get().volume;
+		const next = Math.max(0, current - 5);
+		get().setVolume(next);
+		get().showToast(next === 0 ? "🔇 Muted" : `🔉 Volume: ${next}%`, false);
 	},
 
 	setSoundBoost: (boost: number) => {
@@ -572,6 +590,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 	toggleMute: () => {
 		set((state) => {
 			const isMuted = !state.isMuted;
+			audioBooster.setMuted(isMuted);
 			const { settings } = state;
 			if (settings) {
 				invoke("save_settings", {
@@ -580,6 +599,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 					log.error("Failed to save mute settings", { error: err }),
 				);
 			}
+			get().showToast(
+				isMuted ? "🔇 Muted" : `🔊 Unmuted (${state.volume}%)`,
+				false,
+			);
 			return { isMuted };
 		});
 	},

@@ -3,6 +3,7 @@
 
 import type React from "react";
 import { useEffect, useState } from "react";
+import { useAppStore } from "../stores/appStore";
 import type { Channel } from "../types";
 
 export interface PlayerKeyboardOptions {
@@ -100,6 +101,14 @@ export function usePlayerKeyboard(options: PlayerKeyboardOptions): {
 				case "a":
 					e.preventDefault();
 					cycleAspectRatio();
+					break;
+				case "arrowup":
+					e.preventDefault();
+					useAppStore.getState().increaseVolume();
+					break;
+				case "arrowdown":
+					e.preventDefault();
+					useAppStore.getState().decreaseVolume();
 					break;
 				case "arrowright":
 				case "]":

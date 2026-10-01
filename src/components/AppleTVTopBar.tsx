@@ -12,6 +12,7 @@ import {
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
+import { ChannelEpgPill } from "./ChannelEpgPill";
 import { MorningTVLogo } from "./MorningTVLogo";
 
 export const AppleTVTopBar: React.FC = () => {
@@ -93,23 +94,7 @@ export const AppleTVTopBar: React.FC = () => {
 					<span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping ml-0.5" />
 				</button>
 
-				{activeChannel && (
-					<div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/50 border border-white/10 backdrop-blur-xl">
-						{activeChannel.logo && (
-							<img
-								src={activeChannel.logo}
-								alt=""
-								className="w-4 h-4 object-contain rounded-xs"
-							/>
-						)}
-						<span className="text-xs font-bold text-white truncate max-w-[180px]">
-							{activeChannel.name}
-						</span>
-						<span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-extrabold bg-red-500/90 text-white leading-none">
-							LIVE
-						</span>
-					</div>
-				)}
+				{activeChannel && <ChannelEpgPill activeChannel={activeChannel} />}
 
 				{/* Minimalist Mirror / Server Switcher Pill */}
 				{allUrls.length > 1 && (

@@ -8,10 +8,22 @@ class AudioBoosterManager {
 	private compressorNode: DynamicsCompressorNode | null = null;
 	private connectedElement: HTMLVideoElement | null = null;
 	private isNormalized: boolean = false;
+	private volumePercent: number = 85;
+	private boostPercent: number = 100;
+	private isMuted: boolean = false;
 
-	public attach(video: HTMLVideoElement, boostPercent: number = 100): void {
+	public attach(
+		video: HTMLVideoElement,
+		volumePercent: number = 85,
+		boostPercent: number = 100,
+		isMuted: boolean = false,
+	): void {
+		this.volumePercent = volumePercent;
+		this.boostPercent = boostPercent;
+		this.isMuted = isMuted;
+
 		if (this.connectedElement === video && this.gainNode) {
-			this.setBoost(boostPercent);
+			this.updateGain();
 			return;
 		}
 
@@ -67,7 +79,7 @@ class AudioBoosterManager {
 				this.connectedElement = video;
 			}
 
-			this.setBoost(boostPercent);
+			this.updateGain();
 		} catch (err) {
 			console.warn(
 				"Web Audio API Booster initialization skipped or already connected:",
@@ -76,18 +88,49 @@ class AudioBoosterManager {
 		}
 	}
 
+	public setVolume(volume: number): void {
+		this.volumePercent = Math.max(0, Math.min(100, volume));
+		if (this.volumePercent === 0) {
+			this.isMuted = true;
+		}
+		this.updateGain();
+	}
+
 	public setBoost(percent: number): void {
-		if (!this.gainNode || !this.audioCtx) return;
-		// Map 0-300% to 0.0 - 3.0 gain factor
-		const targetGain = Math.max(0, Math.min(300, percent)) / 100;
-		try {
-			this.gainNode.gain.setTargetAtTime(
-				targetGain,
-				this.audioCtx.currentTime,
-				0.02,
-			);
-		} catch {
-			this.gainNode.gain.value = targetGain;
+		this.boostPercent = Math.max(100, Math.min(300, percent));
+		this.updateGain();
+	}
+
+	public setMuted(muted: boolean): void {
+		this.isMuted = muted;
+		this.updateGain();
+	}
+
+	private updateGain(): void {
+		const normVolume = this.isMuted
+			? 0
+			: Math.max(0, Math.min(100, this.volumePercent)) / 100;
+		const normBoost = Math.max(100, Math.min(300, this.boostPercent)) / 100;
+		const targetGain = normVolume * normBoost;
+
+		if (this.connectedElement) {
+			try {
+				this.connectedElement.volume = normVolume;
+			} catch {
+				// Ignored
+			}
+		}
+
+		if (this.gainNode && this.audioCtx) {
+			try {
+				this.gainNode.gain.setTargetAtTime(
+					targetGain,
+					this.audioCtx.currentTime,
+					0.02,
+				);
+			} catch {
+				this.gainNode.gain.value = targetGain;
+			}
 		}
 	}
 
