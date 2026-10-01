@@ -346,6 +346,7 @@ impl StreamProxy {
 
             let app = Router::new()
                 .route("/stream", get(handle_stream))
+                .route("/transcode", get(handle_transcode))
                 .route("/prewarm", get(handle_prewarm))
                 .route("/health", get(handle_health))
                 .route("/metrics", get(handle_metrics))
@@ -388,6 +389,49 @@ impl StreamProxy {
                 tracing::error!("CRITICAL: Failed to bind Axum stream proxy on any candidate port");
             }
         });
+    }
+}
+
+async fn handle_transcode(incoming_headers: HeaderMap, uri: Uri) -> Response {
+    if !verify_auth(&uri, &incoming_headers) {
+        return (
+            StatusCode::FORBIDDEN,
+            "Forbidden: Invalid or missing proxy token",
+        )
+            .into_response();
+    }
+
+    let query_str = uri.query().unwrap_or("");
+    let target_url = match extract_target_url(query_str) {
+        Some(url) => url,
+        None => return (StatusCode::BAD_REQUEST, "Missing URL parameter").into_response(),
+    };
+
+    if let Err(err_msg) = validate_target_url_async(&target_url).await {
+        return (StatusCode::BAD_REQUEST, err_msg).into_response();
+    }
+
+    match super::ffmpeg_bridge::FfmpegBridge::spawn_remux_stream(&target_url).await {
+        Ok(body) => {
+            let mut headers = HeaderMap::new();
+            headers.insert(
+                axum::http::header::CONTENT_TYPE,
+                HeaderValue::from_static("video/mp2t"),
+            );
+            headers.insert(
+                axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
+                HeaderValue::from_static("*"),
+            );
+            headers.insert(
+                axum::http::header::CACHE_CONTROL,
+                HeaderValue::from_static("no-cache, no-store, must-revalidate"),
+            );
+            (StatusCode::OK, headers, body).into_response()
+        }
+        Err(e) => {
+            tracing::warn!("FFmpeg remuxing error: {}", e);
+            (StatusCode::BAD_GATEWAY, format!("Remux failed: {}", e)).into_response()
+        }
     }
 }
 
@@ -478,10 +522,8 @@ pub fn extract_target_url(query_str: &str) -> Option<String> {
     }
     let idx = if query_str.starts_with("url=") {
         Some(4)
-    } else if let Some(pos) = query_str.find("&url=") {
-        Some(pos + 5)
     } else {
-        None
+        query_str.find("&url=").map(|pos| pos + 5)
     }?;
 
     let after = &query_str[idx..];
@@ -688,7 +730,7 @@ async fn prewarm_stream_into_ram(state: ProxyState, url: String) {
     }
 
     if let Some(seg_url) = segment_to_fetch {
-        if let Err(_) = validate_target_url(&seg_url) {
+        if validate_target_url(&seg_url).is_err() {
             return;
         }
 
@@ -716,7 +758,7 @@ async fn prewarm_stream_into_ram(state: ProxyState, url: String) {
                         } else {
                             ctrim.to_string()
                         };
-                        if let Ok(_) = validate_target_url(&resolved_ts) {
+                        if validate_target_url(&resolved_ts).is_ok() {
                             if let Ok(seg_res) = client.get(&resolved_ts).timeout(std::time::Duration::from_secs(5)).send().await {
                                 if let Ok(seg_bytes) = seg_res.bytes().await {
                                     state.set_cached(resolved_ts, seg_bytes, "video/mp2t".to_string(), false).await;
@@ -886,7 +928,9 @@ async fn handle_stream(
                 );
                 last_err = Some(e);
                 if attempt < 2 {
-                    tokio::time::sleep(tokio::time::Duration::from_millis(150 * (attempt as u64 + 1))).await;
+                    // Resilient backoff: 350ms, 750ms for unstable/lossy network recovery
+                    let backoff_ms = if attempt == 0 { 350 } else { 750 };
+                    tokio::time::sleep(tokio::time::Duration::from_millis(backoff_ms)).await;
                 }
             }
         }
@@ -1022,7 +1066,7 @@ async fn handle_stream(
         const MAX_BUFFERED_SIZE: u64 = 10 * 1024 * 1024; // 10MB
         let is_range_req = incoming_headers.contains_key(axum::http::header::RANGE);
 
-        if !is_range_req && content_length.map_or(false, |l| l < MAX_BUFFERED_SIZE) {
+        if !is_range_req && content_length.is_some_and(|l| l < MAX_BUFFERED_SIZE) {
             match upstream_res.bytes().await {
                 Ok(bytes) => {
                     headers.insert(
@@ -1144,9 +1188,9 @@ pub fn rewrite_m3u8(manifest: &str, base_url_str: &str, token: &str) -> String {
             trimmed.to_string()
         };
 
-        let _ = write!(
+        let _ = writeln!(
             output,
-            "http://127.0.0.1:{}/stream?url={}&token={}\n",
+            "http://127.0.0.1:{}/stream?url={}&token={}",
             port,
             urlencoding_encode(&resolved),
             token

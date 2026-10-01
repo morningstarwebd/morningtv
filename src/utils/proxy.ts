@@ -23,6 +23,9 @@ export async function getProxyPort(forceRefresh = false): Promise<number> {
 
 	portFetchPromise = (async () => {
 		try {
+			if (typeof window === "undefined") {
+				return cachedPort;
+			}
 			const port = await invoke<number>("get_proxy_port");
 			if (port && port > 0) {
 				cachedPort = port;
@@ -61,6 +64,9 @@ export async function getProxyToken(forceRefresh = false): Promise<string> {
 
 	tokenFetchPromise = (async () => {
 		try {
+			if (typeof window === "undefined") {
+				return cachedToken || "dev-proxy-token";
+			}
 			const token = await invoke<string>("get_proxy_auth_token");
 			if (token) {
 				cachedToken = token;

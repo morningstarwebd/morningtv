@@ -36,19 +36,14 @@ impl M3uParser {
                 current_ua = None;
                 current_ref = None;
                 current_fallbacks.clear();
-            } else if line.starts_with("#EXTVLCOPT:") {
-                let directive = &line["#EXTVLCOPT:".len()..];
+            } else if let Some(directive) = line.strip_prefix("#EXTVLCOPT:") {
                 if let Some(ua) = directive.strip_prefix("http-user-agent=") {
                     current_ua = Some(ua.to_string());
                 } else if let Some(rf) = directive.strip_prefix("http-referrer=") {
                     current_ref = Some(rf.to_string());
                 }
-            } else if line.starts_with("#EXTFALLBACK:") || line.starts_with("#EXT-X-FALLBACK:") {
-                let fallback = if line.starts_with("#EXTFALLBACK:") {
-                    line["#EXTFALLBACK:".len()..].trim().to_string()
-                } else {
-                    line["#EXT-X-FALLBACK:".len()..].trim().to_string()
-                };
+            } else if let Some(fb) = line.strip_prefix("#EXTFALLBACK:").or_else(|| line.strip_prefix("#EXT-X-FALLBACK:")) {
+                let fallback = fb.trim().to_string();
                 if !fallback.is_empty() {
                     if in_channel {
                         if !current_fallbacks.contains(&fallback) {

@@ -1,6 +1,7 @@
 // src/components/VideoPlayer.tsx
 // Cinema-Grade Video Player composed with custom lifecycle hooks, WakeLock, and Watchdog
 
+import { invoke } from "@tauri-apps/api/core";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -13,6 +14,7 @@ import { useStreamTelemetry } from "../hooks/useStreamTelemetry";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { useAppStore } from "../stores/appStore";
 import { getProxyToken } from "../utils/proxy";
+import { EpgTimelineOverlay } from "./EpgTimelineOverlay";
 import { MorningTVLogo } from "./MorningTVLogo";
 
 export const VideoPlayer: React.FC = () => {
@@ -118,20 +120,34 @@ export const VideoPlayer: React.FC = () => {
 	// 6. Screen Wake Lock (prevents display sleep during playback)
 	useWakeLock(isPlaying);
 
-	// Picture-in-Picture handler
+	const [isNativePip, setIsNativePip] = useState<boolean>(false);
+
+	// Picture-in-Picture handler (Native Floating Window with fallback to browser PiP)
 	const handlePiPRequest = useCallback(async () => {
-		if (videoRef.current && document.pictureInPictureEnabled) {
-			try {
-				if (document.pictureInPictureElement) {
-					await document.exitPictureInPicture();
-				} else {
-					await videoRef.current.requestPictureInPicture();
+		try {
+			const nextState = !isNativePip;
+			await invoke("toggle_native_pip", { isPip: nextState });
+			setIsNativePip(nextState);
+			showToast(
+				nextState
+					? "📌 Native Floating Mini-Player Active"
+					: "PiP Window Restored",
+				false,
+			);
+		} catch {
+			if (videoRef.current && document.pictureInPictureEnabled) {
+				try {
+					if (document.pictureInPictureElement) {
+						await document.exitPictureInPicture();
+					} else {
+						await videoRef.current.requestPictureInPicture();
+					}
+				} catch (err) {
+					console.warn("PiP error:", err);
 				}
-			} catch (err) {
-				console.warn("PiP error:", err);
 			}
 		}
-	}, []);
+	}, [isNativePip, showToast]);
 
 	// 7. Keyboard Navigation & Number Key Tuning
 	const { channelTuneBanner } = usePlayerKeyboard({
@@ -302,6 +318,9 @@ export const VideoPlayer: React.FC = () => {
 							</div>
 						</div>
 					)}
+
+					{/* Electronic Program Guide (EPG) Live Timeline Overlay */}
+					<EpgTimelineOverlay />
 				</div>
 			) : (
 				/* Clean Welcome Screen with MorningTV Branding */

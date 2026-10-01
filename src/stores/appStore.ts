@@ -80,10 +80,14 @@ interface AppState {
 	isShortcutsOpen: boolean;
 	ambientGlow: boolean;
 	settings: AppSettings | null;
+	isLaunchAtStartup: boolean;
 	toast: { message: string; isError: boolean } | null;
 
 	// Actions
 	init: () => Promise<void>;
+	fetchStartupStatus: () => Promise<void>;
+	toggleStartupStatus: (enabled: boolean) => Promise<void>;
+	openGitHubRepo: () => Promise<void>;
 	selectChannel: (channel: Channel) => Promise<void>;
 	selectChannelByIndex: (index: number) => Promise<void>;
 	nextChannel: () => Promise<void>;
@@ -98,6 +102,7 @@ interface AppState {
 	toggleMute: () => void;
 	cycleQuality: () => Promise<void>;
 	toggle3GDataSaver: () => void;
+	set3GDataSaver: (enabled: boolean) => void;
 	toggleAmbientGlow: () => void;
 	cycleAspectRatio: () => void;
 	setAspectRatio: (ratio: AspectRatio) => void;
@@ -237,6 +242,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 	isShortcutsOpen: false,
 	ambientGlow: true,
 	settings: null,
+	isLaunchAtStartup: false,
 	toast: null,
 	isSyncing: false,
 	updateInfo: null,
@@ -317,12 +323,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 	init: async () => {
 		try {
-			const [channels, categories, settings, totalCount] = await Promise.all([
-				invoke<Channel[]>("get_channels"),
-				invoke<string[]>("get_categories"),
-				invoke<AppSettings>("get_settings"),
-				invoke<number>("get_total_channel_count").catch(() => 0),
-			]);
+			const [channels, categories, settings, totalCount, startupStatus] =
+				await Promise.all([
+					invoke<Channel[]>("get_channels"),
+					invoke<string[]>("get_categories"),
+					invoke<AppSettings>("get_settings"),
+					invoke<number>("get_total_channel_count").catch(() => 0),
+					invoke<boolean>("get_startup_status").catch(() => false),
+				]);
 
 			const provSet = new Set<string>();
 			channels.forEach((c) => {
@@ -337,6 +345,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				providers: providers.length > 1 ? providers : ["All"],
 				settings,
+				isLaunchAtStartup: startupStatus ?? false,
 				volume: settings.volume ?? 85,
 				isMuted: settings.is_muted ?? false,
 				currentQuality: settings.preferred_quality ?? "Auto",
@@ -358,6 +367,39 @@ export const useAppStore = create<AppState>((set, get) => ({
 			}
 		} catch (err) {
 			log.error("Failed to init app state", { error: err });
+		}
+	},
+
+	fetchStartupStatus: async () => {
+		try {
+			const status = await invoke<boolean>("get_startup_status");
+			set({ isLaunchAtStartup: status });
+		} catch (err) {
+			log.warn("Failed to fetch startup status", { error: err });
+		}
+	},
+
+	toggleStartupStatus: async (enabled: boolean) => {
+		try {
+			const res = await invoke<boolean>("set_startup_status", { enabled });
+			set({ isLaunchAtStartup: res });
+			get().showToast(
+				res
+					? "🚀 MorningTV will start automatically with Windows"
+					: "MorningTV Windows autostart disabled",
+				false,
+			);
+		} catch (err: unknown) {
+			const msg = formatIpcError(err);
+			get().showToast(`Failed to update startup setting: ${msg}`, true);
+		}
+	},
+
+	openGitHubRepo: async () => {
+		try {
+			await invoke("open_github_url");
+		} catch {
+			window.open("https://github.com/morningstarwebd/morningtv", "_blank");
 		}
 	},
 
@@ -563,6 +605,22 @@ export const useAppStore = create<AppState>((set, get) => ({
 			);
 			return {
 				is3GDataSaver: next,
+				selectedQualityLevel: -1,
+			};
+		});
+	},
+
+	set3GDataSaver: (enabled: boolean) => {
+		set((state) => {
+			if (state.is3GDataSaver === enabled) return {};
+			get().showToast(
+				enabled
+					? "🚀 Auto 3G Mode Active: Network throttled (~360p/480p Saver)"
+					: "⚡ Normal Network Restored: Auto HD Active",
+				false,
+			);
+			return {
+				is3GDataSaver: enabled,
 				selectedQualityLevel: -1,
 			};
 		});

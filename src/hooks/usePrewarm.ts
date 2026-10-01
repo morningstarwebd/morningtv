@@ -2,6 +2,7 @@
 // Predictive pre-warming of adjacent channel streams into local RAM cache
 
 import { useEffect } from "react";
+import { useAppStore } from "../stores/appStore";
 import type { Channel } from "../types";
 import { createLogger } from "../utils/logger";
 import { buildPrewarmUrl, getCurrentProxyPort } from "../utils/proxy";
@@ -31,6 +32,24 @@ export function usePrewarm(
 		);
 
 		const timeoutId = setTimeout(() => {
+			const appState = useAppStore.getState();
+			// Suppress pre-warming if currently loading/buffering, buffer cushion is low (< 8s), or in 3G Data Saver mode
+			if (
+				appState.isChannelLoading ||
+				appState.bufferSecs < 8.0 ||
+				appState.is3GDataSaver
+			) {
+				log.debug(
+					"Pre-warming suppressed to conserve bandwidth for active stream",
+					{
+						isChannelLoading: appState.isChannelLoading,
+						bufferSecs: appState.bufferSecs,
+						is3GDataSaver: appState.is3GDataSaver,
+					},
+				);
+				return;
+			}
+
 			const port = getCurrentProxyPort();
 			for (const target of targets) {
 				const prewarmUrl = buildPrewarmUrl(target.url, proxyToken, port);

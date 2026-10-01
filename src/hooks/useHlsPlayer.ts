@@ -47,6 +47,8 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 
 	const hlsRef = useRef<Hls | null>(null);
 	const retryCountRef = useRef<number>(0);
+	const lowBandwidthStreakRef = useRef<number>(0);
+	const highBandwidthStreakRef = useRef<number>(0);
 	const [isBuffering, setIsBuffering] = useState(false);
 
 	// Primary HLS lifecycle
@@ -74,28 +76,28 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 			const hls = new Hls({
 				enableWorker: true,
 				lowLatencyMode: false,
-				backBufferLength: 30,
-				maxBufferLength: 35,
-				maxMaxBufferLength: 60,
-				maxBufferSize: 60 * 1000 * 1000,
+				backBufferLength: is3GDataSaver ? 15 : 30,
+				maxBufferLength: is3GDataSaver ? 12 : 35,
+				maxMaxBufferLength: is3GDataSaver ? 24 : 60,
+				maxBufferSize: is3GDataSaver ? 20 * 1000 * 1000 : 60 * 1000 * 1000,
 				maxBufferHole: 0.5,
 				highBufferWatchdogPeriod: 3,
-				liveSyncDurationCount: 3,
-				liveMaxLatencyDurationCount: 10,
+				liveSyncDurationCount: is3GDataSaver ? 5 : 3,
+				liveMaxLatencyDurationCount: is3GDataSaver ? 12 : 10,
 				initialLiveManifestSize: 1,
 				liveDurationInfinity: true,
-				fragLoadingTimeOut: 12000,
-				fragLoadingMaxRetry: 5,
+				fragLoadingTimeOut: 15000,
+				fragLoadingMaxRetry: 6,
 				fragLoadingRetryDelay: 1000,
-				fragLoadingMaxRetryTimeout: 30000,
-				manifestLoadingTimeOut: 10000,
-				manifestLoadingMaxRetry: 5,
+				fragLoadingMaxRetryTimeout: 35000,
+				manifestLoadingTimeOut: 12000,
+				manifestLoadingMaxRetry: 6,
 				manifestLoadingRetryDelay: 1000,
-				manifestLoadingMaxRetryTimeout: 30000,
-				levelLoadingTimeOut: 10000,
-				levelLoadingMaxRetry: 5,
+				manifestLoadingMaxRetryTimeout: 35000,
+				levelLoadingTimeOut: 12000,
+				levelLoadingMaxRetry: 6,
 				levelLoadingRetryDelay: 1000,
-				levelLoadingMaxRetryTimeout: 30000,
+				levelLoadingMaxRetryTimeout: 35000,
 				nudgeOffset: 0.2,
 				nudgeMaxRetry: 15,
 				maxStarvationDelay: 3,
@@ -104,8 +106,8 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 				abrBandWidthFactor: 0.8,
 				abrBandWidthUpFactor: 0.7,
 				abrMaxWithRealBitrate: true,
-				capLevelToPlayerSize: false,
-				startLevel: -1,
+				capLevelToPlayerSize: true,
+				startLevel: is3GDataSaver ? 0 : -1,
 				autoStartLoad: true,
 			});
 
@@ -224,6 +226,40 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 							bandwidthCapacityMbps: fmtCapacity.mbps,
 							nominalBitrate: nominalBitrateStr || "--",
 						});
+
+						// Auto 3G Mode Hysteresis detection
+						if (bwEstimateBits > 0) {
+							if (bwEstimateBits < 700_000) {
+								lowBandwidthStreakRef.current += 1;
+								highBandwidthStreakRef.current = 0;
+								if (
+									lowBandwidthStreakRef.current >= 3 &&
+									!useAppStore.getState().is3GDataSaver
+								) {
+									log.info(
+										"Auto-activating 3G Data Saver due to sustained low throughput",
+										{ bwEstimateBits },
+									);
+									useAppStore.getState().set3GDataSaver(true);
+								}
+							} else if (bwEstimateBits > 2_500_000) {
+								highBandwidthStreakRef.current += 1;
+								lowBandwidthStreakRef.current = 0;
+								if (
+									highBandwidthStreakRef.current >= 8 &&
+									useAppStore.getState().is3GDataSaver
+								) {
+									log.info(
+										"Auto-restoring HD playback due to sustained high throughput",
+										{ bwEstimateBits },
+									);
+									useAppStore.getState().set3GDataSaver(false);
+								}
+							} else {
+								lowBandwidthStreakRef.current = 0;
+								highBandwidthStreakRef.current = 0;
+							}
+						}
 					}
 				} catch (err) {
 					log.debug("Telemetry calculation exception", { error: err });
@@ -315,15 +351,25 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 	}, [
 		currentUrl,
 		proxyToken,
+		is3GDataSaver,
 		tryNextFallback,
 		setIsChannelLoading,
 		setStreamHealthStatus,
 		videoRef,
 	]);
 
-	// Level switching effect
+	// Level switching effect and dynamic buffer scaling
 	useEffect(() => {
-		if (!hlsRef.current?.levels) return;
+		if (!hlsRef.current) return;
+
+		// Dynamically adjust buffer scale based on 3G mode
+		if (hlsRef.current.config) {
+			hlsRef.current.config.maxBufferLength = is3GDataSaver ? 12 : 35;
+			hlsRef.current.config.maxMaxBufferLength = is3GDataSaver ? 24 : 60;
+			hlsRef.current.config.liveSyncDurationCount = is3GDataSaver ? 5 : 3;
+		}
+
+		if (!hlsRef.current.levels) return;
 		if (
 			selectedQualityLevel >= 0 &&
 			selectedQualityLevel < hlsRef.current.levels.length

@@ -28,6 +28,7 @@ export interface PlayerState {
 	cycleAspectRatio: () => void;
 	setAspectRatio: (ratio: AspectRatio) => void;
 	toggle3GDataSaver: () => void;
+	set3GDataSaver: (enabled: boolean) => void;
 	setAvailableQualityLevels: (levels: QualityLevel[]) => void;
 	setSelectedQualityLevel: (level: number) => void;
 	setCurrentResolution: (res: string) => void;
@@ -85,6 +86,10 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
 
 	toggle3GDataSaver: () => {
 		set((s) => ({ is3GDataSaver: !s.is3GDataSaver }));
+	},
+
+	set3GDataSaver: (enabled: boolean) => {
+		set({ is3GDataSaver: enabled });
 	},
 
 	setAvailableQualityLevels: (levels: QualityLevel[]) => {

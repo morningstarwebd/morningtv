@@ -2,7 +2,10 @@ import {
 	ArrowDownCircle,
 	Check,
 	Cloud,
+	ExternalLink,
 	Globe,
+	Monitor,
+	Power,
 	RefreshCw,
 	RotateCcw,
 	Save,
@@ -18,7 +21,14 @@ import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { MorningTVLogo } from "./MorningTVLogo";
 
-type TabType = "playlist" | "cinema" | "audio" | "cloud" | "updates" | "about";
+type TabType =
+	| "playlist"
+	| "cinema"
+	| "audio"
+	| "cloud"
+	| "system"
+	| "updates"
+	| "about";
 
 export const SettingsDialog: React.FC = () => {
 	const {
@@ -29,6 +39,11 @@ export const SettingsDialog: React.FC = () => {
 		settings,
 		ambientGlow,
 		normalizeAudio,
+		is3GDataSaver,
+		toggle3GDataSaver,
+		isLaunchAtStartup,
+		toggleStartupStatus,
+		openGitHubRepo,
 		isSyncing,
 		closeSettings,
 		updatePlaylist,
@@ -145,6 +160,14 @@ export const SettingsDialog: React.FC = () => {
 					? `${totalChannelsCount.toLocaleString()}`
 					: undefined,
 			badgeStyle: "bg-cyan-500/15 text-cyan-300",
+		},
+		{
+			id: "system" as TabType,
+			label: "System & Startup",
+			desc: "Autostart & Tray Controls",
+			icon: Monitor,
+			badge: isLaunchAtStartup ? "AUTO-ON" : undefined,
+			badgeStyle: "bg-emerald-500/20 text-emerald-300 font-bold",
 		},
 		{
 			id: "updates" as TabType,
@@ -268,6 +291,7 @@ export const SettingsDialog: React.FC = () => {
 									{activeTab === "cinema" && "Cinema & Display"}
 									{activeTab === "audio" && "Sound & Acoustics"}
 									{activeTab === "cloud" && "Cloud Repository"}
+									{activeTab === "system" && "System & Startup"}
 									{activeTab === "updates" && "Software Update"}
 								</h3>
 								<p className="text-[11px] text-zinc-300 mt-0.5">
@@ -279,6 +303,8 @@ export const SettingsDialog: React.FC = () => {
 										"Fine-tune channel volume balance and prevent sudden loudness spikes"}
 									{activeTab === "cloud" &&
 										"Sync verified channels and backup mirrors directly from cloud repository"}
+									{activeTab === "system" &&
+										"Windows boot autostart, system tray quick controls, and GitHub integration"}
 									{activeTab === "updates" &&
 										"Check for new releases, install updates, and review changelogs"}
 								</p>
@@ -640,6 +666,156 @@ export const SettingsDialog: React.FC = () => {
 												</span>
 											</div>
 										</div>
+									</div>
+								</div>
+							)}
+
+							{/* TAB: SYSTEM & STARTUP */}
+							{activeTab === "system" && (
+								<div className="flex flex-col gap-2.5 max-h-[365px] overflow-y-auto pr-1 scrollbar-thin">
+									{/* Autostart Card */}
+									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+										<div className="flex items-center justify-between gap-4">
+											<div className="flex items-center gap-3">
+												<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
+													<Power className="w-4 h-4" />
+												</div>
+												<div>
+													<h4 className="text-sm font-bold text-white flex items-center gap-2">
+														Start With Windows
+														<span
+															className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
+																isLaunchAtStartup
+																	? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+																	: "bg-zinc-800 text-zinc-400 border border-zinc-700"
+															}`}
+														>
+															{isLaunchAtStartup ? "Enabled" : "Disabled"}
+														</span>
+													</h4>
+													<p className="text-xs text-zinc-400">
+														Automatically launch MorningTV when Windows boots or
+														restarts
+													</p>
+												</div>
+											</div>
+											<button
+												type="button"
+												onClick={() => toggleStartupStatus(!isLaunchAtStartup)}
+												className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 ${
+													isLaunchAtStartup ? "bg-cyan-500" : "bg-zinc-700"
+												}`}
+											>
+												<div
+													className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+														isLaunchAtStartup
+															? "translate-x-6"
+															: "translate-x-0"
+													}`}
+												/>
+											</button>
+										</div>
+									</div>
+
+									{/* Tray Quick Controls Card */}
+									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+										<div className="flex items-center gap-3">
+											<div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/25 flex items-center justify-center shrink-0">
+												<Monitor className="w-4 h-4" />
+											</div>
+											<div>
+												<h4 className="text-sm font-bold text-white">
+													Windows Taskbar System Tray
+												</h4>
+												<p className="text-xs text-zinc-400">
+													MorningTV runs quietly in the Windows Notification
+													Area
+												</p>
+											</div>
+										</div>
+
+										<div className="grid grid-cols-2 gap-2 text-xs text-zinc-300 pt-0.5">
+											<div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
+												<span className="font-bold text-white flex items-center gap-1.5 text-xs">
+													📺 Left Click Tray
+												</span>
+												<span className="text-[10px] text-zinc-400 leading-tight">
+													Instantly show, unminimize, or focus player window.
+												</span>
+											</div>
+											<div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
+												<span className="font-bold text-white flex items-center gap-1.5 text-xs">
+													🖱️ Right Click Tray
+												</span>
+												<span className="text-[10px] text-zinc-400 leading-tight">
+													Access Quick Menu: Autostart, GitHub, Reload, and
+													Exit.
+												</span>
+											</div>
+										</div>
+									</div>
+
+									{/* 3G Data Saver & Adaptive Playback Card */}
+									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+										<div className="flex items-center justify-between gap-4">
+											<div className="flex items-center gap-3">
+												<div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/25 flex items-center justify-center shrink-0">
+													<Zap className="w-4 h-4" />
+												</div>
+												<div>
+													<h4 className="text-sm font-bold text-white flex items-center gap-2">
+														Adaptive 3G / Low-Speed Data Saver
+														<span
+															className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
+																is3GDataSaver
+																	? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+																	: "bg-zinc-800 text-zinc-400 border border-zinc-700"
+															}`}
+														>
+															{is3GDataSaver ? "Active" : "Auto"}
+														</span>
+													</h4>
+													<p className="text-xs text-zinc-400">
+														Locks to 360p/480p and tightens buffer under weak
+														networks (&lt;700 kbps)
+													</p>
+												</div>
+											</div>
+											<button
+												type="button"
+												onClick={() => toggle3GDataSaver()}
+												className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 ${
+													is3GDataSaver ? "bg-amber-500" : "bg-zinc-700"
+												}`}
+											>
+												<div
+													className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+														is3GDataSaver ? "translate-x-6" : "translate-x-0"
+													}`}
+												/>
+											</button>
+										</div>
+									</div>
+
+									{/* GitHub Repository Card */}
+									<div className="rounded-2xl p-3.5 bg-gradient-to-r from-blue-950/30 to-purple-950/30 border border-blue-500/20 flex items-center justify-between gap-4">
+										<div>
+											<h4 className="text-sm font-bold text-white flex items-center gap-2">
+												🌐 GitHub Open Source Repository
+											</h4>
+											<p className="text-xs text-zinc-400">
+												View source code, star the project, report stream
+												issues, and check latest releases
+											</p>
+										</div>
+										<button
+											type="button"
+											onClick={openGitHubRepo}
+											className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer shrink-0"
+										>
+											<ExternalLink className="w-3.5 h-3.5" />
+											Open Repo
+										</button>
 									</div>
 								</div>
 							)}

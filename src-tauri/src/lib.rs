@@ -10,6 +10,7 @@ pub mod logging;
 pub mod network;
 pub mod playlist;
 pub mod storage;
+pub mod tray;
 
 use app::{AppState, SharedAppState};
 use std::sync::Arc;
@@ -50,6 +51,15 @@ pub fn run() {
         }))
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .setup({
+            let state_for_tray = Arc::clone(&state);
+            move |app| {
+                if let Err(e) = tray::setup_tray(app.handle(), state_for_tray) {
+                    tracing::error!("Failed to initialize tray: {e}");
+                }
+                Ok(())
+            }
+        })
         .on_window_event(move |_window, event| {
             // Task 3.1 & 3.2: Graceful proxy shutdown, SQLite WAL checkpoint, and complete process termination on close
             if let tauri::WindowEvent::CloseRequested { .. } = event {
@@ -96,6 +106,12 @@ pub fn run() {
             commands::background_refresh_playlist,
             commands::get_proxy_auth_token,
             commands::get_proxy_port,
+            commands::check_ffmpeg_status,
+            commands::toggle_native_pip,
+            commands::get_channel_epg,
+            commands::get_startup_status,
+            commands::set_startup_status,
+            commands::open_github_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

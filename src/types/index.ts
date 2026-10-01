@@ -53,6 +53,19 @@ export interface AppSettings {
 	normalize_audio?: boolean;
 }
 
+export interface EpgProgram {
+	title: string;
+	description?: string;
+	startTime: string;
+	endTime: string;
+	progress: number;
+}
+
+export interface ChannelEpg {
+	current: EpgProgram | null;
+	next: EpgProgram | null;
+}
+
 interface IpcError {
 	code: string;
 	message: string;

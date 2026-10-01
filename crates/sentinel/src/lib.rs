@@ -338,15 +338,14 @@ pub fn is_valid_stream_payload(bytes: &[u8]) -> bool {
     }
 
     // 1. Valid HLS manifest (#EXTM3U with standard HLS tags)
-    if head.contains("#extm3u") {
-        if head.contains("#extinf")
+    if head.contains("#extm3u")
+        && (head.contains("#extinf")
             || head.contains("#ext-x-stream-inf")
             || head.contains("#ext-x-targetduration")
             || head.contains("#ext-x-media-sequence")
-            || head.contains("#ext-x-version")
-        {
-            return true;
-        }
+            || head.contains("#ext-x-version"))
+    {
+        return true;
     }
 
     // 2. MPEG-TS stream with verified 188-byte packet synchronization
@@ -642,7 +641,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
             }
 
             let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
-            if done % 200 == 0 || done == total_candidates {
+            if done.is_multiple_of(200) || done == total_candidates {
                 print!(
                     "\r   Probing progress: {}/{} ({:.1}%)",
                     done,

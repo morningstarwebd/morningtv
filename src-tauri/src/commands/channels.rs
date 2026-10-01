@@ -237,3 +237,8 @@ pub async fn background_refresh_playlist(
     Ok(())
 }
 
+#[tauri::command]
+pub async fn check_ffmpeg_status() -> Result<bool, String> {
+    Ok(crate::network::FfmpegBridge::is_available())
+}
+
