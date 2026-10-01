@@ -13,10 +13,10 @@ pub struct ResilientHttpClient {
 impl ResilientHttpClient {
     pub fn new() -> NetworkResult<Self> {
         let mut headers = HeaderMap::new();
-        headers.insert(
-            USER_AGENT,
-            HeaderValue::from_static("Mozilla/5.0 (Windows NT 10.0; Win64; x64) MorningTV/1.0.1"),
-        );
+        let ua = format!("Mozilla/5.0 (Windows NT 10.0; Win64; x64) MorningTV/{}", crate::config::APP_VERSION);
+        if let Ok(val) = HeaderValue::try_from(ua) {
+            headers.insert(USER_AGENT, val);
+        }
 
         let inner = reqwest::Client::builder()
             .default_headers(headers)
