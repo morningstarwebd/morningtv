@@ -80,10 +80,10 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 					// Channel just tuned, waiting for first video frame to render
 					// ==============================================================
 					if (currentTime === 0) {
-						if (ticks === 3) {
-							// Gentle startLoad after 3s initial handshake
+						if (ticks === 5) {
+							// Gentle startLoad after 5s initial handshake
 							hls?.startLoad();
-						} else if (ticks === 6) {
+						} else if (ticks === 10) {
 							if (hasMultipleQualities && !hasActivated3GRef.current) {
 								// Initial constrained network: attempt tuning at lowest available resolution
 								const sortedLevels = levels
@@ -115,13 +115,13 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 							// If already tried lowest quality or stream is single-quality:
 							if (hasFallbackMirrors) {
 								log.warn(
-									"Initial playback failed to start after 6s - switching to next mirror",
+									"Initial playback failed to start after 10s - switching to next mirror",
 								);
 								stallTicksRef.current = 0;
 								tryNextFallback();
 								return;
 							}
-						} else if (ticks >= 9) {
+						} else if (ticks >= 16) {
 							// For single-URL channels with no mirrors: trigger clean reconnect loop
 							log.warn(
 								"Initial playback unrecoverable on single-source channel - triggering reconnect",
@@ -138,10 +138,10 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 					// Stream was playing, but stalled due to network or buffer drops
 					// ==============================================================
 
-					// Level 1: Gentle In-Place Buffer Recovery (4 seconds)
-					if (ticks === 4) {
+					// Level 1: Gentle In-Place Buffer Recovery (6 seconds grace period)
+					if (ticks === 6) {
 						log.info(
-							"Playback stall detected (4s) - triggering gentle startLoad()",
+							"Playback stall detected (6s) - triggering gentle startLoad()",
 						);
 						hls?.startLoad();
 						setIsBuffering(true);
@@ -150,8 +150,8 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 						return;
 					}
 
-					// Level 2 & 3: Smart Progressive Quality Step-Down & 3G Adaptation (7 seconds)
-					if (ticks === 7) {
+					// Level 2 & 3: Smart Progressive Quality Step-Down & 3G Adaptation (12 seconds)
+					if (ticks === 12) {
 						if (hasMultipleQualities && hls && levels.length > 0) {
 							// Sort levels ascending by bitrate / resolution
 							const sortedLevels = levels
@@ -187,8 +187,8 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 									false,
 								);
 								hls.startLoad();
-								// Reset stallTicks back to 4 to give 3 full seconds for this lower level to recover
-								stallTicksRef.current = 4;
+								// Reset stallTicks back to 6 to give 6 full seconds for this lower level to recover
+								stallTicksRef.current = 6;
 								return;
 							}
 
@@ -198,8 +198,8 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 								hasActivated3GRef.current = true;
 								hls.currentLevel = sortedLevels[0].idx;
 								if (hls.config) {
-									hls.config.maxBufferLength = 12;
-									hls.config.maxMaxBufferLength = 24;
+									hls.config.maxBufferLength = 18;
+									hls.config.maxMaxBufferLength = 30;
 									hls.config.liveSyncDurationCount = 5;
 								}
 								showToast?.(
@@ -207,7 +207,7 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 									false,
 								);
 								hls.startLoad();
-								stallTicksRef.current = 4;
+								stallTicksRef.current = 6;
 								return;
 							}
 						}
@@ -228,10 +228,10 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 						return;
 					}
 
-					// Level 4: Terminal Fallback or Reconnect Loop (>= 11 seconds)
+					// Level 4: Terminal Fallback or Reconnect Loop (>= 19 seconds)
 					// Exhausted: gentle reload -> step down quality -> lowest level -> 3G mode,
 					// and video is still stalled!
-					if (ticks >= 11) {
+					if (ticks >= 19) {
 						if (hasFallbackMirrors) {
 							log.warn(
 								"Playback unrecoverable after exhaustive quality & 3G degradation - cycling to next mirror",
