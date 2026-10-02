@@ -42,14 +42,25 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 
 			const currentTime = video.currentTime;
 			if (isPlaying && !video.paused && !video.ended) {
-				if (currentTime === lastTimeRef.current && currentTime > 0) {
+				if (currentTime === lastTimeRef.current) {
 					stallTicksRef.current += 1;
 					const ticks = stallTicksRef.current;
 
-					// 5s stall: gentle buffer load reload without clearing MSE or forcing quality changes
-					if (ticks === 5) {
+					// Initial playback stall (video never started or buffer empty at 0s):
+					// Fail over within 4s so user does not wait on a dead screen
+					if (currentTime === 0 && ticks >= 4) {
+						log.warn(
+							"Playback failed to start after 4s (initial stall) - switching to next mirror",
+						);
+						stallTicksRef.current = 0;
+						tryNextFallback();
+						return;
+					}
+
+					// 4s stall during active playback: gentle buffer load reload without clearing MSE
+					if (ticks === 4) {
 						log.info(
-							"Playback stall detected (5s) - triggering gentle startLoad()",
+							"Playback stall detected (4s) - triggering gentle startLoad()",
 						);
 						hlsRef.current?.startLoad();
 						setIsBuffering(true);
@@ -57,10 +68,10 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 						setStreamHealthStatus("stalled");
 					}
 
-					// 16s persistent stall: genuine stream outage, cycle to fallback mirror
-					if (ticks >= 16) {
+					// 8s persistent stall during active playback: genuine stream outage, cycle to fallback mirror
+					if (ticks >= 8) {
 						log.warn(
-							"Playback unrecoverable after 16s - cycling to next mirror",
+							"Playback unrecoverable after 8s - cycling to next mirror",
 						);
 						stallTicksRef.current = 0;
 						tryNextFallback();

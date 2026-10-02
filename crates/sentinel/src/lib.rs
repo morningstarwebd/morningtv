@@ -32,13 +32,22 @@ pub struct ChannelItem {
     pub is_vip: bool,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ProbeResult {
     pub ok: bool,
     pub active_url: String,
+    pub latency_ms: u64,
 }
 
 pub const UPSTREAM_PROVIDERS: &[UpstreamProvider] = &[
+    UpstreamProvider {
+        name: "IPTV-Org Global Master Index",
+        url: "https://iptv-org.github.io/iptv/index.m3u",
+        default_group: "General",
+        provider: "IPTV-Org",
+        is_fast_cdn: false,
+        is_vip: false,
+    },
     UpstreamProvider {
         name: "IPTV-Org India (Sony, Zee, Colors, Star, DD, News)",
         url: "https://iptv-org.github.io/iptv/countries/in.m3u",
@@ -200,12 +209,54 @@ pub fn is_vip_channel(name: &str, id: &str) -> bool {
 }
 
 pub const KNOWN_BACKUP_MIRRORS: &[(&str, &[&str])] = &[
-    ("colors", &["https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8"]),
     ("colorshd", &["https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8"]),
     ("zeebangla", &["https://live-bangla.akamaized.net/liveabr/playlist.m3u8"]),
     ("starjalsha", &["https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starjalsha.smil/chunklist_b1928000.m3u8"]),
     ("tsports", &["https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8"]),
 ];
+
+pub fn matches_backup_mirror_key(channel_name: &str, tvg_id: &str, key: &str) -> bool {
+    let norm_name: String = channel_name
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect();
+    let norm_id: String = if !tvg_id.is_empty() {
+        let base = tvg_id.split('@').next().unwrap_or(tvg_id).to_lowercase();
+        base.chars().filter(|c| c.is_ascii_alphanumeric()).collect()
+    } else {
+        String::new()
+    };
+
+    match key {
+        "colorshd" => {
+            // Must strictly match Colors HD / Colors Hindi, and NEVER regional variants (Gujarati, Rishtey, Cineplex, Bangla, Marathi, etc.)
+            let is_regional = norm_name.contains("bangla")
+                || norm_name.contains("gujarati")
+                || norm_name.contains("cineplex")
+                || norm_name.contains("rishtey")
+                || norm_name.contains("marathi")
+                || norm_name.contains("kannada")
+                || norm_name.contains("tamil")
+                || norm_name.contains("infinity");
+            !is_regional
+                && (norm_name == "colorshd"
+                    || norm_name == "colors"
+                    || norm_id == "colorshdin"
+                    || norm_id == "colorsin")
+        }
+        "zeebangla" => {
+            norm_name.starts_with("zeebangla") || norm_id.starts_with("zeebangla")
+        }
+        "starjalsha" => {
+            norm_name.starts_with("starjalsha") || norm_id.starts_with("starjalsha")
+        }
+        "tsports" => {
+            norm_name == "tsports" || norm_id.starts_with("tsports")
+        }
+        _ => norm_name == key || norm_id == key,
+    }
+}
 
 pub fn normalize_channel_key(name: &str, tvg_id: &str) -> String {
     if !tvg_id.is_empty() && tvg_id.len() > 3 {
@@ -263,22 +314,17 @@ pub fn parse_m3u(
                 current_fallbacks.push(fb);
             }
         } else if !line.starts_with('#') && in_channel {
-            let mut url = line.to_string();
+            let url = line.to_string();
             if url.starts_with("http://") || url.starts_with("https://") {
                 let vip = is_vip || is_vip_channel(&current_name, &current_id);
 
-                // Attach verified backup mirrors
-                let norm = normalize_channel_key(&current_name, &current_id);
+                // Attach candidate backup mirrors strictly matching this canonical channel
                 for &(k, mirrors) in KNOWN_BACKUP_MIRRORS {
-                    if norm.contains(k) || k.contains(&norm) {
+                    if matches_backup_mirror_key(&current_name, &current_id, k) {
                         for &m in mirrors {
-                            if m != url && !current_fallbacks.contains(&m.to_string()) {
-                                if url.starts_with("http://") && m.starts_with("https://") {
-                                    current_fallbacks.push(url.clone());
-                                    url = m.to_string();
-                                } else {
-                                    current_fallbacks.push(m.to_string());
-                                }
+                            let m_str = m.to_string();
+                            if m_str != url && !current_fallbacks.contains(&m_str) {
+                                current_fallbacks.push(m_str);
                             }
                         }
                     }
@@ -315,7 +361,7 @@ pub fn extract_attribute(line: &str, attr: &str) -> Option<String> {
     None
 }
 
-/// Validates whether a response payload is a legitimate media stream (HLS manifest, MPEG-TS, or fMP4)
+/// Validates whether a response payload is a legitimate media stream (HLS manifest, MPEG-TS, fMP4, DASH, WebM/MKV, FLV, Ogg)
 /// and not an HTML error/challenge or random text response.
 pub fn is_valid_stream_payload(bytes: &[u8]) -> bool {
     if bytes.is_empty() {
@@ -333,17 +379,23 @@ pub fn is_valid_stream_payload(bytes: &[u8]) -> bool {
         || head.contains("access denied")
         || head.contains("error 404")
         || head.contains("404 not found")
+        || head.contains("ddos-guard")
+        || head.contains("just a moment...")
     {
         return false;
     }
 
-    // 1. Valid HLS manifest (#EXTM3U with standard HLS tags)
+    // 1. Valid HLS manifest (#EXTM3U with standard HLS tags/directives)
     if head.contains("#extm3u")
         && (head.contains("#extinf")
             || head.contains("#ext-x-stream-inf")
             || head.contains("#ext-x-targetduration")
             || head.contains("#ext-x-media-sequence")
-            || head.contains("#ext-x-version"))
+            || head.contains("#ext-x-version")
+            || head.contains(".m3u8")
+            || head.contains(".ts")
+            || head.contains("http://")
+            || head.contains("https://"))
     {
         return true;
     }
@@ -369,50 +421,135 @@ pub fn is_valid_stream_payload(bytes: &[u8]) -> bool {
     // 3. fMP4 / CMAF initialization or media segment
     if len >= 8 {
         let box_type = &slice[4..8];
-        if box_type == b"ftyp" || box_type == b"moof" || box_type == b"styp" {
+        if box_type == b"ftyp" || box_type == b"moof" || box_type == b"styp" || box_type == b"mdat" {
             return true;
         }
+    }
+
+    // 4. MPEG-DASH manifest (XML containing <MPD)
+    if head.contains("<mpd") || head.contains("xmlns=\"urn:mpeg:dash:schema:mpd:2011\"") {
+        return true;
+    }
+
+    // 5. Matroska / WebM EBML header
+    if len >= 4 && slice[0..4] == [0x1A, 0x45, 0xDF, 0xA3] {
+        return true;
+    }
+
+    // 6. FLV header (FLV\x01)
+    if len >= 4 && slice[0..4] == [0x46, 0x4C, 0x56, 0x01] {
+        return true;
+    }
+
+    // 7. Ogg container
+    if len >= 4 && slice[0..4] == [0x4F, 0x67, 0x67, 0x53] {
+        return true;
     }
 
     false
 }
 
+pub fn is_valid_stream_payload_with_content_type(bytes: &[u8], content_type: &str) -> bool {
+    let ct = content_type.to_lowercase();
+    if ct.contains("text/html") {
+        return false;
+    }
+
+    let check_len = bytes.len().min(512);
+    let head = String::from_utf8_lossy(&bytes[..check_len]).to_lowercase();
+    if head.contains("<!doctype html")
+        || head.contains("<html")
+        || head.contains("cloudflare")
+        || head.contains("access denied")
+        || head.contains("error 404")
+        || head.contains("404 not found")
+        || head.contains("ddos-guard")
+        || head.contains("just a moment...")
+    {
+        return false;
+    }
+
+    if ct.contains("mpegurl")
+        || ct.contains("vnd.apple.mpegurl")
+        || ct.contains("application/x-mpegurl")
+        || ct.contains("video/")
+        || ct.contains("audio/")
+        || ct.contains("dash+xml")
+    {
+        return true;
+    }
+
+    is_valid_stream_payload(bytes)
+}
+
 pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResult {
-    let res = client
-        .get(url)
-        .header(
-            "User-Agent",
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        )
-        .header("Range", "bytes=0-1024")
-        .header("Accept", "*/*")
-        .send()
-        .await;
+    for attempt in 0..2 {
+        let t0 = Instant::now();
+        let res = client
+            .get(url)
+            .header(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            )
+            .header("Range", "bytes=0-2048")
+            .header("Accept", "*/*")
+            .send()
+            .await;
 
-    match res {
-        Ok(resp) => {
-            let status = resp.status();
-            let effective_url = resp.url().as_str().to_string();
+        match res {
+            Ok(mut resp) => {
+                let status = resp.status();
+                let effective_url = resp.url().as_str().to_string();
 
-            if status.is_success() || status.as_u16() == 206 {
-                if let Ok(bytes) = resp.bytes().await {
-                    if is_valid_stream_payload(&bytes) {
+                if status.is_success() || status.as_u16() == 206 {
+                    let ct = resp
+                        .headers()
+                        .get(reqwest::header::CONTENT_TYPE)
+                        .and_then(|v| v.to_str().ok())
+                        .unwrap_or("")
+                        .to_string();
+
+                    // Read first chunk (up to 2048 bytes) so infinite live MPEG-TS streams don't stall
+                    let mut bytes = Vec::with_capacity(2048);
+                    while let Ok(Some(chunk)) = resp.chunk().await {
+                        bytes.extend_from_slice(&chunk);
+                        if bytes.len() >= 2048 {
+                            break;
+                        }
+                    }
+
+                    if is_valid_stream_payload_with_content_type(&bytes, &ct) {
+                        let latency_ms = t0.elapsed().as_millis() as u64;
                         return ProbeResult {
                             ok: true,
                             active_url: effective_url,
+                            latency_ms,
                         };
                     }
                 }
+
+                // If explicit 4xx/5xx error, do not retry
+                if status.is_client_error() || status.is_server_error() {
+                    return ProbeResult {
+                        ok: false,
+                        active_url: url.to_string(),
+                        latency_ms: u64::MAX,
+                    };
+                }
             }
-            ProbeResult {
-                ok: false,
-                active_url: url.to_string(),
+            Err(_) => {
+                if attempt == 0 {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(200)).await;
+                    continue;
+                }
             }
         }
-        Err(_) => ProbeResult {
-            ok: false,
-            active_url: url.to_string(),
-        },
+    }
+
+    ProbeResult {
+        ok: false,
+        active_url: url.to_string(),
+        latency_ms: u64::MAX,
     }
 }
 
@@ -483,10 +620,10 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
 
     // 1. Initialize persistent HTTP client with large connection pool
     let client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(6))
-        .connect_timeout(std::time::Duration::from_secs(4))
-        .redirect(reqwest::redirect::Policy::limited(6))
-        .pool_max_idle_per_host(30)
+        .timeout(std::time::Duration::from_secs(5))
+        .connect_timeout(std::time::Duration::from_secs(3))
+        .redirect(reqwest::redirect::Policy::limited(5))
+        .pool_max_idle_per_host(50)
         .tcp_keepalive(std::time::Duration::from_secs(15))
         .build()?;
 
@@ -538,7 +675,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                                     existing.logo = item.logo;
                                 }
                             } else if !existing.is_fast_cdn && provider.is_fast_cdn {
-                                existing.fallbacks.push(existing.url.clone());
+                                if existing.url != item.url && !existing.fallbacks.contains(&existing.url) {
+                                    existing.fallbacks.push(existing.url.clone());
+                                }
                                 existing.url = item.url;
                                 existing.is_fast_cdn = true;
                                 existing.provider = item.provider;
@@ -547,6 +686,13 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             } else if existing.url != item.url && !existing.fallbacks.contains(&item.url) {
                                 existing.fallbacks.push(item.url);
+                            }
+
+                            // Preserve all unique candidate fallbacks from secondary feeds
+                            for fb in item.fallbacks {
+                                if fb != existing.url && !existing.fallbacks.contains(&fb) {
+                                    existing.fallbacks.push(fb);
+                                }
                             }
                         } else {
                             channel_map.insert(key, item);
@@ -591,14 +737,21 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         total_candidates
     );
 
-    // 3. Parallel probing with Tokio Semaphore (20 polite workers for high accuracy & zero CDN bans)
+    // 3. Parallel probing with Tokio Semaphore (utilizing maximum CPU concurrency)
     let probe_start = Instant::now();
-    let semaphore = Arc::new(Semaphore::new(20));
+    let num_cpus = std::thread::available_parallelism()
+        .map(|n| n.get())
+        .unwrap_or(8);
+    let workers = (num_cpus * 4).clamp(32, 64);
+    let semaphore = Arc::new(Semaphore::new(workers));
     let progress_completed = Arc::new(AtomicUsize::new(0));
     let dead_counter = Arc::new(AtomicUsize::new(0));
     let healed_counter = Arc::new(AtomicUsize::new(0));
 
-    println!("\n🔍 Probing 100% of streams ({} total candidates) concurrently using Tokio (20 polite workers)...", total_candidates);
+    println!(
+        "\n🔍 Probing 100% of streams & candidate mirrors ({} candidates) concurrently using Tokio ({} workers across {} CPU threads)...",
+        total_candidates, workers, num_cpus
+    );
 
     let mut tasks = Vec::with_capacity(total_candidates);
 
@@ -615,33 +768,27 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 Err(_) => return None,
             };
 
-            let primary_res = probe_single_url(&cli, &ch.url).await;
-            let mut active_channel = None;
+            // Compile all candidate URLs for this channel (primary + all fallbacks)
+            let mut candidate_urls = Vec::with_capacity(1 + ch.fallbacks.len());
+            candidate_urls.push(ch.url.clone());
+            for fb in &ch.fallbacks {
+                let trimmed = fb.trim().to_string();
+                if !trimmed.is_empty() && !candidate_urls.contains(&trimmed) {
+                    candidate_urls.push(trimmed);
+                }
+            }
 
-            if primary_res.ok {
-                let mut c = ch;
-                c.url = primary_res.active_url;
-                active_channel = Some(c);
-            } else if !ch.fallbacks.is_empty() {
-                for fb in &ch.fallbacks {
-                    let fb_res = probe_single_url(&cli, fb).await;
-                    if fb_res.ok {
-                        let mut c = ch.clone();
-                        c.url = fb_res.active_url;
-                        healed.fetch_add(1, Ordering::Relaxed);
-                        active_channel = Some(c);
-                        break;
-                    }
+            // Rigorously probe ALL candidate URLs and retain only verified working ones
+            let mut working_streams: Vec<ProbeResult> = Vec::with_capacity(candidate_urls.len());
+            for candidate in &candidate_urls {
+                let res = probe_single_url(&cli, candidate).await;
+                if res.ok && !working_streams.iter().any(|w| w.active_url == res.active_url) {
+                    working_streams.push(res);
                 }
-                if active_channel.is_none() {
-                    dead.fetch_add(1, Ordering::Relaxed);
-                }
-            } else {
-                dead.fetch_add(1, Ordering::Relaxed);
             }
 
             let done = completed.fetch_add(1, Ordering::Relaxed) + 1;
-            if done.is_multiple_of(200) || done == total_candidates {
+            if done.is_multiple_of(100) || done == total_candidates {
                 print!(
                     "\r   Probing progress: {}/{} ({:.1}%)",
                     done,
@@ -650,7 +797,27 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 );
             }
 
-            active_channel
+            if working_streams.is_empty() {
+                // All streams and candidate mirrors failed: channel is dead and purged
+                dead.fetch_add(1, Ordering::Relaxed);
+                None
+            } else {
+                // Sort working streams by response latency ascending (lowest ping first)
+                working_streams.sort_by_key(|w| w.latency_ms);
+
+                let mut c = ch;
+                let primary_stream = working_streams.remove(0);
+                let was_healed = primary_stream.active_url != c.url;
+                if was_healed {
+                    healed.fetch_add(1, Ordering::Relaxed);
+                }
+
+                c.url = primary_stream.active_url;
+                // fallbacks contains ONLY 100% verified live backup mirrors, in speed order
+                c.fallbacks = working_streams.into_iter().map(|w| w.active_url).collect();
+
+                Some(c)
+            }
         });
 
         tasks.push(task);

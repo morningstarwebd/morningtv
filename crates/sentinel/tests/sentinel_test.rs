@@ -2,8 +2,8 @@
 // Unit tests for the MorningTV Sentinel Engine
 
 use sentinel::{
-    extract_attribute, format_m3u, is_valid_stream_payload, is_vip_channel, normalize_channel_key,
-    parse_m3u, ChannelItem,
+    extract_attribute, format_m3u, is_valid_stream_payload, is_valid_stream_payload_with_content_type,
+    is_vip_channel, matches_backup_mirror_key, normalize_channel_key, parse_m3u, ChannelItem,
 };
 
 #[test]
@@ -147,4 +147,48 @@ fn test_fmp4_payload_validation() {
     fmp4[0..4].copy_from_slice(&[0x00, 0x00, 0x00, 0x20]);
     fmp4[4..8].copy_from_slice(b"ftyp");
     assert!(is_valid_stream_payload(&fmp4));
+}
+
+#[test]
+fn test_backup_mirror_key_matching_exactness() {
+    // Colors HD should match
+    assert!(matches_backup_mirror_key("Colors HD", "colorshdin", "colorshd"));
+    assert!(matches_backup_mirror_key("Colors", "colorsin", "colorshd"));
+
+    // Regional variants MUST NEVER match Colors HD mirror
+    assert!(!matches_backup_mirror_key("Colors Gujarati", "colorsgujaratiin", "colorshd"));
+    assert!(!matches_backup_mirror_key("Colors Rishtey", "colorsrishteyin", "colorshd"));
+    assert!(!matches_backup_mirror_key("Colors Cineplex", "colorscineplexin", "colorshd"));
+    assert!(!matches_backup_mirror_key("Colors Bangla", "colorsbanglain", "colorshd"));
+    assert!(!matches_backup_mirror_key("Colors Marathi", "colorsmarathiin", "colorshd"));
+    assert!(!matches_backup_mirror_key("Colors Tamil", "colorstamilin", "colorshd"));
+    assert!(!matches_backup_mirror_key("Colors Infinity", "colorsinfinityin", "colorshd"));
+
+    // Bengali channels match properly
+    assert!(matches_backup_mirror_key("Zee Bangla HD", "zeebangla@in", "zeebangla"));
+    assert!(matches_backup_mirror_key("Star Jalsha HD", "starjalsha@in", "starjalsha"));
+    assert!(matches_backup_mirror_key("T Sports HD", "tsports@bd", "tsports"));
+}
+
+#[test]
+fn test_multimedia_payload_dash_webm_flv_and_content_type() {
+    // DASH manifest
+    let dash = b"<?xml version=\"1.0\"?><MPD xmlns=\"urn:mpeg:dash:schema:mpd:2011\"></MPD>";
+    assert!(is_valid_stream_payload(dash));
+
+    // WebM / MKV EBML
+    let webm = vec![0x1A, 0x45, 0xDF, 0xA3, 0x01, 0x00, 0x00];
+    assert!(is_valid_stream_payload(&webm));
+
+    // FLV
+    let flv = vec![0x46, 0x4C, 0x56, 0x01, 0x05, 0x00];
+    assert!(is_valid_stream_payload(&flv));
+
+    // Content-Type mpegurl
+    let mpegurl_bytes = b"#EXTM3U\nchunklist.m3u8\n";
+    assert!(is_valid_stream_payload_with_content_type(mpegurl_bytes, "application/vnd.apple.mpegurl"));
+
+    // HTML error with video content-type should still be rejected
+    let html_err = b"<!DOCTYPE html><html><body>Error 404</body></html>";
+    assert!(!is_valid_stream_payload_with_content_type(html_err, "video/mp4"));
 }
