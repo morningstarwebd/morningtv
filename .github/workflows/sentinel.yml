@@ -30,8 +30,10 @@ jobs:
         with:
           workspaces: crates/sentinel -> target
 
-      - name: Run High-Speed Tokio Sentinel Engine (120 Workers)
-        run: cargo run --release --manifest-path crates/sentinel/Cargo.toml
+      - name: Run Polite & Rate-Limited Tokio Sentinel Engine (Safe CI Mode)
+        run: cargo run --release --manifest-path crates/sentinel/Cargo.toml --bin sentinel
+        env:
+          SENTINEL_CONCURRENCY: 16
 
       - name: Commit and Push Updated Playlists
         run: |

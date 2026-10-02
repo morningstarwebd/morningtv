@@ -1,6 +1,7 @@
 [package]
 name = "sentinel"
 version = "1.0.0"
+default-run = "sentinel"
 edition = "2021"
 description = "MorningTV Stream Sentinel: High-Speed Tokio Live Stream Auditor"
 authors = ["MorningTV Team"]

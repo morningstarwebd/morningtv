@@ -574,6 +574,16 @@ pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResul
                     }
                 }
 
+                // If rate-limited (HTTP 429), back off politely to avoid IP bans
+                if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                    tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+                    return ProbeResult {
+                        ok: false,
+                        active_url: url.to_string(),
+                        latency_ms: u64::MAX,
+                    };
+                }
+
                 // If explicit 4xx/5xx error, do not retry
                 if status.is_client_error() || status.is_server_error() {
                     return ProbeResult {
@@ -791,20 +801,36 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         total_candidates
     );
 
-    // 3. Parallel probing with Tokio Semaphore (utilizing maximum CPU concurrency)
+    // 3. Parallel probing with Tokio Semaphore (utilizing safe rate-limited concurrency)
     let probe_start = Instant::now();
     let num_cpus = std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(8);
-    let workers = (num_cpus * 4).clamp(32, 64);
+
+    let is_ci = std::env::var("CI").is_ok() || std::env::var("GITHUB_ACTIONS").is_ok();
+    let workers = if let Ok(val) = std::env::var("SENTINEL_CONCURRENCY").or_else(|_| std::env::var("SENTINEL_WORKERS")) {
+        val.parse::<usize>().unwrap_or(if is_ci { 16 } else { 32 })
+    } else if is_ci {
+        // Safe polite concurrency for GitHub Actions runners: 16 workers prevents CDN 429s and IP blocks
+        16
+    } else {
+        (num_cpus * 4).clamp(16, 64)
+    };
+
     let semaphore = Arc::new(Semaphore::new(workers));
     let progress_completed = Arc::new(AtomicUsize::new(0));
     let dead_counter = Arc::new(AtomicUsize::new(0));
     let healed_counter = Arc::new(AtomicUsize::new(0));
 
+    let environment_label = if is_ci {
+        "GitHub Actions CI (Polite Rate-Limited Mode - Max 16 Workers)"
+    } else {
+        "Local High-Performance"
+    };
+
     println!(
-        "\n🔍 Probing 100% of streams & candidate mirrors ({} candidates) concurrently using Tokio ({} workers across {} CPU threads)...",
-        total_candidates, workers, num_cpus
+        "\n🔍 Probing 100% of streams & candidate mirrors ({} candidates) using Tokio ({} workers across {} CPU threads) [Mode: {}]...",
+        total_candidates, workers, num_cpus, environment_label
     );
 
     let mut tasks = Vec::with_capacity(total_candidates);
