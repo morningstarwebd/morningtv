@@ -112,3 +112,35 @@ test('filterChannelsClient handles non-existent category gracefully', () => {
   const result = filterChannelsClient(mockChannels, 'NonExistentCategory999', '');
   assert.equal(result.length, 0);
 });
+
+test('filterChannelsClient filters region-blocked streams when hideRegionBlocked is enabled', () => {
+  const mixedChannels = [
+    ...mockChannels,
+    {
+      id: 'pluto-1',
+      name: 'Pluto TV Movies',
+      group: 'Movies',
+      url: 'https://service-stitcher.clusters.pluto.tv/v1/stitch/embed/hls/channel.m3u8',
+      provider: 'Pluto TV',
+      is_favorite: false,
+    },
+    {
+      id: 'roku-1',
+      name: 'Roku Live News',
+      group: 'News',
+      url: 'https://therokuchannel.roku.com/stream.m3u8',
+      provider: 'Roku',
+      is_favorite: false,
+    },
+  ];
+
+  // With hideRegionBlocked = false, all 6 channels returned
+  const allResult = filterChannelsClient(mixedChannels, 'All', '', false);
+  assert.equal(allResult.length, 6);
+
+  // With hideRegionBlocked = true, geo-blocked channels (Pluto, Roku) are filtered
+  const filteredResult = filterChannelsClient(mixedChannels, 'All', '', true);
+  assert.equal(filteredResult.length, 4);
+  assert.ok(!filteredResult.some((c) => c.provider === 'Pluto TV' || c.provider === 'Roku'));
+});
+

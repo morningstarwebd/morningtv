@@ -39,6 +39,8 @@ export const SettingsDialog: React.FC = () => {
 		settings,
 		ambientGlow,
 		normalizeAudio,
+		hideRegionBlocked,
+		toggleHideRegionBlocked,
 		is3GDataSaver,
 		toggle3GDataSaver,
 		isLaunchAtStartup,
@@ -188,31 +190,31 @@ export const SettingsDialog: React.FC = () => {
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-sm select-none p-3 sm:p-6 animate-in fade-in duration-200"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm select-none p-2 sm:p-4 animate-in fade-in duration-200"
 			onClick={closeSettings}
 		>
 			<div
-				className="w-[760px] max-w-[95vw] h-[510px] bg-[#060814]/55 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
+				className="w-[576px] max-w-[95vw] h-[480px] max-h-[95vh] bg-[#060814]/75 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Left Sidebar Navigation */}
-				<div className="w-56 sm:w-60 h-full bg-black/40 border-r border-white/10 p-3.5 sm:p-4 flex flex-col justify-between shrink-0 backdrop-blur-xl">
+				<div className="w-48 h-full bg-black/40 border-r border-white/10 p-3 flex flex-col justify-between shrink-0 backdrop-blur-xl">
 					<div>
 						{/* App Branding */}
-						<div className="flex items-center gap-2.5 pb-4 mb-3 border-b border-white/10">
-							<MorningTVLogo className="w-8 h-8" glow={true} />
+						<div className="flex items-center gap-2 pb-3 mb-2 border-b border-white/10">
+							<MorningTVLogo className="w-7 h-7" glow={true} />
 							<div>
 								<h2 className="text-xs font-black text-white tracking-wider uppercase">
 									MorningTV
 								</h2>
 								<p className="text-[10px] text-zinc-300 font-medium">
-									Player Preferences
+									Preferences
 								</p>
 							</div>
 						</div>
 
 						{/* Nav Pills */}
-						<nav className="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-none">
+						<nav className="flex flex-col gap-1 overflow-y-auto scrollbar-none">
 							{tabs.map((tab) => {
 								const Icon = tab.icon;
 								const isActive = activeTab === tab.id;
@@ -221,7 +223,7 @@ export const SettingsDialog: React.FC = () => {
 										key={tab.id}
 										type="button"
 										onClick={() => setActiveTab(tab.id)}
-										className={`group flex items-center justify-between w-full p-2.5 rounded-xl text-left transition-all cursor-pointer shrink-0 ${
+										className={`group flex items-center justify-between w-full p-2 rounded-xl text-left transition-all cursor-pointer shrink-0 ${
 											isActive
 												? "bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-md shadow-cyan-600/30 border border-cyan-400/30"
 												: "text-zinc-300 hover:text-white hover:bg-white/[0.08]"
@@ -236,11 +238,11 @@ export const SettingsDialog: React.FC = () => {
 												}`}
 											/>
 											<div className="truncate">
-												<div className="text-xs font-bold truncate">
+												<div className="text-[11px] font-bold truncate">
 													{tab.label}
 												</div>
 												<div
-													className={`text-[9px] hidden md:block truncate ${
+													className={`text-[9px] hidden sm:block truncate ${
 														isActive ? "text-cyan-100" : "text-zinc-400"
 													}`}
 												>
@@ -251,7 +253,7 @@ export const SettingsDialog: React.FC = () => {
 
 										{tab.badge && (
 											<span
-												className={`ml-1.5 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+												className={`ml-1 text-[8px] font-mono font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
 													isActive
 														? "bg-white/20 text-white"
 														: tab.badgeStyle || "bg-white/10 text-cyan-300"
@@ -267,46 +269,49 @@ export const SettingsDialog: React.FC = () => {
 					</div>
 
 					{/* Bottom System Info */}
-					<div className="hidden md:flex items-center justify-between pt-3 border-t border-white/10">
+					<div className="flex items-center justify-between pt-2 border-t border-white/10">
 						<div className="flex items-center gap-1.5">
 							<span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
 							<span className="text-[10px] font-medium text-zinc-300">
-								MorningTV Desktop
+								Desktop
 							</span>
 						</div>
 						<span className="text-[9px] font-mono text-zinc-400 font-bold">
-							v1.1.0
+							v1.1.1
 						</span>
 					</div>
 				</div>
 
 				{/* Right Content Area */}
-				<div className="flex-1 h-full p-4 sm:p-5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
+				<div className="flex-1 h-full p-3.5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
 					<div>
 						{/* Top Header of Active View */}
-						<div className="flex items-start justify-between pb-2.5 mb-3 border-b border-white/10">
+						<div className="flex items-start justify-between pb-2 mb-2.5 border-b border-white/10">
 							<div>
-								<h3 className="text-sm font-extrabold text-white tracking-wide">
+								<h3 className="text-xs sm:text-sm font-extrabold text-white tracking-wide">
 									{activeTab === "playlist" && "Playlist & Channels"}
 									{activeTab === "cinema" && "Cinema & Display"}
 									{activeTab === "audio" && "Sound & Acoustics"}
 									{activeTab === "cloud" && "Cloud Repository"}
 									{activeTab === "system" && "System & Startup"}
 									{activeTab === "updates" && "Software Update"}
+									{activeTab === "about" && "Legal & About"}
 								</h3>
-								<p className="text-[11px] text-zinc-300 mt-0.5">
+								<p className="text-[10px] text-zinc-300 mt-0.5 line-clamp-1">
 									{activeTab === "playlist" &&
-										"Manage your streaming links, index channels, and sync cloud lists"}
+										"Manage streaming links, compatibility & verified channels"}
 									{activeTab === "cinema" &&
 										"Customize visual ambient lighting and stream buffer stability"}
 									{activeTab === "audio" &&
-										"Fine-tune channel volume balance and prevent sudden loudness spikes"}
+										"Fine-tune channel volume balance and prevent loudness spikes"}
 									{activeTab === "cloud" &&
-										"Sync verified channels and backup mirrors directly from cloud repository"}
+										"Sync verified channels and backup mirrors directly from cloud"}
 									{activeTab === "system" &&
-										"Windows boot autostart, system tray quick controls, and GitHub integration"}
+										"Windows boot autostart, system tray quick controls & integration"}
 									{activeTab === "updates" &&
 										"Check for new releases, install updates, and review changelogs"}
+									{activeTab === "about" &&
+										"Open source license, compliance & architecture attribution"}
 								</p>
 							</div>
 
@@ -319,8 +324,8 @@ export const SettingsDialog: React.FC = () => {
 							</button>
 						</div>
 
-						{/* Content Container (Fixed 370px, Zero Scroll, Overflow Hidden) */}
-						<div className="h-[370px] overflow-hidden flex flex-col justify-start">
+						{/* Content Container (Standard 6" x 5" Interior Scroll Canvas) */}
+						<div className="h-[385px] overflow-y-auto pr-1 flex flex-col justify-start gap-2.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
 							{/* TAB 1: PLAYLIST & CHANNELS */}
 							{activeTab === "playlist" && (
 								<form onSubmit={handleSave} className="flex flex-col gap-3">
@@ -359,6 +364,61 @@ export const SettingsDialog: React.FC = () => {
 											<span>
 												{isSyncing ? "Syncing..." : "Sync Fresh List"}
 											</span>
+										</button>
+									</div>
+
+									{/* Region-Blocked / Network Stream Compatibility Filter */}
+									<div className="rounded-2xl p-3 bg-white/[0.03] border border-white/10 flex items-center justify-between gap-3">
+										<div className="flex items-center gap-2.5">
+											<div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
+												<ShieldCheck className="w-4 h-4" />
+											</div>
+											<div>
+												<div className="flex items-center gap-2">
+													<span className="text-xs font-bold text-white">
+														Direct Playback Only (India / Mobile)
+													</span>
+													<span
+														className={`px-1.5 py-0.2 rounded-full text-[8px] font-bold border ${
+															hideRegionBlocked
+																? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+																: "bg-white/10 text-zinc-400 border-white/10"
+														}`}
+													>
+														{hideRegionBlocked
+															? "7,578 Verified"
+															: "10,528 Global"}
+													</span>
+												</div>
+												<p className="text-[10px] text-zinc-400 mt-0.5">
+													{hideRegionBlocked
+														? "Hiding US geo-blocked streams (Pluto, Roku) for 100% error-free playback"
+														: "Showing all channels including feeds requiring a US IP / VPN"}
+												</p>
+											</div>
+										</div>
+
+										<button
+											type="button"
+											role="switch"
+											aria-checked={hideRegionBlocked}
+											onClick={toggleHideRegionBlocked}
+											className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+												hideRegionBlocked ? "bg-cyan-500" : "bg-zinc-800"
+											}`}
+											title={
+												hideRegionBlocked
+													? "Show all global channels"
+													: "Filter to only directly playable channels"
+											}
+										>
+											<span
+												className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white transition-transform ${
+													hideRegionBlocked
+														? "translate-x-4.5"
+														: "translate-x-0"
+												}`}
+											/>
 										</button>
 									</div>
 
@@ -1099,7 +1159,7 @@ export const SettingsDialog: React.FC = () => {
 											Open Source
 										</div>
 										<div className="font-mono text-[11px]">
-											MorningTV v1.1.0 (Production Release)
+											MorningTV v1.1.1 (Production Release)
 										</div>
 									</div>
 								</div>

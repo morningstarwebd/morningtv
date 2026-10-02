@@ -1,7 +1,7 @@
 // src/types/index.ts
 // TypeScript interfaces mirroring Rust domain entities and UI state
 
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.1.1";
 
 export interface ChannelId {
 	0: string;
@@ -51,6 +51,7 @@ export interface AppSettings {
 	cache_duration_secs: number;
 	last_played_channel_id: string | null;
 	normalize_audio?: boolean;
+	hide_region_blocked?: boolean;
 }
 
 export interface EpgProgram {

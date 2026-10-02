@@ -17,6 +17,8 @@ pub struct AppSettings {
     pub auto_adaptive_bitrate: bool,
     pub cache_duration_secs: u32,
     pub last_played_channel_id: Option<String>,
+    #[serde(default)]
+    pub hide_region_blocked: bool,
 }
 
 impl Default for AppSettings {
@@ -29,6 +31,7 @@ impl Default for AppSettings {
             auto_adaptive_bitrate: true,
             cache_duration_secs: DEFAULT_CACHE_SECS,
             last_played_channel_id: None,
+            hide_region_blocked: false,
         }
     }
 }

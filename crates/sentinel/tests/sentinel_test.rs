@@ -43,6 +43,15 @@ fn test_normalize_channel_key_deduplication() {
     let key2 = normalize_channel_key("SONY  SAB!! (HD)", "");
     assert_eq!(key2, "sonysabhd");
 
+    // Strips resolution tags to merge identical channels
+    let key_clean = normalize_channel_key("ABP Ananda (1080p)", "");
+    let key_base = normalize_channel_key("ABP Ananda", "");
+    assert_eq!(key_clean, key_base);
+
+    // Handles Free-TV markdown links in tvg-id
+    let key_md = normalize_channel_key("ABP Ananda", "[ABP Ananda](https://bengali.abplive.com/)");
+    assert_eq!(key_md, "abpananda");
+
     // Two channels with different casing/spacing normalize identically
     let key3 = normalize_channel_key("Star Sports 1", "");
     let key4 = normalize_channel_key("star  sports 1 (In)", "");

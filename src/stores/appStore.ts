@@ -80,6 +80,7 @@ interface AppState {
 	isShortcutsOpen: boolean;
 	ambientGlow: boolean;
 	settings: AppSettings | null;
+	hideRegionBlocked: boolean;
 	isLaunchAtStartup: boolean;
 	toast: { message: string; isError: boolean } | null;
 
@@ -87,6 +88,7 @@ interface AppState {
 	init: () => Promise<void>;
 	fetchStartupStatus: () => Promise<void>;
 	toggleStartupStatus: (enabled: boolean) => Promise<void>;
+	toggleHideRegionBlocked: () => void;
 	openGitHubRepo: () => Promise<void>;
 	selectChannel: (channel: Channel) => Promise<void>;
 	selectChannelByIndex: (index: number) => Promise<void>;
@@ -244,6 +246,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 	isShortcutsOpen: false,
 	ambientGlow: true,
 	settings: null,
+	hideRegionBlocked: false,
 	isLaunchAtStartup: false,
 	toast: null,
 	isSyncing: false,
@@ -340,23 +343,29 @@ export const useAppStore = create<AppState>((set, get) => ({
 			});
 			const providers = ["All", ...Array.from(provSet)];
 
+			const hideRegion = settings.hide_region_blocked ?? false;
+			const initialFiltered = hideRegion
+				? filterChannelsClient(channels, "All", "", true)
+				: channels;
+
 			set({
 				allChannels: channels,
-				channels,
+				channels: initialFiltered,
 				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				providers: providers.length > 1 ? providers : ["All"],
 				settings,
+				hideRegionBlocked: hideRegion,
 				isLaunchAtStartup: startupStatus ?? false,
 				volume: settings.volume ?? 85,
 				isMuted: settings.is_muted ?? false,
 				currentQuality: settings.preferred_quality ?? "Auto",
 			});
 
-			if (channels.length > 0) {
-				let defaultChannel = channels[0];
+			if (initialFiltered.length > 0) {
+				let defaultChannel = initialFiltered[0];
 				if (settings.last_played_channel_id) {
-					const match = channels.find(
+					const match = initialFiltered.find(
 						(c) => getChannelIdString(c.id) === settings.last_played_channel_id,
 					);
 					if (match) defaultChannel = match;
@@ -370,6 +379,25 @@ export const useAppStore = create<AppState>((set, get) => ({
 		} catch (err) {
 			log.error("Failed to init app state", { error: err });
 		}
+	},
+
+	toggleHideRegionBlocked: () => {
+		const next = !get().hideRegionBlocked;
+		set((state) => ({
+			hideRegionBlocked: next,
+			channels: filterChannelsClient(
+				state.allChannels,
+				state.activeCategory,
+				state.searchQuery,
+				next,
+			),
+		}));
+		get().showToast(
+			next
+				? "🛡️ Region-Blocked Streams Hidden (Direct Indian Playback)"
+				: "🌐 All Global Channels Visible (VPN Support)",
+			false,
+		);
 	},
 
 	fetchStartupStatus: async () => {
@@ -487,6 +515,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 					updatedAll,
 					state.activeCategory,
 					state.searchQuery,
+					state.hideRegionBlocked,
 				);
 				return {
 					allChannels: updatedAll,
@@ -504,6 +533,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				state.allChannels,
 				category,
 				state.searchQuery,
+				state.hideRegionBlocked,
 			);
 			return { activeCategory: category, channels: filtered };
 		});
@@ -515,6 +545,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				state.allChannels,
 				state.activeCategory,
 				query,
+				state.hideRegionBlocked,
 			);
 			return { searchQuery: query, channels: filtered };
 		});
@@ -769,6 +800,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 					channels,
 					state.activeCategory,
 					state.searchQuery,
+					state.hideRegionBlocked,
 				),
 				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
@@ -800,6 +832,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 					channels,
 					state.activeCategory,
 					state.searchQuery,
+					state.hideRegionBlocked,
 				),
 				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],

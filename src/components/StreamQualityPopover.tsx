@@ -181,34 +181,34 @@ export const StreamQualityPopover: React.FC = () => {
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-sm select-none p-3 sm:p-6 animate-in fade-in duration-200"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm select-none p-2 sm:p-4 animate-in fade-in duration-200"
 			onClick={closeQualityPopover}
 		>
-			{/* Fixed Rock-Solid 760px x 510px Dialog Window (Never resizes across tabs, Fully Translucent Glass, Zero Scrollbar) */}
+			{/* Fixed Rock-Solid 6" x 5" (576px x 480px) Dialog Window (Standardized Modal System, Centered, Translucent Glass) */}
 			<div
-				className="w-[760px] max-w-[95vw] h-[510px] bg-[#060814]/55 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-col md:flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
+				className="w-[576px] max-w-[95vw] h-[480px] max-h-[95vh] bg-[#060814]/75 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
 				onClick={(e) => e.stopPropagation()}
 			>
-				{/* Left Sidebar Navigation (Fixed height, Translucent) */}
-				<div className="w-full md:w-60 h-full bg-black/40 border-b md:border-b-0 md:border-r border-white/10 p-4 flex flex-col justify-between shrink-0 backdrop-blur-xl">
+				{/* Left Sidebar Navigation (Fixed 192px width, Translucent) */}
+				<div className="w-48 h-full bg-black/40 border-r border-white/10 p-3 flex flex-col justify-between shrink-0 backdrop-blur-xl">
 					<div>
 						{/* Branding Header */}
-						<div className="flex items-center gap-2.5 pb-4 mb-3 border-b border-white/10">
-							<div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500/30 to-blue-600/40 border border-cyan-400/40 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20 shrink-0">
-								<Activity className="w-4 h-4 text-cyan-300" />
+						<div className="flex items-center gap-2 pb-3 mb-2 border-b border-white/10">
+							<div className="w-7 h-7 rounded-xl bg-gradient-to-tr from-cyan-500/30 to-blue-600/40 border border-cyan-400/40 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20 shrink-0">
+								<Activity className="w-3.5 h-3.5 text-cyan-300" />
 							</div>
 							<div>
 								<h2 className="text-xs font-black text-white tracking-wider uppercase">
-									Stream Telemetry
+									Telemetry
 								</h2>
 								<p className="text-[10px] text-zinc-300 font-medium">
-									Diagnostics Studio
+									Diagnostics
 								</p>
 							</div>
 						</div>
 
 						{/* Nav Pills */}
-						<nav className="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible pb-2 md:pb-0 scrollbar-none">
+						<nav className="flex flex-col gap-1 overflow-y-auto scrollbar-none">
 							{tabs.map((tab) => {
 								const Icon = tab.icon;
 								const isActive = activeTab === tab.id;
@@ -217,7 +217,7 @@ export const StreamQualityPopover: React.FC = () => {
 										key={tab.id}
 										type="button"
 										onClick={() => setActiveTab(tab.id)}
-										className={`group flex items-center justify-between w-full p-2.5 rounded-xl text-left transition-all cursor-pointer shrink-0 ${
+										className={`group flex items-center justify-between w-full p-2 rounded-xl text-left transition-all cursor-pointer shrink-0 ${
 											isActive
 												? "bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-md shadow-cyan-600/30 border border-cyan-400/30"
 												: "text-zinc-300 hover:text-white hover:bg-white/[0.08]"
@@ -232,11 +232,11 @@ export const StreamQualityPopover: React.FC = () => {
 												}`}
 											/>
 											<div className="truncate">
-												<div className="text-xs font-bold truncate">
+												<div className="text-[11px] font-bold truncate">
 													{tab.label}
 												</div>
 												<div
-													className={`text-[9px] hidden md:block truncate ${
+													className={`text-[9px] hidden sm:block truncate ${
 														isActive ? "text-cyan-100" : "text-zinc-400"
 													}`}
 												>
@@ -247,7 +247,7 @@ export const StreamQualityPopover: React.FC = () => {
 
 										{tab.badge && (
 											<span
-												className={`ml-1.5 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+												className={`ml-1 text-[8px] font-mono font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
 													isActive
 														? "bg-white/20 text-white"
 														: tab.badgeStyle || "bg-white/10 text-cyan-300"
@@ -263,42 +263,40 @@ export const StreamQualityPopover: React.FC = () => {
 					</div>
 
 					{/* Bottom Telemetry Status */}
-					<div className="hidden md:flex items-center justify-between pt-3 border-t border-white/10">
+					<div className="flex items-center justify-between pt-2 border-t border-white/10">
 						<div className="flex items-center gap-1.5">
 							<span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
 							<span className="text-[10px] font-medium text-zinc-300">
-								Live OS Telemetry
+								Live Telemetry
 							</span>
 						</div>
-						<span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-500/20 px-1.5 py-0.5 rounded-md border border-cyan-400/30">
+						<span className="text-[9px] font-mono text-cyan-300 font-bold bg-cyan-500/20 px-1.5 py-0.2 rounded-md border border-cyan-400/30">
 							Speed ÷ 8
 						</span>
 					</div>
 				</div>
 
-				{/* Right Content Area (Strict Fixed Height, Translucent, Zero Scrollbars) */}
-				<div className="flex-1 h-full p-4 sm:p-5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
+				{/* Right Content Area (Standard 6" x 5" Interior Canvas) */}
+				<div className="flex-1 h-full p-3.5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
 					<div>
 						{/* Top Header of Active View */}
-						<div className="flex items-start justify-between pb-2.5 mb-3 border-b border-white/10">
+						<div className="flex items-start justify-between pb-2 mb-2.5 border-b border-white/10">
 							<div>
-								<h3 className="text-sm font-extrabold text-white tracking-wide flex items-center gap-2">
-									{activeTab === "speed" && "Live OS Network Speed Meter"}
+								<h3 className="text-xs sm:text-sm font-extrabold text-white tracking-wide flex items-center gap-2">
+									{activeTab === "speed" && "Live OS Network Speed"}
 									{activeTab === "renditions" && "Stream Renditions & Quality"}
-									{activeTab === "buffer" &&
-										"Buffer Health & Broadcast Latency"}
-									{activeTab === "decoder" &&
-										"Hardware Media Decoder Telemetry"}
+									{activeTab === "buffer" && "Buffer Health & Latency"}
+									{activeTab === "decoder" && "Hardware Decoder Telemetry"}
 								</h3>
-								<p className="text-[11px] text-zinc-300 mt-0.5">
+								<p className="text-[10px] text-zinc-300 mt-0.5 line-clamp-1">
 									{activeTab === "speed" &&
-										"Real-time Windows kernel network throughput (Bytes = bits ÷ 8, exactly like mobile status bar)"}
+										"Windows kernel throughput (bits ÷ 8 = Bytes, matching mobile stats)"}
 									{activeTab === "renditions" &&
 										"Adaptive Bitrate (ABR) engine & manual resolution selector"}
 									{activeTab === "buffer" &&
-										"Dynamic buffer status, playback stall watchdog, and live edge distance"}
+										"Buffer status, playback stall watchdog, and live edge distance"}
 									{activeTab === "decoder" &&
-										"Direct hardware video frame rates, GPU render pipeline, and frame drops"}
+										"Hardware video frame rates, GPU render pipeline, and frame drops"}
 								</p>
 							</div>
 
@@ -311,8 +309,8 @@ export const StreamQualityPopover: React.FC = () => {
 							</button>
 						</div>
 
-						{/* FIXED-HEIGHT INTERNAL CONTAINER (h-[350px] - NEVER OVERFLOWS OR SCROLLS) */}
-						<div className="h-[350px] overflow-hidden">
+						{/* Standard 6" x 5" Interior Scroll Canvas */}
+						<div className="h-[385px] overflow-y-auto pr-1 flex flex-col justify-start gap-2.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
 							{/* TAB 1: LIVE SPEED METER (System-Level OS Speed) */}
 							{activeTab === "speed" && (
 								<div className="space-y-2.5 animate-in fade-in duration-150">
@@ -331,10 +329,10 @@ export const StreamQualityPopover: React.FC = () => {
 										{/* Speed row with separate clear columns - Zero Text Collision */}
 										<div className="flex items-end justify-between py-1">
 											<div className="flex items-baseline gap-1.5">
-												<span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-white tabular-nums drop-shadow-md">
+												<span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white tabular-nums drop-shadow-md">
 													{sysStats.rx_formatted.split(" ")[0]}
 												</span>
-												<span className="text-lg font-extrabold text-emerald-400">
+												<span className="text-base font-extrabold text-emerald-400">
 													{sysStats.rx_formatted.split(" ")[1] || "KB/s"}
 												</span>
 												<span className="text-xs font-mono text-zinc-400 ml-1.5">

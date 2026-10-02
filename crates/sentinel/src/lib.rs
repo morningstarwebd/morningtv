@@ -258,13 +258,48 @@ pub fn matches_backup_mirror_key(channel_name: &str, tvg_id: &str, key: &str) ->
     }
 }
 
-pub fn normalize_channel_key(name: &str, tvg_id: &str) -> String {
-    if !tvg_id.is_empty() && tvg_id.len() > 3 {
-        let base = tvg_id.split('@').next().unwrap_or(tvg_id).to_lowercase();
-        base.chars().filter(|c| c.is_ascii_alphanumeric()).collect()
-    } else {
-        name.to_lowercase().chars().filter(|c| c.is_ascii_alphanumeric()).collect()
+pub fn clean_channel_name(name: &str) -> String {
+    let mut s = name.to_string();
+    let patterns = [
+        "(1080p)", "(720p)", "(576p)", "(480p)", "(360p)", "(240p)", "(1080i)",
+        "[1080p]", "[720p]", "[576p]", "[480p]", "[360p]", "[240p]", "[1080i]",
+        "(fhd)", "[fhd]", "(4k)", "[4k]", "(uhd)", "[uhd]",
+        "[not 24/7]", "(not 24/7)", "[geo-blocked]", "(geo-blocked)",
+        "[backup]", "(backup)", "[mirror]", "(mirror)",
+    ];
+
+    let mut lower = s.to_lowercase();
+    for p in patterns {
+        while let Some(pos) = lower.find(p) {
+            s.replace_range(pos..pos + p.len(), "");
+            lower = s.to_lowercase();
+        }
     }
+    s.trim().to_string()
+}
+
+pub fn normalize_channel_key(name: &str, tvg_id: &str) -> String {
+    let clean_id = if tvg_id.starts_with('[') && tvg_id.contains(']') {
+        let inside = &tvg_id[1..tvg_id.find(']').unwrap_or(tvg_id.len())];
+        inside.to_string()
+    } else {
+        tvg_id.to_string()
+    };
+
+    if !clean_id.is_empty() && clean_id.len() > 3 && !clean_id.starts_with("http") {
+        let base = clean_id.split('@').next().unwrap_or(&clean_id).to_lowercase();
+        let alphanum: String = base.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
+        if alphanum.len() >= 3 {
+            return alphanum;
+        }
+    }
+
+    let cleaned_name = clean_channel_name(name);
+    cleaned_name
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect()
 }
 
 pub fn parse_m3u(
@@ -643,6 +678,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     println!("📥 Fetching upstream master provider feeds concurrently...");
     let fetch_start = Instant::now();
     let mut channel_map: HashMap<String, ChannelItem> = HashMap::with_capacity(16384);
+    let mut url_to_key: HashMap<String, String> = HashMap::with_capacity(16384);
     let mut total_raw_count = 0;
 
     for provider in UPSTREAM_PROVIDERS {
@@ -657,17 +693,24 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                     let mut new_added = 0;
                     for mut item in items {
                         item.is_fast_cdn = provider.is_fast_cdn;
-                        let key = normalize_channel_key(&item.name, &item.id);
-                        if key.is_empty() {
-                            continue;
-                        }
+                        let key = if let Some(existing_key) = url_to_key.get(&item.url) {
+                            existing_key.clone()
+                        } else {
+                            let k = normalize_channel_key(&item.name, &item.id);
+                            if k.is_empty() {
+                                continue;
+                            }
+                            k
+                        };
+
+                        url_to_key.insert(item.url.clone(), key.clone());
 
                         if let Some(existing) = channel_map.get_mut(&key) {
                             if item.is_vip {
                                 if existing.url != item.url && !existing.fallbacks.contains(&existing.url) {
                                     existing.fallbacks.push(existing.url.clone());
                                 }
-                                existing.url = item.url;
+                                existing.url = item.url.clone();
                                 existing.is_vip = true;
                                 existing.is_fast_cdn = true;
                                 existing.provider = item.provider;
@@ -678,14 +721,14 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                                 if existing.url != item.url && !existing.fallbacks.contains(&existing.url) {
                                     existing.fallbacks.push(existing.url.clone());
                                 }
-                                existing.url = item.url;
+                                existing.url = item.url.clone();
                                 existing.is_fast_cdn = true;
                                 existing.provider = item.provider;
                                 if !item.logo.is_empty() {
                                     existing.logo = item.logo;
                                 }
                             } else if existing.url != item.url && !existing.fallbacks.contains(&item.url) {
-                                existing.fallbacks.push(item.url);
+                                existing.fallbacks.push(item.url.clone());
                             }
 
                             // Preserve all unique candidate fallbacks from secondary feeds
@@ -842,8 +885,30 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         dead_total
     );
 
+    // Post-probe deduplication: Ensure 100% unique primary stream URLs across all channels
+    let mut unique_channels: Vec<ChannelItem> = Vec::with_capacity(verified_channels.len());
+    let mut seen_final_urls: HashMap<String, usize> = HashMap::with_capacity(verified_channels.len());
+
+    for ch in verified_channels {
+        if let Some(&idx) = seen_final_urls.get(&ch.url) {
+            let existing = &mut unique_channels[idx];
+            for fb in ch.fallbacks {
+                if fb != existing.url && !existing.fallbacks.contains(&fb) {
+                    existing.fallbacks.push(fb);
+                }
+            }
+            if existing.logo.is_empty() && !ch.logo.is_empty() {
+                existing.logo = ch.logo;
+            }
+        } else {
+            let idx = unique_channels.len();
+            seen_final_urls.insert(ch.url.clone(), idx);
+            unique_channels.push(ch);
+        }
+    }
+
     // 4. Categorization & Priority Sorting
-    verified_channels.sort_by(|a, b| {
+    unique_channels.sort_by(|a, b| {
         let a_vip = a.is_vip || is_vip_channel(&a.name, &a.id);
         let b_vip = b.is_vip || is_vip_channel(&b.name, &b.id);
         b_vip.cmp(&a_vip).then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
@@ -857,9 +922,9 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut cat_kids = Vec::new();
     let mut cat_music = Vec::new();
 
-    let mut final_channels = Vec::with_capacity(verified_channels.len());
+    let mut final_channels = Vec::with_capacity(unique_channels.len());
 
-    for ch in verified_channels {
+    for ch in unique_channels {
         final_channels.push(ch.clone());
         let g = ch.group.to_lowercase();
         let n = ch.name.to_lowercase();

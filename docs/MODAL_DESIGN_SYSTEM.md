@@ -1,164 +1,190 @@
-# MorningTV Modal & Dialog Design System Standard
+# MorningTV Modal & Dialog Design System Standard (v1.1.1)
 
-This document establishes the official visual design standard, dimensional ratio, and architectural rules for all present and future modal windows, popovers, and settings dialogs across MorningTV.
-
----
-
-## 1. Core Principles
-
-1. **Rock-Solid Fixed Dimensions (Zero Jitter)**
-   - All standard studio modals must maintain a fixed size of **`760px` width × `510px` height** (approx. 5 inches on standard 1080p desktop displays).
-   - The outer shell size must **NEVER** dynamically shrink, grow, jump, or stretch when the user switches tabs or navigates views.
-
-2. **Frosted Translucent Glassmorphism**
-   - Translucent background (`#060814` at ~55% opacity) combined with `backdrop-blur-2xl`.
-   - The background video must remain visible and legible behind the dialog.
-   - Screen backdrop overlay must use lightweight `bg-black/25 backdrop-blur-sm`, avoiding heavy opaque blackouts.
-
-3. **Zero Accidental Overflow / No Unwanted Scrollbars**
-   - Diagnostics, metrics, and static views must fit 100% inside the viewport (`overflow-hidden`).
-   - For variable-length data lists (such as playlists with thousands of channels), scrolling is strictly confined to the inner body area (`h-[350px] overflow-y-auto pr-1 scrollbar-thin`) without expanding the outer dialog.
+This document establishes the official visual design standard, physical dimensional metrics, and architectural layout rules for all present and future modal windows, popovers, diagnostics panels, and settings dialogs across **MorningTV**.
 
 ---
 
-## 2. Dimensional Blueprint & Token Architecture
+## 1. Core Principles & Physical Dimensions
+
+1. **Standard Physical Dimension: 6 Inches (Width) × 5 Inches (Height)**
+   - Standard W3C CSS display pixel calculation at standard 96 DPI:
+     - **Width (Left-to-Right):** $6\text{ inches} \times 96\text{ px/inch} = \mathbf{576\text{px}}$ (`w-[576px] max-w-[95vw]`).
+     - **Height (Top-to-Bottom):** $5\text{ inches} \times 96\text{ px/inch} = \mathbf{480\text{px}}$ (`h-[480px] max-h-[95vh]`).
+   - Both the **Settings Window** (`SettingsDialog.tsx`) and **Stream Speed / Diagnostics Window** (`StreamQualityPopover.tsx`) use this exact identical dimension.
+   - **Zero Jitter Rule:** The outer shell size must **NEVER** shrink, grow, stretch, or jitter when switching tabs or loading dynamic metrics.
+
+2. **Absolute Screen-Centered Positioning**
+   - Whether displayed on a 15-inch laptop, a 24-inch desktop monitor, or an ultrawide display:
+     - Overlay positioning: `fixed inset-0 z-50 flex items-center justify-center`
+     - The window is locked dead in the center horizontally and vertically across the entire viewport.
+
+3. **Two-Column Studio Grid Layout**
+   - **Left Sidebar:** Locked to exactly **$192\text{px}$** (`w-48 h-full shrink-0`)
+     - Contains App Branding / Logo, Navigation Pills, and System Status / App Version (`v1.1.1`).
+   - **Right Content Panel:** Fills the remaining **$384\text{px}$** (`flex-1 h-full shrink-0`)
+     - Contains Tab Title & Description Header, Close Button (`X`), Inner Scroll Canvas (`h-[385px]`), and Action Footer.
+
+4. **Frosted Translucent Glassmorphism**
+   - Outer Container: `bg-[#060814]/75` with `backdrop-blur-2xl`, `border border-white/20`, `rounded-3xl`, `shadow-[0_30px_90px_rgba(0,0,0,0.85)]`, and `ring-1 ring-white/15`.
+   - Backdrop Overlay: Lightweight `bg-black/30 backdrop-blur-sm select-none animate-in fade-in duration-200`. The underlying live TV video remains subtly visible and ambient behind the window.
+
+5. **Strict Inner Scroll Boundaries (Zero Outer Scrollbar)**
+   - The outer modal and sidebar must never scroll (`overflow-hidden`).
+   - All tab body contents scroll inside the dedicated inner container:
+     `h-[385px] overflow-y-auto pr-1 flex flex-col justify-start gap-2.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent`.
+
+---
+
+## 2. Dimensional Blueprint (6" × 5" / 576px × 480px)
 
 ```
-+------------------------------------------------------------------------------------+
-| Overlay: fixed inset-0 z-50 flex items-center justify-center                       |
-|          bg-black/25 backdrop-blur-sm select-none p-3 sm:p-6                       |
++====================================================================================+
+| Screen Overlay: fixed inset-0 z-50 flex items-center justify-center                |
+|                 bg-black/30 backdrop-blur-sm select-none p-2 sm:p-4                |
 |                                                                                    |
 |  +------------------------------------------------------------------------------+  |
-|  | Shell: w-[760px] max-w-[95vw] h-[510px] bg-[#060814]/55                     |  |
-|  |        backdrop-blur-2xl border border-white/20 rounded-3xl                  |  |
-|  |        shadow-[0_30px_90px_rgba(0,0,0,0.85)] ring-1 ring-white/15           |  |
-|  |        flex flex-col md:flex-row overflow-hidden relative                    |  |
+|  | Outer Shell: w-[576px] (6") × h-[480px] (5") | max-w-[95vw] max-h-[95vh]     |  |
+|  |              bg-[#060814]/75 backdrop-blur-2xl border border-white/20        |  |
+|  |              rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] ring-white/15  |  |
 |  |                                                                              |  |
 |  |  +-------------------------+  +-------------------------------------------+  |  |
-|  |  | Left Sidebar            |  | Right Main Panel                          |  |  |
-|  |  | w-full md:w-60 h-full   |  | flex-1 h-full p-4 sm:p-5 flex flex-col   |  |  |
-|  |  | bg-black/40             |  | justify-between overflow-hidden           |  |  |
-|  |  | border-r border-white/10|  | bg-black/20 backdrop-blur-md              |  |  |
-|  |  | p-4 flex flex-col       |  |                                           |  |  |
-|  |  | justify-between         |  |  +-------------------------------------+  |  |  |
-|  |  |                         |  |  | Header: Title + Subtitle + Close (X) |  |  |  |
-|  |  | [Branding Header]       |  |  +-------------------------------------+  |  |  |
-|  |  | [Navigation Tabs]       |  |  | Body: h-[350px]                     |  |  |  |
-|  |  |                         |  |  | (overflow-hidden or scrollbar-thin) |  |  |  |
-|  |  | [Status Pill Footer]    |  |  +-------------------------------------+  |  |  |
-|  |  |                         |  |  | Footer: Status + Done Action Button |  |  |  |
+|  |  | Left Sidebar: 192px     |  | Right Content Area: 384px                 |  |  |
+|  |  | (w-48 h-full shrink-0)  |  | (flex-1 h-full p-3.5 flex flex-col)       |  |  |
+|  |  | bg-black/40             |  | bg-black/20 backdrop-blur-md              |  |  |
+|  |  | border-r border-white/10|  |                                           |  |  |
+|  |  | p-3 flex flex-col       |  |  +-------------------------------------+  |  |  |
+|  |  |                         |  |  | Top Header: Title + Subtitle + (X)   |  |  |  |
+|  |  | [Branding / Icon Header]|  |  +-------------------------------------+  |  |  |
+|  |  | [Navigation Tab Pills]  |  |  | Scrollable Canvas: h-[385px]        |  |  |  |
+|  |  |                         |  |  | overflow-y-auto pr-1 scrollbar-thin |  |  |  |
+|  |  |                         |  |  | [Dynamic Tab Cards & Controls]      |  |  |  |
+|  |  | [Version / Status:v1.1.1|  |  +-------------------------------------+  |  |  |
+|  |  |                         |  |  | Footer: Active Status + Done Action |  |  |  |
 |  |  +-------------------------+  +-------------------------------------------+  |  |
 |  +------------------------------------------------------------------------------+  |
-+------------------------------------------------------------------------------------+
++====================================================================================+
 ```
 
 ---
 
-## 3. Class Reference Guide
+## 3. Tailwind CSS Reference Token Matrix
 
-### A. Backdrop Overlay
-```html
-<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/25 backdrop-blur-sm select-none p-3 sm:p-6 animate-in fade-in duration-200" onClick={onClose}>
-```
+| Component | Standard CSS Classes | Notes |
+| :--- | :--- | :--- |
+| **Backdrop Overlay** | `fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm select-none p-2 sm:p-4 animate-in fade-in duration-200` | Center-aligned, translucent dimming |
+| **Modal Container** | `w-[576px] max-w-[95vw] h-[480px] max-h-[95vh] bg-[#060814]/75 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15` | Exact 6" × 5", glass blur |
+| **Left Sidebar** | `w-48 h-full bg-black/40 border-r border-white/10 p-3 flex flex-col justify-between shrink-0 backdrop-blur-xl` | 192px fixed width |
+| **Active Nav Tab** | `bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-md shadow-cyan-600/30 border border-cyan-400/30` | Gradient highlight |
+| **Inactive Nav Tab** | `text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-all` | Subtle hover effect |
+| **Right Content Pane**| `flex-1 h-full p-3.5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md` | 384px remaining width |
+| **Tab Header** | `flex items-start justify-between pb-2 mb-2.5 border-b border-white/10` | Standardized header divider |
+| **Inner Scroll Canvas**| `h-[385px] overflow-y-auto pr-1 flex flex-col justify-start gap-2.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent` | Never causes outer resize |
+| **Metric Card** | `p-3 rounded-2xl bg-white/[0.04] border border-white/[0.1] backdrop-blur-md` | Glass tile token |
+| **Toggle Row** | `rounded-2xl p-3 bg-white/[0.03] border border-white/10 flex items-center justify-between gap-3` | Standard switch container |
+| **Modal Footer** | `pt-2 border-t border-white/10 flex items-center justify-between text-xs text-zinc-300` | Footer action bar |
 
-### B. Dialog Container Shell
-```html
-<div
-  className="w-[760px] max-w-[95vw] h-[510px] bg-[#060814]/55 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-col md:flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
-  onClick={(e) => e.stopPropagation()}
->
-```
+---
 
-### C. Left Sidebar
-```html
-<div className="w-full md:w-60 h-full bg-black/40 border-b md:border-b-0 md:border-r border-white/10 p-4 flex flex-col justify-between shrink-0 backdrop-blur-xl">
-  <div>
-    <!-- Branding Header -->
-    <div className="flex items-center gap-2.5 pb-4 mb-3 border-b border-white/10">
-      <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500/30 to-blue-600/40 border border-cyan-400/40 flex items-center justify-center text-white shadow-lg shadow-cyan-500/20 shrink-0">
-        <Icon className="w-4 h-4 text-cyan-300" />
-      </div>
-      <div>
-        <h2 className="text-xs font-black text-white tracking-wider uppercase">Title</h2>
-        <p className="text-[10px] text-zinc-300 font-medium">Subtitle</p>
-      </div>
-    </div>
+## 4. Reusable Copy-Paste Blueprint for Future Modals
 
-    <!-- Navigation Tabs -->
-    <nav className="flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible pb-2 md:pb-0">
-      <!-- Active Item -->
-      <button className="group flex items-center justify-between w-full p-2.5 rounded-xl text-left bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-md shadow-cyan-600/30 border border-cyan-400/30 cursor-pointer shrink-0">
-        ...
-      </button>
-      <!-- Inactive Item -->
-      <button className="group flex items-center justify-between w-full p-2.5 rounded-xl text-left text-zinc-300 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer shrink-0">
-        ...
-      </button>
-    </nav>
-  </div>
+All future modals created in MorningTV must be instantiated using this exact template:
 
-  <!-- Bottom System Status -->
-  <div className="hidden md:flex items-center justify-between pt-3 border-t border-white/10">
-    <div className="flex items-center gap-1.5">
-      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
-      <span className="text-[10px] font-medium text-zinc-300">Live Status</span>
-    </div>
-    <span className="text-[9px] font-mono text-zinc-400 font-bold">v1.0.0</span>
-  </div>
-</div>
-```
+```tsx
+import React, { useEffect, useState } from 'react';
+import { X } from 'lucide-react';
 
-### D. Right Main Content Area
-```html
-<div className="flex-1 h-full p-4 sm:p-5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
-  <div>
-    <!-- Top Header -->
-    <div className="flex items-start justify-between pb-2.5 mb-3 border-b border-white/10">
-      <div>
-        <h3 className="text-sm font-extrabold text-white tracking-wide">Section Header</h3>
-        <p className="text-[11px] text-zinc-300 mt-0.5">Section description</p>
-      </div>
-      <button
-        onClick={onClose}
-        className="p-1 rounded-full text-zinc-400 hover:text-white bg-white/10 hover:bg-white/20 border border-white/10 transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
-      >
-        <X className="w-4 h-4" />
-      </button>
-    </div>
+interface StandardModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-    <!-- Inner Content (Fixed 350px height) -->
-    <div className="h-[350px] overflow-hidden">
-      <!-- Or "h-[350px] overflow-y-auto pr-1 scrollbar-thin" if list requires scrolling -->
-      ...
-    </div>
-  </div>
+export const StandardModalTemplate: React.FC<StandardModalProps> = ({ isOpen, onClose }) => {
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
-  <!-- Bottom Action Footer -->
-  <div className="pt-2.5 border-t border-white/10 flex items-center justify-between text-xs text-zinc-300">
-    <div>Left status or channel badge</div>
-    <button
-      type="button"
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm select-none p-2 sm:p-4 animate-in fade-in duration-200"
       onClick={onClose}
-      className="px-4 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs transition-all cursor-pointer border border-white/10 active:scale-95"
     >
-      Done
-    </button>
-  </div>
-</div>
+      {/* Exact 6in x 5in (576px x 480px) Dialog Container */}
+      <div
+        className="w-[576px] max-w-[95vw] h-[480px] max-h-[95vh] bg-[#060814]/75 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* 1. Left Sidebar Navigation (192px) */}
+        <div className="w-48 h-full bg-black/40 border-r border-white/10 p-3 flex flex-col justify-between shrink-0 backdrop-blur-xl">
+          <div>
+            {/* Branding Header */}
+            <div className="flex items-center gap-2 pb-3 mb-2 border-b border-white/10">
+              <div className="w-7 h-7 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
+                {/* Icon */}
+              </div>
+              <div>
+                <h2 className="text-xs font-black text-white tracking-wider uppercase">MorningTV</h2>
+                <p className="text-[10px] text-zinc-300 font-medium">Modal Title</p>
+              </div>
+            </div>
+
+            {/* Nav Pills */}
+            <nav className="flex flex-col gap-1 overflow-y-auto scrollbar-none">
+              {/* Button items */}
+            </nav>
+          </div>
+
+          {/* Bottom Info */}
+          <div className="flex items-center justify-between pt-2 border-t border-white/10">
+            <span className="text-[10px] text-zinc-400">Status</span>
+            <span className="text-[9px] font-mono text-zinc-400 font-bold">v1.1.1</span>
+          </div>
+        </div>
+
+        {/* 2. Right Content Panel (384px) */}
+        <div className="flex-1 h-full p-3.5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
+          <div>
+            {/* Header */}
+            <div className="flex items-start justify-between pb-2 mb-2.5 border-b border-white/10">
+              <div>
+                <h3 className="text-xs sm:text-sm font-extrabold text-white tracking-wide">Tab Heading</h3>
+                <p className="text-[10px] text-zinc-300 mt-0.5 line-clamp-1">Tab description and guidance</p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-1 rounded-full text-zinc-400 hover:text-white bg-white/10 hover:bg-white/20 border border-white/10 transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Scrollable Content Canvas (Fixed 385px height) */}
+            <div className="h-[385px] overflow-y-auto pr-1 flex flex-col justify-start gap-2.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+              {/* Body cards */}
+            </div>
+          </div>
+
+          {/* Footer Controls */}
+          <div className="pt-2 border-t border-white/10 flex items-center justify-end text-xs text-zinc-300">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs transition-all cursor-pointer border border-white/10 active:scale-95"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 ```
-
----
-
-## 4. Telemetry & Speed Calculations Standard
-
-For any speed or network data display:
-- **Mobile Byte Standard**: Always report speed in **`MB/s`** and **`KB/s`** (Megabytes / Kilobytes per second).
-- **Bits to Bytes Formula**:
-  $$\text{Speed (Bytes/s)} = \frac{\text{Bits/s}}{8}$$
-- **Zero Placeholder Defense**: Live streams must never show `0 KB/s` when actively playing; fallback to the manifest nominal bitrate if fragment event latency is pending.
-
----
-
-## 5. Implementations Reference
-- [SettingsDialog.tsx](file:///d:/morningtv/src/components/SettingsDialog.tsx)
-- [StreamQualityPopover.tsx](file:///d:/morningtv/src/components/StreamQualityPopover.tsx)

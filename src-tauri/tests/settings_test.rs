@@ -13,6 +13,7 @@ fn test_settings_default_values() {
     assert!(settings.auto_adaptive_bitrate);
     assert!(settings.playlist_url.contains("morningtv"));
     assert!(settings.last_played_channel_id.is_none());
+    assert!(!settings.hide_region_blocked);
 }
 
 #[test]
@@ -22,6 +23,7 @@ fn test_settings_serde_roundtrip() {
     settings.is_muted = true;
     settings.preferred_quality = QualityTier::High;
     settings.last_played_channel_id = Some("chan_123".to_string());
+    settings.hide_region_blocked = true;
 
     let json = serde_json::to_string(&settings).expect("serialization failed");
     let deserialized: AppSettings = serde_json::from_str(&json).expect("deserialization failed");
@@ -30,6 +32,7 @@ fn test_settings_serde_roundtrip() {
     assert!(deserialized.is_muted);
     assert_eq!(deserialized.preferred_quality, QualityTier::High);
     assert_eq!(deserialized.last_played_channel_id, Some("chan_123".to_string()));
+    assert!(deserialized.hide_region_blocked);
 }
 
 #[test]
