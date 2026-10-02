@@ -172,13 +172,15 @@ pub async fn check_playlist_update(
         .build()
         .map_err(|e| e.to_string())?;
 
-    let resp = client
-        .get(crate::config::defaults::STATUS_JSON_URL)
-        .send()
-        .await
-        .map_err(|e| e.to_string())?;
+    let resp = match client.get(crate::config::defaults::STATUS_JSON_URL).send().await {
+        Ok(r) if r.status().is_success() => r,
+        _ => return Ok(false),
+    };
 
-    let json: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
+    let json: serde_json::Value = match resp.json().await {
+        Ok(j) => j,
+        Err(_) => return Ok(false),
+    };
 
     let remote_updated_at = json["updated_at"]
         .as_str()

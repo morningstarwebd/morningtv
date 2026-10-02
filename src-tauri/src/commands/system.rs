@@ -18,3 +18,13 @@ pub fn open_github_url() -> Result<(), String> {
     open_github_repo();
     Ok(())
 }
+
+#[tauri::command]
+pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
+    if window.is_devtools_open() {
+        window.close_devtools();
+    } else {
+        window.open_devtools();
+    }
+    Ok(())
+}

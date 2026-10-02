@@ -19,16 +19,54 @@ export function useStreamTelemetry(
 			const video = videoRef.current;
 			if (!video) return;
 
-			// 1. Buffer seconds
+			// 1. Resilient buffer calculation (HLS.js forward buffer + HTML5 MediaSource TimeRanges)
 			let bufferSecs = 0;
-			if (video.buffered.length > 0) {
+			const hls = hlsRef.current as any;
+			if (
+				hls?.mainForwardBufferInfo &&
+				typeof hls.mainForwardBufferInfo.len === "number"
+			) {
+				bufferSecs = Math.max(0, hls.mainForwardBufferInfo.len);
+			}
+
+			if (bufferSecs <= 0.1 && video.buffered && video.buffered.length > 0) {
+				const cur = video.currentTime;
+				const maxHole = 0.8;
+
 				for (let i = 0; i < video.buffered.length; i++) {
-					if (
-						video.currentTime >= video.buffered.start(i) &&
-						video.currentTime <= video.buffered.end(i)
-					) {
-						bufferSecs = video.buffered.end(i) - video.currentTime;
+					const start = video.buffered.start(i);
+					const end = video.buffered.end(i);
+					if (cur >= start - maxHole && cur <= end + 0.1) {
+						bufferSecs = Math.max(0, end - Math.max(cur, start));
+						let currentEnd = end;
+						for (let j = i + 1; j < video.buffered.length; j++) {
+							const nextStart = video.buffered.start(j);
+							const nextEnd = video.buffered.end(j);
+							if (nextStart - currentEnd <= maxHole) {
+								bufferSecs += nextEnd - nextStart;
+								currentEnd = nextEnd;
+							} else {
+								break;
+							}
+						}
 						break;
+					}
+				}
+
+				if (bufferSecs <= 0.1) {
+					for (let i = 0; i < video.buffered.length; i++) {
+						const start = video.buffered.start(i);
+						const end = video.buffered.end(i);
+						if (end > cur) {
+							bufferSecs = Math.max(bufferSecs, end - Math.max(cur, start));
+						}
+					}
+					if (bufferSecs <= 0.1 && video.buffered.length > 0) {
+						const lastIdx = video.buffered.length - 1;
+						bufferSecs = Math.max(
+							0,
+							video.buffered.end(lastIdx) - video.buffered.start(0),
+						);
 					}
 				}
 			}
@@ -98,7 +136,7 @@ export function useStreamTelemetry(
 				totalFrames,
 				liveLatency,
 			});
-		}, 1000);
+		}, 500);
 
 		return () => clearInterval(timer);
 	}, [videoRef, hlsRef]);

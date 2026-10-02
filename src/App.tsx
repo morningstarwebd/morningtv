@@ -1,6 +1,4 @@
-// src/App.tsx
-// Simplified, Next-Generation Apple TV & Google TV Live Streaming Interface
-
+import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
 import { useEffect } from "react";
 import { AppleTVChannelShelf } from "./components/AppleTVChannelShelf";
@@ -34,7 +32,21 @@ const App: React.FC = () => {
 		const timer = setTimeout(() => {
 			checkForUpdates(false);
 		}, 3000);
-		return () => clearTimeout(timer);
+
+		const handleF12 = (e: KeyboardEvent) => {
+			if (e.key === "F12") {
+				e.preventDefault();
+				invoke("toggle_devtools").catch((err) => {
+					console.warn("Could not toggle devtools:", err);
+				});
+			}
+		};
+		window.addEventListener("keydown", handleF12);
+
+		return () => {
+			clearTimeout(timer);
+			window.removeEventListener("keydown", handleF12);
+		};
 	}, [init, checkForUpdates]);
 
 	return (

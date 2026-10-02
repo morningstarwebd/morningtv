@@ -112,6 +112,7 @@ pub fn run() {
             commands::get_startup_status,
             commands::set_startup_status,
             commands::open_github_url,
+            commands::toggle_devtools,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

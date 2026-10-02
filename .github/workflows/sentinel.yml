@@ -17,7 +17,10 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Setup Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -49,5 +52,6 @@ jobs:
             echo "No stream updates detected. Playlists are already healthy."
           else
             git commit -m "chore(playlists): auto-heal and update verified streams via Rust Tokio Sentinel [skip ci]"
-            git push
+            git pull --rebase origin main || true
+            git push origin HEAD:main
           fi

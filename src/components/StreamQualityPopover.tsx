@@ -579,7 +579,10 @@ export const StreamQualityPopover: React.FC = () => {
 														? "Healthy Buffer"
 														: bufferSecs > 4
 															? "Acceptable Buffer"
-															: "Buffering Stream"}
+															: streamHealthStatus === "reconnecting" ||
+																	streamHealthStatus === "critical"
+																? "Offline / Reconnecting"
+																: "Buffering Stream"}
 												</span>
 												<span className="font-mono text-white font-bold text-xs tabular-nums">
 													{bufferSecs}s / 30s
