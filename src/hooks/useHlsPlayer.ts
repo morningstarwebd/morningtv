@@ -285,6 +285,21 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 							}
 							retryCountRef.current += 1;
 							if (retryCountRef.current <= 2) {
+								// If fragment timed out on slow network and multi-bitrate is available,
+								// step down to lightweight level before failing
+								if (
+									(data.details === "fragLoadError" ||
+										data.details === "fragLoadTimeOut") &&
+									hls.levels &&
+									hls.levels.length > 1 &&
+									!useAppStore.getState().is3GDataSaver
+								) {
+									log.info(
+										"Fragment load timed out on slow network, stepping down to 3G Data Saver",
+									);
+									useAppStore.getState().set3GDataSaver(true);
+									hls.currentLevel = 0;
+								}
 								const backoff = Math.min(2000, retryCountRef.current * 500);
 								setTimeout(() => {
 									if (hlsRef.current) {

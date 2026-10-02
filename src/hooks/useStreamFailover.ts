@@ -2,6 +2,7 @@
 // Manages mirror switching, failed stream blacklisting, and exponential backoff reconnection
 
 import { useCallback, useEffect, useRef } from "react";
+import { useAppStore } from "../stores/appStore";
 import type { StreamHealthStatus } from "../types";
 import { createLogger } from "../utils/logger";
 
@@ -84,21 +85,24 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 			(url, idx) => idx !== mirrorIndex && !failedUrlsRef.current.has(url),
 		);
 
-		if (nextAvailableIndex !== -1) {
+		if (allUrls.length > 1 && nextAvailableIndex !== -1) {
 			showToast(
 				`Switching to backup mirror (${nextAvailableIndex + 1}/${allUrls.length})...`,
 				false,
 			);
 			setStreamHealthStatus("degraded");
+			// Reset manual quality lock so the new mirror initializes cleanly in Auto ABR mode
+			useAppStore.getState().setSelectedQualityLevel(-1);
 			setMirrorIndex(nextAvailableIndex);
 		} else {
-			// All URLs in the pool failed: enter reconnect backoff loop
+			// All URLs in the pool failed (or channel has only 1 URL): enter reconnect backoff loop
 			const delay = backoffDelayRef.current;
 			setStreamHealthStatus("reconnecting");
-			showToast(
-				`All stream sources failed. Reconnecting in ${delay}s...`,
-				true,
-			);
+			const message =
+				allUrls.length > 1
+					? `All ${allUrls.length} stream mirrors unavailable. Reconnecting in ${delay}s...`
+					: `Stream signal interrupted. Reconnecting in ${delay}s...`;
+			showToast(message, true);
 			setReconnectCountdown(delay);
 
 			clearReconnectTimers();
@@ -117,7 +121,12 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 				failedUrlsRef.current.clear();
 				// Exponential backoff: 10s -> 20s -> 40s (capped at 60s)
 				backoffDelayRef.current = Math.min(60, delay * 2);
-				showToast("Retrying stream sources...", false);
+				showToast(
+					allUrls.length > 1
+						? "Retrying stream mirrors..."
+						: "Reconnecting to stream...",
+					false,
+				);
 				setStreamHealthStatus("degraded");
 				cycleMirror();
 			}, delay * 1000);

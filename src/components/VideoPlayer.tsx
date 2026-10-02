@@ -48,6 +48,8 @@ export const VideoPlayer: React.FC = () => {
 		nextChannel,
 		prevChannel,
 		cycleAspectRatio,
+		set3GDataSaver,
+		setSelectedQualityLevel,
 	} = useAppStore();
 
 	const videoRef = useRef<HTMLVideoElement>(null);
@@ -105,12 +107,19 @@ export const VideoPlayer: React.FC = () => {
 	// 3. Real-time Stream Telemetry Poller
 	useStreamTelemetry(videoRef, hlsRef);
 
-	// 4. Intelligent Stall Detection & Auto-Recovery Watchdog
+	// 4. Intelligent Stall Detection & Tiered Adaptation Watchdog
 	useStallWatchdog({
 		videoRef,
 		hlsRef,
 		isPlaying,
 		bufferSecs,
+		allUrls,
+		currentUrl,
+		showToast,
+		is3GDataSaver,
+		set3GDataSaver,
+		selectedQualityLevel,
+		setSelectedQualityLevel,
 		setIsBuffering,
 		incrementStallCount,
 		setStreamHealthStatus,
