@@ -148,6 +148,14 @@ async function runRelease() {
       fs.writeFileSync(typesPath, typesContent, 'utf8');
     }
 
+    // 2g. docs/MODAL_DESIGN_SYSTEM.md
+    const modalDocPath = path.join(ROOT, 'docs', 'MODAL_DESIGN_SYSTEM.md');
+    if (fs.existsSync(modalDocPath)) {
+      let modalDoc = fs.readFileSync(modalDocPath, 'utf8');
+      modalDoc = modalDoc.replace(/v\d+\.\d+\.\d+/g, `v${nextVersion}`);
+      fs.writeFileSync(modalDocPath, modalDoc, 'utf8');
+    }
+
     prepareOutputDir();
 
     // 3. Quality Gate & Frontend Build
