@@ -19,6 +19,7 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
+import { APP_VERSION } from "../types";
 import { isGeoRestrictedStream } from "../utils/channelFilter";
 import { MorningTVLogo } from "./MorningTVLogo";
 
@@ -287,7 +288,7 @@ export const SettingsDialog: React.FC = () => {
 							</span>
 						</div>
 						<span className="text-[9px] font-mono text-zinc-400 font-bold">
-							v1.1.1
+							v{APP_VERSION}
 						</span>
 					</div>
 				</div>
@@ -937,7 +938,7 @@ export const SettingsDialog: React.FC = () => {
 																MorningTV Desktop
 															</h4>
 															<span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold font-mono">
-																v1.1.0
+																v{APP_VERSION}
 															</span>
 														</div>
 														<p className="text-xs text-zinc-400 mt-0.5">
@@ -1199,7 +1200,7 @@ export const SettingsDialog: React.FC = () => {
 											Open Source
 										</div>
 										<div className="font-mono text-[11px]">
-											MorningTV v1.1.1 (Production Release)
+											MorningTV v{APP_VERSION} (Production Release)
 										</div>
 									</div>
 								</div>

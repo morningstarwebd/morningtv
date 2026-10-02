@@ -83,9 +83,19 @@ async function runRelease() {
 
     let nextVersion = process.argv.find((arg) => /^\d+\.\d+\.\d+$/.test(arg));
     if (!nextVersion) {
-      const parts = currentVersion.split('.').map(Number);
-      parts[2] += 1;
-      nextVersion = parts.join('.');
+      let tagExists = false;
+      try {
+        const out = execSync(`git tag -l v${currentVersion}`, { cwd: ROOT, encoding: 'utf8' }).trim();
+        tagExists = out.length > 0;
+      } catch {}
+
+      if (tagExists) {
+        const parts = currentVersion.split('.').map(Number);
+        parts[2] += 1;
+        nextVersion = parts.join('.');
+      } else {
+        nextVersion = currentVersion;
+      }
     }
     assertReleaseVersion(nextVersion);
 

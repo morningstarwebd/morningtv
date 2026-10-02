@@ -1,4 +1,4 @@
-# MorningTV Modal & Dialog Design System Standard (v1.1.1)
+# MorningTV Modal & Dialog Design System Standard (v1.1.2)
 
 This document establishes the official visual design standard, dimensional metrics, and architectural layout rules for all present and future modal windows, popovers, diagnostics panels, and settings dialogs across **MorningTV**.
 
@@ -19,7 +19,7 @@ This document establishes the official visual design standard, dimensional metri
 
 3. **Two-Column Studio Grid Layout**
    - **Left Sidebar:** Locked to exactly $\mathbf{240\text{px}}$ (`w-[240px] min-w-[240px] max-w-[240px] h-full shrink-0 select-none`)
-     - Contains App Branding / Logo (`w-8 h-8`), Navigation Pills with permanent borders to prevent wobble, and System Status / App Version (`v1.1.1`).
+     - Contains App Branding / Logo (`w-8 h-8`), Navigation Pills with permanent borders to prevent wobble, and System Status / App Version (`v1.1.2`).
    - **Right Content Panel:** Fills the remaining $\mathbf{\sim 520\text{px}}$ (`flex-1 min-w-0 h-full p-4 sm:p-5`)
      - Contains Tab Title & Description Header, Close Button (`X`), Inner Scroll Canvas (`h-[395px]`), and Action Footer.
 
@@ -58,7 +58,7 @@ This document establishes the official visual design standard, dimensional metri
 |  |  | [Navigation Tab Pills]  |  |  | Scrollable Canvas: h-[395px]        |  |  |  |
 |  |  | (zero jitter border)    |  |  | [scrollbar-gutter:stable]              |  |  |
 |  |  |                         |  |  | [Spacious Dynamic Cards & Metrics]   |  |  |  |
-|  |  | [Version / Status:v1.1.1|  |  +-------------------------------------+  |  |  |
+|  |  | [Version / Status:v1.1.2|  |  +-------------------------------------+  |  |  |
 |  |  |                         |  |  | Footer: Active Status + Done Action |  |  |  |
 |  |  +-------------------------+  +-------------------------------------------+  |  |
 |  +------------------------------------------------------------------------------+  |
@@ -144,7 +144,7 @@ export const StandardModalTemplate: React.FC<StandardModalProps> = ({ isOpen, on
           {/* Bottom Info */}
           <div className="flex items-center justify-between pt-3 border-t border-white/10">
             <span className="text-[10px] text-zinc-400">Status</span>
-            <span className="text-[9px] font-mono text-zinc-400 font-bold">v1.1.1</span>
+            <span className="text-[9px] font-mono text-zinc-400 font-bold">v1.1.2</span>
           </div>
         </div>
 

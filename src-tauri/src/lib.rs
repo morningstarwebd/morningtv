@@ -57,6 +57,13 @@ pub fn run() {
                 if let Err(e) = tray::setup_tray(app.handle(), state_for_tray) {
                     tracing::error!("Failed to initialize tray: {e}");
                 }
+
+                // In production release mode: ensure Webview2 DevTools remain closed
+                #[cfg(not(debug_assertions))]
+                if let Some(main_window) = app.get_webview_window("main") {
+                    let _ = main_window.close_devtools();
+                }
+
                 Ok(())
             }
         })

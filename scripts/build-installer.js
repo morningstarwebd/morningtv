@@ -76,14 +76,26 @@ async function run() {
 
   // 3. Locate and Copy Artifacts
   log('3/3 Packaging release artifacts and generating latest.json manifest...');
-  const nsisDir = path.join(rootDir, 'src-tauri', 'target', 'release', 'bundle', 'nsis');
+  const candidateDirs = [
+    path.join(rootDir, 'target', 'release', 'bundle', 'nsis'),
+    path.join(rootDir, 'src-tauri', 'target', 'release', 'bundle', 'nsis'),
+  ];
   const exeName = `MorningTV_${version}_x64-setup.exe`;
-  const builtExe = path.join(nsisDir, exeName);
-  const builtSig = `${builtExe}.sig`;
-
-  if (!fs.existsSync(builtExe)) {
-    error(`Built executable not found at: ${builtExe}`);
+  let builtExe = null;
+  let nsisDir = null;
+  for (const dir of candidateDirs) {
+    const candidate = path.join(dir, exeName);
+    if (fs.existsSync(candidate)) {
+      builtExe = candidate;
+      nsisDir = dir;
+      break;
+    }
   }
+
+  if (!builtExe) {
+    error(`Built executable not found. Checked: ${candidateDirs.join(', ')}`);
+  }
+  const builtSig = `${builtExe}.sig`;
 
   const destExe = path.join(distReleaseDir, exeName);
   const destSig = path.join(distReleaseDir, `${exeName}.sig`);
