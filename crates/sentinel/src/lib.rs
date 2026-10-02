@@ -212,7 +212,6 @@ pub const KNOWN_BACKUP_MIRRORS: &[(&str, &[&str])] = &[
     ("colorshd", &["https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8"]),
     ("zeebangla", &["https://live-bangla.akamaized.net/liveabr/playlist.m3u8"]),
     ("starjalsha", &["https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starjalsha.smil/chunklist_b1928000.m3u8"]),
-    ("tsports", &["https://tvsen5.aynaott.com/TnMn5kZz8aLm/index.m3u8"]),
 ];
 
 pub fn matches_backup_mirror_key(channel_name: &str, tvg_id: &str, key: &str) -> bool {
@@ -518,6 +517,18 @@ pub fn is_valid_stream_payload_with_content_type(bytes: &[u8], content_type: &st
 }
 
 pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResult {
+    let lower_url = url.to_lowercase();
+    if lower_url.contains("video_no_available")
+        || lower_url.contains("not_available")
+        || lower_url.contains("offline_stream")
+    {
+        return ProbeResult {
+            ok: false,
+            active_url: url.to_string(),
+            latency_ms: u64::MAX,
+        };
+    }
+
     for attempt in 0..2 {
         let t0 = Instant::now();
         let res = client
@@ -928,8 +939,26 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         final_channels.push(ch.clone());
         let g = ch.group.to_lowercase();
         let n = ch.name.to_lowercase();
+        let p = ch.provider.to_lowercase();
+        let id_low = ch.id.to_lowercase();
 
-        if is_vip_channel(&ch.name, &ch.id) || g.contains("india") || g.contains("bangla") || g.contains("hindi") {
+        let is_india = is_vip_channel(&ch.name, &ch.id)
+            || p.contains("india")
+            || p.contains("bengali")
+            || p.contains("hindi")
+            || p.contains("bangladesh")
+            || g.contains("india")
+            || g.contains("bangla")
+            || g.contains("hindi")
+            || id_low.contains(".in@")
+            || id_low.ends_with(".in")
+            || id_low.contains(".bd@")
+            || id_low.ends_with(".bd")
+            || n.contains("hindi")
+            || n.contains("bangla")
+            || n.contains("bengali");
+
+        if is_india {
             cat_india.push(ch.clone());
         }
 

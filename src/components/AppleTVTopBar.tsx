@@ -12,12 +12,14 @@ import {
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
+import { isGeoRestrictedUrl } from "../utils/channelFilter";
 import { ChannelEpgPill } from "./ChannelEpgPill";
 import { MorningTVLogo } from "./MorningTVLogo";
 
 export const AppleTVTopBar: React.FC = () => {
 	const {
 		activeChannel,
+		hideRegionBlocked,
 		is3GDataSaver,
 		currentResolution,
 		streamHealthStatus,
@@ -35,7 +37,10 @@ export const AppleTVTopBar: React.FC = () => {
 	} = useAppStore();
 
 	const allUrls = activeChannel
-		? [activeChannel.url, ...(activeChannel.fallback_urls || [])]
+		? [activeChannel.url, ...(activeChannel.fallback_urls || [])].filter(
+				(u) =>
+					!hideRegionBlocked || !isGeoRestrictedUrl(u, activeChannel.provider),
+			)
 		: [];
 
 	const [timeStr, setTimeStr] = useState("");

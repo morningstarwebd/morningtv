@@ -19,6 +19,7 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
+import { isGeoRestrictedStream } from "../utils/channelFilter";
 import { MorningTVLogo } from "./MorningTVLogo";
 
 type TabType =
@@ -32,7 +33,7 @@ type TabType =
 
 export const SettingsDialog: React.FC = () => {
 	const {
-		channels,
+		allChannels,
 		totalChannels,
 		refreshTotalChannelCount,
 		isSettingsOpen,
@@ -97,12 +98,21 @@ export const SettingsDialog: React.FC = () => {
 
 	const DEFAULT_PLAYLIST_URL =
 		"https://raw.githubusercontent.com/morningstarwebd/morningtv/main/playlists/morningtv_all.m3u";
+	const INDIA_PLAYLIST_URL =
+		"https://raw.githubusercontent.com/morningstarwebd/morningtv/main/playlists/morningtv_india.m3u";
 
 	const isCustomPlaylist =
 		settings?.playlist_url && settings.playlist_url !== DEFAULT_PLAYLIST_URL;
 
-	const totalChannelsCount =
-		totalChannels > 0 ? totalChannels : channels.length;
+	const allChannelsCount = allChannels.length || totalChannels || 10528;
+	const directPlayableCount = allChannels.length
+		? allChannels.filter((c) => !isGeoRestrictedStream(c)).length
+		: 9209;
+	const totalChannelsCount = hideRegionBlocked
+		? directPlayableCount
+		: totalChannels > 0
+			? totalChannels
+			: allChannelsCount;
 	const isUpdateAvailable =
 		updateStatus === "available" ||
 		updateStatus === "downloading" ||
@@ -190,31 +200,31 @@ export const SettingsDialog: React.FC = () => {
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm select-none p-2 sm:p-4 animate-in fade-in duration-200"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm select-none p-3 sm:p-6 animate-in fade-in duration-200"
 			onClick={closeSettings}
 		>
 			<div
-				className="w-[576px] max-w-[95vw] h-[480px] max-h-[95vh] bg-[#060814]/75 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
+				className="w-[760px] max-w-[95vw] h-[520px] max-h-[92vh] bg-[#060814]/75 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
 				onClick={(e) => e.stopPropagation()}
 			>
-				{/* Left Sidebar Navigation */}
-				<div className="w-48 h-full bg-black/40 border-r border-white/10 p-3 flex flex-col justify-between shrink-0 backdrop-blur-xl">
+				{/* Left Sidebar Navigation (Locked to exactly 240px - Zero Jitter/Shake) */}
+				<div className="w-[240px] min-w-[240px] max-w-[240px] h-full bg-black/40 border-r border-white/10 p-3.5 sm:p-4 flex flex-col justify-between shrink-0 backdrop-blur-xl select-none">
 					<div>
 						{/* App Branding */}
-						<div className="flex items-center gap-2 pb-3 mb-2 border-b border-white/10">
-							<MorningTVLogo className="w-7 h-7" glow={true} />
+						<div className="flex items-center gap-2.5 pb-4 mb-3 border-b border-white/10">
+							<MorningTVLogo className="w-8 h-8" glow={true} />
 							<div>
 								<h2 className="text-xs font-black text-white tracking-wider uppercase">
 									MorningTV
 								</h2>
 								<p className="text-[10px] text-zinc-300 font-medium">
-									Preferences
+									Player Preferences
 								</p>
 							</div>
 						</div>
 
 						{/* Nav Pills */}
-						<nav className="flex flex-col gap-1 overflow-y-auto scrollbar-none">
+						<nav className="flex flex-col gap-1.5 overflow-hidden">
 							{tabs.map((tab) => {
 								const Icon = tab.icon;
 								const isActive = activeTab === tab.id;
@@ -223,10 +233,10 @@ export const SettingsDialog: React.FC = () => {
 										key={tab.id}
 										type="button"
 										onClick={() => setActiveTab(tab.id)}
-										className={`group flex items-center justify-between w-full p-2 rounded-xl text-left transition-all cursor-pointer shrink-0 ${
+										className={`group flex items-center justify-between w-full p-2.5 rounded-xl text-left border cursor-pointer shrink-0 transition-colors duration-150 ${
 											isActive
-												? "bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-md shadow-cyan-600/30 border border-cyan-400/30"
-												: "text-zinc-300 hover:text-white hover:bg-white/[0.08]"
+												? "bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-md shadow-cyan-600/30 border-cyan-400/40"
+												: "border-transparent text-zinc-300 hover:text-white hover:bg-white/[0.08]"
 										}`}
 									>
 										<div className="flex items-center gap-2 min-w-0">
@@ -238,11 +248,11 @@ export const SettingsDialog: React.FC = () => {
 												}`}
 											/>
 											<div className="truncate">
-												<div className="text-[11px] font-bold truncate">
+												<div className="text-xs font-bold truncate">
 													{tab.label}
 												</div>
 												<div
-													className={`text-[9px] hidden sm:block truncate ${
+													className={`text-[9px] block truncate ${
 														isActive ? "text-cyan-100" : "text-zinc-400"
 													}`}
 												>
@@ -253,7 +263,7 @@ export const SettingsDialog: React.FC = () => {
 
 										{tab.badge && (
 											<span
-												className={`ml-1 text-[8px] font-mono font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+												className={`ml-1.5 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
 													isActive
 														? "bg-white/20 text-white"
 														: tab.badgeStyle || "bg-white/10 text-cyan-300"
@@ -269,11 +279,11 @@ export const SettingsDialog: React.FC = () => {
 					</div>
 
 					{/* Bottom System Info */}
-					<div className="flex items-center justify-between pt-2 border-t border-white/10">
+					<div className="flex items-center justify-between pt-3 border-t border-white/10">
 						<div className="flex items-center gap-1.5">
 							<span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
 							<span className="text-[10px] font-medium text-zinc-300">
-								Desktop
+								MorningTV Desktop
 							</span>
 						</div>
 						<span className="text-[9px] font-mono text-zinc-400 font-bold">
@@ -283,12 +293,12 @@ export const SettingsDialog: React.FC = () => {
 				</div>
 
 				{/* Right Content Area */}
-				<div className="flex-1 h-full p-3.5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
+				<div className="flex-1 min-w-0 h-full p-4 sm:p-5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
 					<div>
 						{/* Top Header of Active View */}
-						<div className="flex items-start justify-between pb-2 mb-2.5 border-b border-white/10">
+						<div className="flex items-start justify-between pb-2.5 mb-3 border-b border-white/10">
 							<div>
-								<h3 className="text-xs sm:text-sm font-extrabold text-white tracking-wide">
+								<h3 className="text-sm font-extrabold text-white tracking-wide">
 									{activeTab === "playlist" && "Playlist & Channels"}
 									{activeTab === "cinema" && "Cinema & Display"}
 									{activeTab === "audio" && "Sound & Acoustics"}
@@ -297,21 +307,21 @@ export const SettingsDialog: React.FC = () => {
 									{activeTab === "updates" && "Software Update"}
 									{activeTab === "about" && "Legal & About"}
 								</h3>
-								<p className="text-[10px] text-zinc-300 mt-0.5 line-clamp-1">
+								<p className="text-[11px] text-zinc-300 mt-0.5">
 									{activeTab === "playlist" &&
 										"Manage streaming links, compatibility & verified channels"}
 									{activeTab === "cinema" &&
 										"Customize visual ambient lighting and stream buffer stability"}
 									{activeTab === "audio" &&
-										"Fine-tune channel volume balance and prevent loudness spikes"}
+										"Fine-tune channel volume balance and prevent sudden loudness spikes"}
 									{activeTab === "cloud" &&
-										"Sync verified channels and backup mirrors directly from cloud"}
+										"Sync verified channels and backup mirrors directly from cloud repository"}
 									{activeTab === "system" &&
-										"Windows boot autostart, system tray quick controls & integration"}
+										"Windows boot autostart, system tray quick controls, and GitHub integration"}
 									{activeTab === "updates" &&
 										"Check for new releases, install updates, and review changelogs"}
 									{activeTab === "about" &&
-										"Open source license, compliance & architecture attribution"}
+										"Compliance, open-source attribution, and architecture"}
 								</p>
 							</div>
 
@@ -324,8 +334,8 @@ export const SettingsDialog: React.FC = () => {
 							</button>
 						</div>
 
-						{/* Content Container (Standard 6" x 5" Interior Scroll Canvas) */}
-						<div className="h-[385px] overflow-y-auto pr-1 flex flex-col justify-start gap-2.5 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+						{/* Content Container (Spacious Interior Scroll Canvas with stable scrollbar) */}
+						<div className="h-[395px] overflow-y-auto pr-1 flex flex-col justify-start gap-3 [scrollbar-gutter:stable] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
 							{/* TAB 1: PLAYLIST & CHANNELS */}
 							{activeTab === "playlist" && (
 								<form onSubmit={handleSave} className="flex flex-col gap-3">
@@ -386,13 +396,13 @@ export const SettingsDialog: React.FC = () => {
 														}`}
 													>
 														{hideRegionBlocked
-															? "7,578 Verified"
-															: "10,528 Global"}
+															? `${directPlayableCount.toLocaleString()} Playable`
+															: `${allChannelsCount.toLocaleString()} Global`}
 													</span>
 												</div>
 												<p className="text-[10px] text-zinc-400 mt-0.5">
 													{hideRegionBlocked
-														? "Hiding US geo-blocked streams (Pluto, Roku) for 100% error-free playback"
+														? `Hiding ${(allChannelsCount - directPlayableCount).toLocaleString()} US/UK geo-blocked streams (Pluto, Roku) for 100% direct playback`
 														: "Showing all channels including feeds requiring a US IP / VPN"}
 												</p>
 											</div>
@@ -464,9 +474,39 @@ export const SettingsDialog: React.FC = () => {
 											className="w-full bg-[#05070d] text-xs text-white rounded-xl px-3 py-2 border border-white/10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
 										/>
 
+										{/* Quick Master Presets */}
+										<div className="flex items-center gap-2 pt-0.5 flex-wrap">
+											<span className="text-[10px] text-zinc-400 font-semibold">
+												Quick Presets:
+											</span>
+											<button
+												type="button"
+												onClick={() => setPlaylistUrl(DEFAULT_PLAYLIST_URL)}
+												className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-bold ${
+													playlistUrl === DEFAULT_PLAYLIST_URL
+														? "bg-cyan-500/20 text-cyan-300 border-cyan-400/40"
+														: "bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10"
+												}`}
+											>
+												🌐 Global Master ({allChannelsCount.toLocaleString()})
+											</button>
+											<button
+												type="button"
+												onClick={() => setPlaylistUrl(INDIA_PLAYLIST_URL)}
+												className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-bold ${
+													playlistUrl === INDIA_PLAYLIST_URL
+														? "bg-emerald-500/20 text-emerald-300 border-emerald-400/40"
+														: "bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10"
+												}`}
+											>
+												🇮🇳 India & Regional Feeds
+											</button>
+										</div>
+
 										<p className="text-[10px] text-zinc-400">
-											Paste any valid M3U or M3U8 link. All channels will be
-											loaded and indexed automatically.
+											Paste any valid M3U or M3U8 link, or select a preset
+											above. All channels will be loaded and indexed
+											automatically.
 										</p>
 									</div>
 

@@ -13,6 +13,7 @@ export function useStreamTelemetry(
 	const lastQualityRef = useRef<{ totalFrames: number; time: number } | null>(
 		null,
 	);
+	const lastFpsRef = useRef<number>(0);
 
 	useEffect(() => {
 		const timer = setInterval(() => {
@@ -83,7 +84,7 @@ export function useStreamTelemetry(
 			}
 
 			// 3. Decoded FPS & dropped frames from hardware media decoder
-			let currentFps = 0;
+			let currentFps = lastFpsRef.current;
 			let droppedFrames = 0;
 			let totalFrames = 0;
 			const videoAny = video as HTMLVideoElement & {
@@ -93,7 +94,10 @@ export function useStreamTelemetry(
 				};
 			};
 
-			if (typeof videoAny.getVideoPlaybackQuality === "function") {
+			if (video.paused || video.ended || video.readyState < 2) {
+				currentFps = 0;
+				lastFpsRef.current = 0;
+			} else if (typeof videoAny.getVideoPlaybackQuality === "function") {
 				const q = videoAny.getVideoPlaybackQuality();
 				droppedFrames = q.droppedVideoFrames || 0;
 				totalFrames = q.totalVideoFrames || 0;
@@ -102,8 +106,22 @@ export function useStreamTelemetry(
 					const deltaFrames = totalFrames - lastQualityRef.current.totalFrames;
 					const deltaTime = (now - lastQualityRef.current.time) / 1000;
 					if (deltaTime >= 0.8) {
-						currentFps = Math.max(0, Math.round(deltaFrames / deltaTime));
+						if (deltaFrames >= 0 && deltaTime > 0) {
+							const computedFps = Math.round(deltaFrames / deltaTime);
+							// Broadcast stream stabilization: snap to standard nominal rates if within ±1 frame jitter
+							let stableFps = computedFps;
+							if (Math.abs(computedFps - 30) <= 1) stableFps = 30;
+							else if (Math.abs(computedFps - 60) <= 1) stableFps = 60;
+							else if (Math.abs(computedFps - 25) <= 1) stableFps = 25;
+							else if (Math.abs(computedFps - 50) <= 1) stableFps = 50;
+
+							currentFps = stableFps;
+							lastFpsRef.current = stableFps;
+						}
 						lastQualityRef.current = { totalFrames, time: now };
+					} else {
+						// Maintain stable measured FPS during sub-tick intervals
+						currentFps = lastFpsRef.current;
 					}
 				} else {
 					lastQualityRef.current = { totalFrames, time: now };

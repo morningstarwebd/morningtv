@@ -601,7 +601,6 @@ https://pb-gnetz8yng39c7.akamaized.net/v1/master/3722c60a815c199d9c0ef36c5b73da6
 #EXTINF:-1 tvg-id="RacerSelect.us@SD" tvg-name="Racer Select (1080p)" tvg-logo="https://i.imgur.com/CurtYvn.png" group-title="Sports" provider="IPTV-Org",Racer Select (1080p)
 https://amg00378-amg00378c4-freelivesports-emea-5637.playouts.now.amagi.tv/playlist.m3u8
 #EXTINF:-1 tvg-id="RaiSport.it@SD" tvg-name="Rai Sport" tvg-logo="https://i.imgur.com/xsGljsb.png" group-title="Sports" provider="Free-TV",Rai Sport
-#EXTFALLBACK: https://download-rai-it.akamaized.net/video_no_available.mp4
 https://7nyaler.streamhostingcdn.top/stream/2/index.m3u8
 #EXTINF:-1 tvg-id="RallyTV.us@SD" tvg-name="Rally TV (1080p)" tvg-logo="https://i.postimg.cc/WtLq2C7c/logo-Rally-Tv1.png" group-title="Sports" provider="IPTV-Org",Rally TV (1080p)
 https://rally-tv-live.akamaized.net/hls/live/2117704/RallyTV-Pri/master.m3u8

@@ -10264,18 +10264,14 @@ https://stream14.polskieradio.pl/pr4_video/video_pr4.stream/playlist.m3u8
 #EXTINF:-1 tvg-id="RaftaarMedia.in@SD" tvg-name="Raftaar Media (576p)" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_RAFTAAR_MEDIA/images/LOGO_HD/image.png" group-title="Undefined" provider="IPTV-Org India",Raftaar Media (576p)
 https://mumt04.tangotv.in/m18aqlK4RAFTAARMEDIA/index.m3u8
 #EXTINF:-1 tvg-id="Rai1.it@SD" tvg-name="Rai 1 (720p)" tvg-logo="https://i.imgur.com/CAx7yRm.png" group-title="Undefined" provider="Free-TV",Rai 1 (720p)
-#EXTFALLBACK: https://download-rai-it.akamaized.net/video_no_available.mp4
 #EXTFALLBACK: https://dash2.antik.sk/live/test_rai_uno_tizen/playlist.m3u8
 https://d3k8wzt41aflvx.cloudfront.net/RAI1/Live.m3u8
 #EXTINF:-1 tvg-id="Rai2.it@SD" tvg-name="Rai 2 (1080p)" tvg-logo="https://i.imgur.com/zA0PTcs.png" group-title="Undefined" provider="Free-TV",Rai 2 (1080p)
-#EXTFALLBACK: https://download-rai-it.akamaized.net/video_no_available.mp4
 https://d3k8wzt41aflvx.cloudfront.net/RAI2/Live.m3u8
 #EXTINF:-1 tvg-id="Rai3.it@HD" tvg-name="Rai 3 (720p)" tvg-logo="https://i.imgur.com/9kuQCIi.png" group-title="Undefined" provider="Free-TV",Rai 3 (720p)
 #EXTFALLBACK: https://dash2.antik.sk/live/test_rai_tre_tizen/playlist.m3u8
-#EXTFALLBACK: https://download-rai-it.akamaized.net/video_no_available.mp4
 https://d3k8wzt41aflvx.cloudfront.net/RAI3/Live.m3u8
 #EXTINF:-1 tvg-id="Rai4.it@SD" tvg-name="Rai 4 (576p)" tvg-logo="https://i.imgur.com/XFkZRfv.png" group-title="Undefined" provider="Free-TV",Rai 4 (576p)
-https://download-rai-it.akamaized.net/video_no_available.mp4
 #EXTINF:-1 tvg-id="RaiItalia.it@EuropeAfrica" tvg-name="Rai Italia (1080p)" tvg-logo="https://i.imgur.com/1nN4rEP.png" group-title="Undefined" provider="IPTV-Org",Rai Italia (1080p)
 #EXTFALLBACK: https://d3k8wzt41aflvx.cloudfront.net/RAIUSA/Live.m3u8
 #EXTFALLBACK: https://d3k8wzt41aflvx.cloudfront.net/RAISA/Live.m3u8
@@ -10288,13 +10284,10 @@ https://d3k8wzt41aflvx.cloudfront.net/RAIUSA/Live.m3u8
 #EXTINF:-1 tvg-id="" tvg-name="Rai Italia Sud America" tvg-logo="https://i.imgur.com/riXPOTh.png" group-title="Italy" provider="Free-TV",Rai Italia Sud America
 https://d3k8wzt41aflvx.cloudfront.net/RAISA/Live.m3u8
 #EXTINF:-1 tvg-id="RaiPremium.it" tvg-name="Rai Premium" tvg-logo="https://i.imgur.com/RKI4nFy.png" group-title="Italy" provider="Free-TV",Rai Premium
-#EXTFALLBACK: https://download-rai-it.akamaized.net/video_no_available.mp4
 https://d3k8wzt41aflvx.cloudfront.net/RaiPremium/Live.m3u8
 #EXTINF:-1 tvg-id="RaiScuola.it@SD" tvg-name="Rai Scuola (1080p)" tvg-logo="https://i.imgur.com/tmtJW6s.png" group-title="Education" provider="Free-TV",Rai Scuola (1080p)
-#EXTFALLBACK: https://download-rai-it.akamaized.net/video_no_available.mp4
 https://d3k8wzt41aflvx.cloudfront.net/RAIScuola/Live.m3u8
 #EXTINF:-1 tvg-id="RaiStoria.it@SD" tvg-name="Rai Storia (1080p)" tvg-logo="https://i.imgur.com/K8y5q8x.png" group-title="Undefined" provider="Free-TV",Rai Storia (1080p)
-#EXTFALLBACK: https://download-rai-it.akamaized.net/video_no_available.mp4
 https://d3k8wzt41aflvx.cloudfront.net/RAIStoria/Live.m3u8
 #EXTINF:-1 tvg-id="RaiSudtirol.it@SD" tvg-name="Rai Sudtirol" tvg-logo="https://i.imgur.com/Z3npd4M.png" group-title="Undefined" provider="IPTV-Org",Rai Sudtirol
 https://wzstreaming.rai.it/TVlive/smil:liveStream.smil/index.m3u8

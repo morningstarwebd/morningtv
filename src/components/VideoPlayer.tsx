@@ -13,6 +13,7 @@ import { useStreamFailover } from "../hooks/useStreamFailover";
 import { useStreamTelemetry } from "../hooks/useStreamTelemetry";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { useAppStore } from "../stores/appStore";
+import { isGeoRestrictedUrl } from "../utils/channelFilter";
 import { getProxyToken } from "../utils/proxy";
 import { MorningTVLogo } from "./MorningTVLogo";
 
@@ -21,6 +22,7 @@ export const VideoPlayer: React.FC = () => {
 		activeChannel,
 		channels,
 		isPlaying,
+		hideRegionBlocked,
 		soundBoost,
 		ambientGlow,
 		is3GDataSaver,
@@ -64,11 +66,13 @@ export const VideoPlayer: React.FC = () => {
 		};
 	}, []);
 
-	// Active and fallback URLs
+	// Active and fallback URLs (filtering geo-blocked/dead mirrors when direct playback is active)
 	const allUrls = useMemo(() => {
 		if (!activeChannel) return [];
-		return [activeChannel.url, ...(activeChannel.fallback_urls || [])];
-	}, [activeChannel]);
+		const raw = [activeChannel.url, ...(activeChannel.fallback_urls || [])];
+		if (!hideRegionBlocked) return raw;
+		return raw.filter((u) => !isGeoRestrictedUrl(u, activeChannel.provider));
+	}, [activeChannel, hideRegionBlocked]);
 
 	const currentUrl = allUrls[mirrorIndex] || allUrls[0] || "";
 

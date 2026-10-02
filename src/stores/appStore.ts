@@ -18,7 +18,11 @@ import type {
 } from "../types";
 import { APP_VERSION, formatIpcError, getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
-import { filterChannelsClient } from "../utils/channelFilter";
+import {
+	filterChannelsClient,
+	isGeoRestrictedStream,
+	isGeoRestrictedUrl,
+} from "../utils/channelFilter";
 import { createLogger } from "../utils/logger";
 
 const log = createLogger("AppStore");
@@ -347,11 +351,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 			const initialFiltered = hideRegion
 				? filterChannelsClient(channels, "All", "", true)
 				: channels;
+			const effectiveTotal = hideRegion
+				? channels.filter((c) => !isGeoRestrictedStream(c)).length
+				: totalCount > 0
+					? totalCount
+					: channels.length;
 
 			set({
 				allChannels: channels,
 				channels: initialFiltered,
-				totalChannels: totalCount > 0 ? totalCount : channels.length,
+				totalChannels: effectiveTotal,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
 				providers: providers.length > 1 ? providers : ["All"],
 				settings,
@@ -383,19 +392,35 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 	toggleHideRegionBlocked: () => {
 		const next = !get().hideRegionBlocked;
-		set((state) => ({
+		const { allChannels, activeCategory, searchQuery, settings } = get();
+		const nextFiltered = filterChannelsClient(
+			allChannels,
+			activeCategory,
+			searchQuery,
+			next,
+		);
+		const effectiveTotal = next
+			? allChannels.filter((c) => !isGeoRestrictedStream(c)).length
+			: allChannels.length;
+
+		set({
 			hideRegionBlocked: next,
-			channels: filterChannelsClient(
-				state.allChannels,
-				state.activeCategory,
-				state.searchQuery,
-				next,
-			),
-		}));
+			channels: nextFiltered,
+			totalChannels: effectiveTotal,
+		});
+
+		if (settings) {
+			invoke("save_settings", {
+				settings: { ...settings, hide_region_blocked: next },
+			}).catch((err) =>
+				log.error("Failed to save region blocked settings", { error: err }),
+			);
+		}
+
 		get().showToast(
 			next
-				? "🛡️ Region-Blocked Streams Hidden (Direct Indian Playback)"
-				: "🌐 All Global Channels Visible (VPN Support)",
+				? `🛡️ Direct Playback Active (${effectiveTotal.toLocaleString()} channels available)`
+				: `🌐 Global Channels Active (${effectiveTotal.toLocaleString()} channels available)`,
 			false,
 		);
 	},
@@ -865,10 +890,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 	},
 
 	cycleMirror: () => {
-		const { activeChannel, mirrorIndex, showToast } = get();
+		const { activeChannel, mirrorIndex, hideRegionBlocked, showToast } = get();
 		if (!activeChannel) return;
-		const allUrls = [activeChannel.url, ...(activeChannel.fallback_urls || [])];
-		if (allUrls.length <= 1) return;
+		const raw = [activeChannel.url, ...(activeChannel.fallback_urls || [])];
+		const allUrls = hideRegionBlocked
+			? raw.filter((u) => !isGeoRestrictedUrl(u, activeChannel.provider))
+			: raw;
+		if (allUrls.length <= 1) {
+			showToast("Single stream source available for this channel", false);
+			return;
+		}
 		const nextIndex = (mirrorIndex + 1) % allUrls.length;
 		set({ mirrorIndex: nextIndex });
 		showToast(
