@@ -4,6 +4,7 @@
 import type Hls from "hls.js";
 import type React from "react";
 import { useEffect, useRef } from "react";
+import { useAppStore } from "../stores/appStore";
 import type { StreamHealthStatus } from "../types";
 import { createLogger } from "../utils/logger";
 
@@ -25,6 +26,7 @@ export interface StallWatchdogOptions {
 	incrementStallCount: () => void;
 	setStreamHealthStatus: (status: StreamHealthStatus) => void;
 	tryNextFallback: () => void;
+	resetFailover?: () => void;
 }
 
 export function useStallWatchdog(options: StallWatchdogOptions): void {
@@ -43,6 +45,7 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 		incrementStallCount,
 		setStreamHealthStatus,
 		tryNextFallback,
+		resetFailover,
 	} = options;
 
 	const lastTimeRef = useRef<number>(0);
@@ -77,13 +80,13 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 
 					// ==============================================================
 					// SCENARIO 1: INITIAL PLAYBACK STALL (currentTime === 0)
-					// Channel just tuned, waiting for first video frame to render
+					// Channel just tuned, waiting for initial handshake & buffer fill
 					// ==============================================================
 					if (currentTime === 0) {
-						if (ticks === 5) {
-							// Gentle startLoad after 5s initial handshake
+						if (ticks === 7) {
+							// Gentle startLoad after 7s initial handshake
 							hls?.startLoad();
-						} else if (ticks === 10) {
+						} else if (ticks === 15) {
 							if (hasMultipleQualities && !hasActivated3GRef.current) {
 								// Initial constrained network: attempt tuning at lowest available resolution
 								const sortedLevels = levels
@@ -114,17 +117,24 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 
 							// If already tried lowest quality or stream is single-quality:
 							if (hasFallbackMirrors) {
+								log.info(
+									"Still loading initial segments (15s), refreshing buffer loader...",
+								);
+								hls?.startLoad();
+							}
+						} else if (ticks === 24) {
+							if (hasFallbackMirrors) {
 								log.warn(
-									"Initial playback failed to start after 10s - switching to next mirror",
+									"Initial playback failed to start after 24s - switching to next mirror",
 								);
 								stallTicksRef.current = 0;
 								tryNextFallback();
 								return;
 							}
-						} else if (ticks >= 16) {
-							// For single-URL channels with no mirrors: trigger clean reconnect loop
+						} else if (ticks >= 32) {
+							// For single-URL channels with no mirrors: trigger clean reconnect loop after 32s
 							log.warn(
-								"Initial playback unrecoverable on single-source channel - triggering reconnect",
+								"Initial playback unrecoverable on single-source channel (32s) - triggering reconnect",
 							);
 							stallTicksRef.current = 0;
 							tryNextFallback();
@@ -150,8 +160,8 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 						return;
 					}
 
-					// Level 2 & 3: Smart Progressive Quality Step-Down & 3G Adaptation (12 seconds)
-					if (ticks === 12) {
+					// Level 2 & 3: Smart Progressive Quality Step-Down & 3G Adaptation (14 seconds)
+					if (ticks === 14) {
 						if (hasMultipleQualities && hls && levels.length > 0) {
 							// Sort levels ascending by bitrate / resolution
 							const sortedLevels = levels
@@ -187,7 +197,7 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 									false,
 								);
 								hls.startLoad();
-								// Reset stallTicks back to 6 to give 6 full seconds for this lower level to recover
+								// Reset stallTicks back to 6 to give full 8 seconds for lower level to buffer
 								stallTicksRef.current = 6;
 								return;
 							}
@@ -212,33 +222,21 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 							}
 						}
 
-						// Single-quality channel (levels.length <= 1):
-						// Cannot step down quality. If backup mirrors exist, switch immediately to next mirror!
-						if (!hasMultipleQualities && hasFallbackMirrors) {
-							log.warn(
-								"Single-quality stream stalled after buffer reload - switching to next mirror",
-							);
-							stallTicksRef.current = 0;
-							tryNextFallback();
-							return;
-						}
-
-						// Single-quality and Single-URL: try another buffer refresh
+						// Single-quality channel: try buffer refresh before failing
 						hls?.startLoad();
 						return;
 					}
 
-					// Level 4: Terminal Fallback or Reconnect Loop (>= 19 seconds)
-					// Exhausted: gentle reload -> step down quality -> lowest level -> 3G mode,
-					// and video is still stalled!
-					if (ticks >= 19) {
+					// Level 4: Terminal Fallback or Reconnect Loop (>= 30 seconds)
+					// Exhausted all recovery attempts and video is still stalled for 30s!
+					if (ticks >= 30) {
 						if (hasFallbackMirrors) {
 							log.warn(
-								"Playback unrecoverable after exhaustive quality & 3G degradation - cycling to next mirror",
+								"Playback unrecoverable after exhaustive quality & 3G degradation (30s) - cycling to next mirror",
 							);
 						} else {
 							log.warn(
-								"Playback unrecoverable on single-source channel - entering reconnect backoff loop",
+								"Playback unrecoverable on single-source channel (30s) - entering reconnect backoff loop",
 							);
 						}
 						stallTicksRef.current = 0;
@@ -250,6 +248,12 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 					stallTicksRef.current = 0;
 					healthyTicksRef.current += 1;
 					lastTimeRef.current = currentTime;
+
+					// Playback is actively moving forward - cancel any stale reconnect/failover alarms
+					resetFailover?.();
+					if (useAppStore.getState().toast?.isError) {
+						useAppStore.getState().hideToast();
+					}
 
 					// If playback has been smooth for 20+ seconds, reset degradation flags for future hiccups
 					if (healthyTicksRef.current >= 20) {
@@ -283,5 +287,6 @@ export function useStallWatchdog(options: StallWatchdogOptions): void {
 		incrementStallCount,
 		setStreamHealthStatus,
 		tryNextFallback,
+		resetFailover,
 	]);
 }

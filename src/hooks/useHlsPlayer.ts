@@ -169,15 +169,23 @@ export function useHlsPlayer(options: HlsPlayerOptions): {
 			});
 
 			hls.on(Hls.Events.FRAG_BUFFERED, () => {
+				retryCountRef.current = 0;
 				setIsBuffering(false);
 				setIsChannelLoading(false);
 				setStreamHealthStatus("good");
+				if (useAppStore.getState().toast?.isError) {
+					useAppStore.getState().hideToast();
+				}
 			});
 
 			hls.on(Hls.Events.FRAG_LOADED, (_event, data: any) => {
+				retryCountRef.current = 0;
 				setIsBuffering(false);
 				setIsChannelLoading(false);
 				setStreamHealthStatus("good");
+				if (useAppStore.getState().toast?.isError) {
+					useAppStore.getState().hideToast();
+				}
 
 				try {
 					const frag = data?.frag;

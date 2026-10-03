@@ -89,6 +89,7 @@ export const VideoPlayer: React.FC = () => {
 		showToast,
 		setStreamHealthStatus,
 		setReconnectCountdown,
+		videoRef,
 	});
 
 	// 2. Core HLS.js Lifecycle & Quality Management
@@ -124,6 +125,7 @@ export const VideoPlayer: React.FC = () => {
 		incrementStallCount,
 		setStreamHealthStatus,
 		tryNextFallback,
+		resetFailover,
 	});
 
 	// 5. Predictive Channel Pre-Warming into RAM
@@ -181,13 +183,14 @@ export const VideoPlayer: React.FC = () => {
 	const getAspectRatioClasses = () => {
 		switch (aspectRatio) {
 			case "4:3":
-				return "aspect-[4/3] max-w-full max-h-full object-contain";
+				return "h-full aspect-[4/3] max-w-full object-contain";
 			case "fill":
 				return "w-full h-full object-cover";
 			case "21:9":
-				return "aspect-[21/9] max-w-full max-h-full object-contain";
+				return "w-full aspect-[21/9] max-h-full object-contain";
 			default:
-				return "aspect-[16/9] max-w-full max-h-full object-contain";
+				// YouTube-style fixed viewport: fills 100% container, scales seamlessly across all ABR quality switches without layout shifts
+				return "w-full h-full object-contain";
 		}
 	};
 
@@ -226,15 +229,27 @@ export const VideoPlayer: React.FC = () => {
 				<div className="w-full h-full relative z-10 flex items-center justify-center">
 					<video
 						ref={videoRef}
-						className={`${getAspectRatioClasses()} transition-all`}
+						className={getAspectRatioClasses()}
 						style={{ imageRendering: "-webkit-optimize-contrast" }}
 						autoPlay
 						playsInline
 						onWaiting={() => setIsBuffering(true)}
+						onTimeUpdate={() => {
+							if (reconnectCountdown !== null) {
+								resetFailover();
+								if (useAppStore.getState().toast?.isError) {
+									useAppStore.getState().hideToast();
+								}
+							}
+						}}
 						onPlaying={() => {
+							resetFailover();
 							setIsBuffering(false);
 							setIsChannelLoading(false);
 							setStreamHealthStatus("good");
+							if (useAppStore.getState().toast?.isError) {
+								useAppStore.getState().hideToast();
+							}
 							if (!useAppStore.getState().isPlaying) {
 								useAppStore.setState({ isPlaying: true });
 							}
@@ -253,8 +268,12 @@ export const VideoPlayer: React.FC = () => {
 							}
 						}}
 						onCanPlay={() => {
+							resetFailover();
 							setIsBuffering(false);
 							setIsChannelLoading(false);
+							if (useAppStore.getState().toast?.isError) {
+								useAppStore.getState().hideToast();
+							}
 							if (
 								videoRef.current?.paused &&
 								useAppStore.getState().isPlaying
@@ -263,8 +282,12 @@ export const VideoPlayer: React.FC = () => {
 							}
 						}}
 						onLoadedData={() => {
+							resetFailover();
 							setIsBuffering(false);
 							setIsChannelLoading(false);
+							if (useAppStore.getState().toast?.isError) {
+								useAppStore.getState().hideToast();
+							}
 							if (
 								videoRef.current?.paused &&
 								useAppStore.getState().isPlaying

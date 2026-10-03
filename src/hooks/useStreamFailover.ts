@@ -18,6 +18,7 @@ export interface StreamFailoverOptions {
 	showToast: (message: string, isError: boolean) => void;
 	setStreamHealthStatus: (status: StreamHealthStatus) => void;
 	setReconnectCountdown: (countdown: number | null) => void;
+	videoRef?: React.RefObject<HTMLVideoElement | null>;
 }
 
 const INITIAL_BACKOFF_DELAY_SECS = 10;
@@ -37,6 +38,7 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 		showToast,
 		setStreamHealthStatus,
 		setReconnectCountdown,
+		videoRef,
 	} = options;
 
 	const failedUrlsRef = useRef<Set<string>>(new Set());
@@ -109,6 +111,21 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 
 			let remaining = delay;
 			reconnectIntervalRef.current = setInterval(() => {
+				const video = videoRef?.current;
+				if (video && !video.paused && video.currentTime > 0) {
+					// Playback recovered while in countdown! Cancel failover immediately!
+					log.info(
+						"Playback recovered during reconnect countdown - cancelling reconnect",
+					);
+					clearReconnectTimers();
+					failedUrlsRef.current.clear();
+					setStreamHealthStatus("good");
+					if (useAppStore.getState().toast?.isError) {
+						useAppStore.getState().hideToast();
+					}
+					return;
+				}
+
 				remaining -= 1;
 				if (remaining > 0) {
 					setReconnectCountdown(remaining);
@@ -118,6 +135,14 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 			}, 1000);
 
 			reconnectTimerRef.current = setTimeout(() => {
+				const video = videoRef?.current;
+				if (video && !video.paused && video.currentTime > 0) {
+					log.info("Stream already playing - skipping reconnect timer trigger");
+					clearReconnectTimers();
+					setStreamHealthStatus("good");
+					return;
+				}
+
 				failedUrlsRef.current.clear();
 				// Exponential backoff: 10s -> 20s -> 40s (capped at 60s)
 				backoffDelayRef.current = Math.min(60, delay * 2);
@@ -141,6 +166,7 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 		setStreamHealthStatus,
 		setReconnectCountdown,
 		clearReconnectTimers,
+		videoRef,
 	]);
 
 	return { tryNextFallback, resetFailover, clearReconnectTimers };
