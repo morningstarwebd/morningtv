@@ -72,6 +72,8 @@ export function filterChannelsClient(
 
 		if (activeCategory === "Favorites") {
 			if (!ch.is_favorite) return false;
+		} else if (activeCategory === "India") {
+			if (!isIndianOrRegionalStream(ch)) return false;
 		} else if (activeCategory !== "All") {
 			const catMatches = ch.group
 				.split(/[;,]/)

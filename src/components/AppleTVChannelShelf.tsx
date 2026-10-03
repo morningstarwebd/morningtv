@@ -1,4 +1,6 @@
 import {
+	Check,
+	ChevronDown,
 	ChevronLeft,
 	ChevronRight,
 	Clapperboard,
@@ -8,6 +10,7 @@ import {
 	Newspaper,
 	Radio,
 	Search,
+	SlidersHorizontal,
 	Smile,
 	Star,
 	Trophy,
@@ -18,6 +21,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { getChannelIdString } from "../types";
+import { isIndianOrRegionalStream } from "../utils/channelFilter";
 import { AppleTVCard } from "./AppleTVCard";
 import { AppleTVCardSkeleton } from "./AppleTVCardSkeleton";
 
@@ -46,23 +50,29 @@ export const AppleTVChannelShelf: React.FC = () => {
 	const catScrollRef = useRef<HTMLDivElement>(null);
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const sentinelRef = useRef<HTMLDivElement>(null);
+	const providerDropdownRef = useRef<HTMLDivElement>(null);
 
 	const INITIAL_COUNT = 40;
 	const BATCH_SIZE = 30;
 	const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
 	const [localSearch, setLocalSearch] = useState(searchQuery);
+	const [isProviderOpen, setIsProviderOpen] = useState(false);
 
 	const activeChannelId = activeChannel
 		? getChannelIdString(activeChannel.id)
 		: null;
 
-	// Filter channels by activeProvider
+	// Filter channels by activeProvider and activeCategory
 	const displayChannels = useMemo(() => {
-		if (activeProvider === "All") return channels;
-		return channels.filter(
-			(c) => (c.provider || "IPTV-Org") === activeProvider,
-		);
-	}, [channels, activeProvider]);
+		let list = channels;
+		if (activeProvider !== "All") {
+			list = list.filter((c) => (c.provider || "IPTV-Org") === activeProvider);
+		}
+		if (activeCategory === "India") {
+			list = list.filter((c) => isIndianOrRegionalStream(c));
+		}
+		return list;
+	}, [channels, activeProvider, activeCategory]);
 
 	// Sync local search when global searchQuery changes
 	useEffect(() => {
@@ -173,17 +183,35 @@ export const AppleTVChannelShelf: React.FC = () => {
 		}
 	};
 
+	useEffect(() => {
+		const handleClickOutside = (e: MouseEvent) => {
+			if (
+				providerDropdownRef.current &&
+				!providerDropdownRef.current.contains(e.target as Node)
+			) {
+				setIsProviderOpen(false);
+			}
+		};
+		if (isProviderOpen) {
+			document.addEventListener("mousedown", handleClickOutside);
+		}
+		return () => {
+			document.removeEventListener("mousedown", handleClickOutside);
+		};
+	}, [isProviderOpen]);
+
 	const getCategoryIcon = (cat: string) => {
 		const lower = cat.toLowerCase();
-		if (lower.includes("all")) return <LayoutGrid className="w-3.5 h-3.5" />;
-		if (lower.includes("fav"))
+		if (lower === "all") return <LayoutGrid className="w-3.5 h-3.5" />;
+		if (lower === "favorites")
 			return <Star className="w-3.5 h-3.5 text-amber-400" />;
+		if (lower === "india") return <span className="text-xs">🇮🇳</span>;
 		if (lower.includes("movie") || lower.includes("cinema"))
 			return <Clapperboard className="w-3.5 h-3.5 text-rose-400" />;
 		if (lower.includes("enter"))
 			return <Film className="w-3.5 h-3.5 text-purple-400" />;
 		if (lower.includes("news"))
-			return <Newspaper className="w-3.5 h-3.5 text-cyan-400" />;
+			return <Newspaper className="w-3.5 h-3.5 text-sky-400" />;
 		if (
 			lower.includes("kid") ||
 			lower.includes("anim") ||
@@ -213,11 +241,44 @@ export const AppleTVChannelShelf: React.FC = () => {
 		return <Radio className="w-3.5 h-3.5" />;
 	};
 
-	const displayCategories = [
-		...categories.filter((c) => c !== "YouTube" && c !== "Hotstar"),
-		"YouTube",
-		"Hotstar",
-	];
+	const displayCategories = useMemo(() => {
+		const coreCurated = [
+			"All",
+			"Favorites",
+			"India",
+			"News",
+			"Entertainment",
+			"Movies",
+			"Sports",
+			"Music",
+			"Kids",
+		];
+		const junkCategories = new Set([
+			"all",
+			"favorites",
+			"india",
+			"undefined",
+			"general",
+			"empty",
+			"",
+			"youtube",
+			"hotstar",
+			"vod italy",
+			"argentina",
+			"united states",
+			"education",
+		]);
+
+		const otherValid = categories.filter((c) => {
+			const lower = c.trim().toLowerCase();
+			return (
+				!junkCategories.has(lower) &&
+				!coreCurated.some((core) => core.toLowerCase() === lower)
+			);
+		});
+
+		return [...coreCurated, ...otherValid, "YouTube", "Hotstar"];
+	}, [categories]);
 
 	if (!isChannelDrawerOpen) return null;
 
@@ -230,9 +291,9 @@ export const AppleTVChannelShelf: React.FC = () => {
 			/>
 
 			{/* Floating Apple TV Shelf from Bottom */}
-			<div className="fixed bottom-0 left-0 right-0 z-50 bg-[#050814]/92 border-t border-white/15 backdrop-blur-3xl shadow-2xl shadow-black select-none animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[48vh] sm:max-h-[52vh]">
+			<div className="fixed bottom-0 left-0 right-0 z-50 bg-[#07090f]/96 border-t border-white/10 backdrop-blur-3xl shadow-2xl shadow-black select-none animate-in slide-in-from-bottom duration-300 flex flex-col max-h-[46vh] sm:max-h-[50vh]">
 				{/* Top Header of Shelf */}
-				<div className="px-3 sm:px-6 py-2.5 border-b border-white/[0.08] flex items-center justify-between gap-2 sm:gap-4 shrink-0">
+				<div className="px-3 sm:px-6 py-2.5 border-b border-white/[0.08] flex items-center justify-between gap-3 shrink-0">
 					{/* Categories Pill Selector with Left/Right Buttons and Wheel Support */}
 					<div className="relative flex-1 min-w-0 flex items-center gap-1 group/cats overflow-hidden">
 						{/* Scroll Categories Left */}
@@ -243,7 +304,7 @@ export const AppleTVChannelShelf: React.FC = () => {
 									behavior: "smooth",
 								})
 							}
-							className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white shrink-0 transition-opacity opacity-0 group-hover/cats:opacity-100 cursor-pointer z-10 shadow"
+							className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white shrink-0 transition-opacity opacity-0 group-hover/cats:opacity-100 cursor-pointer z-10 shadow"
 							title="Scroll categories left"
 						>
 							<ChevronLeft className="w-3.5 h-3.5" />
@@ -271,18 +332,18 @@ export const AppleTVChannelShelf: React.FC = () => {
 												inline: "center",
 											});
 										}}
-										className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+										className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs whitespace-nowrap transition-all cursor-pointer shrink-0 ${
 											isSelected
 												? cat === "YouTube"
-													? "bg-red-600 text-white shadow-lg shadow-red-600/30 scale-102 font-extrabold"
+													? "bg-red-600 text-white shadow-md font-semibold"
 													: cat === "Hotstar"
-														? "bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-102 font-extrabold"
-														: "bg-white text-black shadow-lg shadow-white/20 scale-102 font-extrabold"
+														? "bg-blue-600 text-white shadow-md font-semibold"
+														: "bg-white text-black shadow-md font-semibold"
 												: cat === "YouTube"
-													? "bg-red-500/10 text-red-400 hover:text-white hover:bg-red-600/30 border border-red-500/20"
+													? "bg-red-500/10 text-red-300 hover:text-white hover:bg-red-600/30 border border-red-500/20 font-normal"
 													: cat === "Hotstar"
-														? "bg-blue-500/10 text-blue-400 hover:text-white hover:bg-blue-600/30 border border-blue-500/20"
-														: "bg-white/[0.05] text-zinc-400 hover:text-white hover:bg-white/[0.1] border border-white/[0.06]"
+														? "bg-blue-500/10 text-blue-300 hover:text-white hover:bg-blue-600/30 border border-blue-500/20 font-normal"
+														: "bg-white/[0.04] text-white/60 hover:text-white hover:bg-white/[0.08] border border-white/[0.05] font-normal"
 										}`}
 									>
 										{getCategoryIcon(cat)}
@@ -300,24 +361,25 @@ export const AppleTVChannelShelf: React.FC = () => {
 									behavior: "smooth",
 								})
 							}
-							className="p-1 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white shrink-0 transition-opacity opacity-0 group-hover/cats:opacity-100 cursor-pointer z-10 shadow"
+							className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-white/70 hover:text-white shrink-0 transition-opacity opacity-0 group-hover/cats:opacity-100 cursor-pointer z-10 shadow"
 							title="Scroll categories right"
 						>
 							<ChevronRight className="w-3.5 h-3.5" />
 						</button>
 					</div>
 
-					{/* Search Box & Close Button */}
+					{/* Right: Search Box + Provider Dropdown + Close Button */}
 					<div className="flex items-center gap-2 shrink-0">
-						<div className="relative flex items-center w-48 sm:w-64">
-							<Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 pointer-events-none" />
+						{/* Clean Search Input */}
+						<div className="relative flex items-center w-36 sm:w-56">
+							<Search className="w-3.5 h-3.5 text-white/40 absolute left-3 pointer-events-none" />
 							<input
 								ref={searchInputRef}
 								type="text"
-								placeholder="Search live channels..."
+								placeholder="Search channels..."
 								value={localSearch}
 								onChange={(e) => setLocalSearch(e.target.value)}
-								className="w-full bg-white/[0.06] hover:bg-white/[0.09] focus:bg-black/80 text-xs text-white placeholder-zinc-500 rounded-full pl-8 pr-7 py-1.5 border border-white/10 focus:border-cyan-400 focus:outline-none transition-all"
+								className="w-full bg-white/[0.05] hover:bg-white/[0.08] focus:bg-black/90 text-xs text-white placeholder-white/30 rounded-full pl-8 pr-7 py-1.5 border border-white/10 focus:border-white/30 focus:outline-none transition-all"
 							/>
 							{localSearch && (
 								<button
@@ -325,50 +387,77 @@ export const AppleTVChannelShelf: React.FC = () => {
 										setLocalSearch("");
 										setSearchQuery("");
 									}}
-									className="absolute right-2.5 p-1 text-zinc-400 hover:text-white rounded-md cursor-pointer"
+									className="absolute right-2 p-1 text-white/40 hover:text-white rounded-md cursor-pointer"
 								>
 									<X className="w-3 h-3" />
 								</button>
 							)}
 						</div>
 
+						{/* Provider Filter Dropdown */}
+						{providers.length > 1 && (
+							<div ref={providerDropdownRef} className="relative">
+								<button
+									onClick={() => setIsProviderOpen(!isProviderOpen)}
+									className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all border cursor-pointer ${
+										activeProvider !== "All"
+											? "bg-white/20 text-white border-white/30 font-medium"
+											: "bg-white/[0.05] hover:bg-white/[0.08] text-white/70 hover:text-white border-white/10"
+									}`}
+									title="Filter channels by provider"
+								>
+									<SlidersHorizontal className="w-3.5 h-3.5 text-white/60" />
+									<span className="hidden sm:inline max-w-[85px] truncate">
+										{activeProvider === "All" ? "All Sources" : activeProvider}
+									</span>
+									<ChevronDown
+										className={`w-3 h-3 text-white/40 transition-transform ${
+											isProviderOpen ? "rotate-180" : ""
+										}`}
+									/>
+								</button>
+
+								{isProviderOpen && (
+									<div className="absolute right-0 top-full mt-2 w-52 py-1.5 rounded-2xl bg-[#0d111c]/95 border border-white/15 backdrop-blur-2xl shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150">
+										<div className="px-3 py-1 text-[10px] font-semibold text-white/40 uppercase tracking-wider border-b border-white/[0.06] mb-1">
+											Stream Sources ({providers.length})
+										</div>
+										<div className="max-h-60 overflow-y-auto scrollbar-none">
+											{providers.map((p) => (
+												<button
+													key={p}
+													onClick={() => {
+														setActiveProvider(p);
+														setIsProviderOpen(false);
+													}}
+													className={`w-full text-left px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer ${
+														activeProvider === p
+															? "bg-white/15 text-white font-medium"
+															: "text-white/65 hover:text-white hover:bg-white/5"
+													}`}
+												>
+													<span className="truncate">{p}</span>
+													{activeProvider === p && (
+														<Check className="w-3.5 h-3.5 text-white" />
+													)}
+												</button>
+											))}
+										</div>
+									</div>
+								)}
+							</div>
+						)}
+
+						{/* Close Button */}
 						<button
 							onClick={closeChannelDrawer}
-							className="p-1.5 rounded-full bg-white/5 hover:bg-white/15 text-zinc-400 hover:text-white transition-all cursor-pointer"
+							className="p-1.5 rounded-full bg-white/5 hover:bg-white/15 text-white/60 hover:text-white transition-all cursor-pointer"
 							title="Close Guide (Esc)"
 						>
 							<X className="w-4 h-4" />
 						</button>
 					</div>
 				</div>
-
-				{/* Provider Filter Sub-bar */}
-				{providers.length > 1 && (
-					<div className="px-3 sm:px-6 py-1 bg-black/40 border-b border-white/[0.06] flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0">
-						<span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 shrink-0 flex items-center gap-1">
-							<Radio className="w-3 h-3 text-cyan-400" />
-							Provider:
-						</span>
-						<div className="flex items-center gap-1.5">
-							{providers.map((p) => {
-								const isSelected = activeProvider === p;
-								return (
-									<button
-										key={p}
-										onClick={() => setActiveProvider(p)}
-										className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold transition-all cursor-pointer ${
-											isSelected
-												? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-xs shadow-cyan-500/20 font-bold"
-												: "bg-white/[0.04] text-zinc-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.04]"
-										}`}
-									>
-										{p}
-									</button>
-								);
-							})}
-						</div>
-					</div>
-				)}
 
 				{/* Channels Horizontal Carousel Shelf */}
 				<div className="relative flex-1 flex items-center p-3 sm:p-5 overflow-hidden group/shelf">
@@ -396,26 +485,26 @@ export const AppleTVChannelShelf: React.FC = () => {
 										openNativeYouTube();
 										closeChannelDrawer();
 									}}
-									className="w-48 sm:w-52 h-28 sm:h-32 shrink-0 rounded-2xl bg-gradient-to-tr from-red-950/80 via-red-900/60 to-red-800/40 border-2 border-red-500/60 hover:border-red-400 p-3 sm:p-4 flex flex-col justify-between cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xl shadow-red-900/30 group"
+									className="w-48 sm:w-52 h-28 sm:h-32 shrink-0 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-red-950/40 border border-white/10 hover:border-red-500/40 p-3.5 flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-all duration-200 shadow-lg group"
 									title="Launch official YouTube (youtube.com with Gmail sign-in, search & 4K)"
 								>
 									<div className="flex items-center justify-between">
-										<div className="h-7 px-2.5 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center shadow-lg">
+										<div className="h-7 px-2.5 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center shadow-md">
 											<img
 												src="/youtube.svg"
 												alt="YouTube"
 												className="h-4 w-auto object-contain"
 											/>
 										</div>
-										<span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-black tracking-wider">
+										<span className="px-2 py-0.5 rounded-md bg-white/10 text-white/80 text-[9px] font-semibold tracking-wider">
 											OFFICIAL
 										</span>
 									</div>
 									<div>
-										<h4 className="text-xs sm:text-sm font-black text-white group-hover:text-red-300 transition-colors">
+										<h4 className="text-xs sm:text-sm font-semibold text-white group-hover:text-red-300 transition-colors">
 											YouTube
 										</h4>
-										<p className="text-[9px] sm:text-[10px] text-zinc-300 mt-0.5 line-clamp-1">
+										<p className="text-[9px] sm:text-[10px] text-white/50 mt-0.5 line-clamp-1">
 											Search • 4K HDR • Sign-in
 										</p>
 									</div>
@@ -427,26 +516,26 @@ export const AppleTVChannelShelf: React.FC = () => {
 										openNativeHotstar();
 										closeChannelDrawer();
 									}}
-									className="w-48 sm:w-52 h-28 sm:h-32 shrink-0 rounded-2xl bg-gradient-to-tr from-blue-950/80 via-blue-900/60 to-indigo-900/40 border-2 border-blue-500/60 hover:border-blue-400 p-3 sm:p-4 flex flex-col justify-between cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xl shadow-blue-900/30 group"
+									className="w-48 sm:w-52 h-28 sm:h-32 shrink-0 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-blue-950/40 border border-white/10 hover:border-blue-500/40 p-3.5 flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-all duration-200 shadow-lg group"
 									title="Launch JioHotstar Live Stream"
 								>
 									<div className="flex items-center justify-between">
-										<div className="h-7 px-2.5 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center shadow-lg">
+										<div className="h-7 px-2.5 rounded-lg bg-black/40 border border-white/10 flex items-center justify-center shadow-md">
 											<img
 												src="/jiohotstar_spark.png"
 												alt="JioHotstar"
-												className="h-5 w-auto object-contain drop-shadow"
+												className="h-4.5 w-auto object-contain drop-shadow"
 											/>
 										</div>
-										<span className="px-2 py-0.5 rounded-full bg-blue-600 text-white text-[9px] font-black tracking-wider">
+										<span className="px-2 py-0.5 rounded-md bg-white/10 text-white/80 text-[9px] font-semibold tracking-wider">
 											OFFICIAL
 										</span>
 									</div>
 									<div>
-										<h4 className="text-xs sm:text-sm font-black text-white group-hover:text-blue-300 transition-colors">
+										<h4 className="text-xs sm:text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">
 											JioHotstar
 										</h4>
-										<p className="text-[9px] sm:text-[10px] text-zinc-300 mt-0.5 line-clamp-1">
+										<p className="text-[9px] sm:text-[10px] text-white/50 mt-0.5 line-clamp-1">
 											Live Sports • Movies • Specials
 										</p>
 									</div>
@@ -460,26 +549,26 @@ export const AppleTVChannelShelf: React.FC = () => {
 									openNativeYouTube();
 									closeChannelDrawer();
 								}}
-								className="w-80 h-32 shrink-0 rounded-2xl bg-gradient-to-tr from-red-950/90 via-red-900/70 to-red-800/50 border-2 border-red-500/70 hover:border-red-400 p-4 flex flex-col justify-between cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xl shadow-red-900/40 group"
+								className="w-80 h-32 shrink-0 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-red-950/40 border border-white/10 hover:border-red-500/40 p-4 flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-all duration-200 shadow-xl group"
 								title="Launch official YouTube (youtube.com with Gmail sign-in, search & 4K)"
 							>
 								<div className="flex items-center justify-between">
-									<div className="h-8 px-3 rounded-lg bg-black/50 border border-white/10 flex items-center justify-center shadow-lg">
+									<div className="h-8 px-3 rounded-lg bg-black/50 border border-white/10 flex items-center justify-center shadow-md">
 										<img
 											src="/youtube.svg"
 											alt="YouTube"
 											className="h-5 w-auto object-contain"
 										/>
 									</div>
-									<span className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[9px] font-black tracking-wider">
-										LAUNCH WEB
+									<span className="px-2 py-0.5 rounded-md bg-white/10 text-white/80 text-[9px] font-semibold tracking-wider">
+										LAUNCH
 									</span>
 								</div>
 								<div>
-									<h4 className="text-sm font-black text-white group-hover:text-red-300 transition-colors">
+									<h4 className="text-sm font-semibold text-white group-hover:text-red-300 transition-colors">
 										Open Official YouTube
 									</h4>
-									<p className="text-[10px] text-zinc-300 mt-0.5">
+									<p className="text-[10px] text-white/50 mt-0.5">
 										Click to browse youtube.com, search videos, or sign in with
 										your Gmail account
 									</p>
@@ -491,26 +580,26 @@ export const AppleTVChannelShelf: React.FC = () => {
 									openNativeHotstar();
 									closeChannelDrawer();
 								}}
-								className="w-80 h-32 shrink-0 rounded-2xl bg-gradient-to-tr from-blue-950/90 via-blue-900/70 to-indigo-900/50 border-2 border-blue-500/70 hover:border-blue-400 p-4 flex flex-col justify-between cursor-pointer hover:scale-105 active:scale-95 transition-all shadow-xl shadow-blue-900/40 group"
+								className="w-80 h-32 shrink-0 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-blue-950/40 border border-white/10 hover:border-blue-500/40 p-4 flex flex-col justify-between cursor-pointer hover:scale-[1.02] transition-all duration-200 shadow-xl group"
 								title="Launch JioHotstar Live Stream"
 							>
 								<div className="flex items-center justify-between">
-									<div className="h-8 px-3 rounded-lg bg-black/50 border border-white/10 flex items-center justify-center shadow-lg">
+									<div className="h-8 px-3 rounded-lg bg-black/50 border border-white/10 flex items-center justify-center shadow-md">
 										<img
 											src="/jiohotstar_white.png"
 											alt="JioHotstar"
-											className="h-6 w-auto object-contain drop-shadow"
+											className="h-5 w-auto object-contain drop-shadow"
 										/>
 									</div>
-									<span className="px-2.5 py-0.5 rounded-full bg-blue-600 text-white text-[9px] font-black tracking-wider">
-										LAUNCH WEB
+									<span className="px-2 py-0.5 rounded-md bg-white/10 text-white/80 text-[9px] font-semibold tracking-wider">
+										LAUNCH
 									</span>
 								</div>
 								<div>
-									<h4 className="text-sm font-black text-white group-hover:text-blue-300 transition-colors">
+									<h4 className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">
 										Open JioHotstar
 									</h4>
-									<p className="text-[10px] text-zinc-300 mt-0.5">
+									<p className="text-[10px] text-white/50 mt-0.5">
 										Stream live sports, blockbuster movies, and Disney+ Hotstar
 										specials
 									</p>
