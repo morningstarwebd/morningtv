@@ -37,6 +37,7 @@ pub struct ProbeResult {
     pub ok: bool,
     pub active_url: String,
     pub latency_ms: u64,
+    pub score: i64,
 }
 
 pub const UPSTREAM_PROVIDERS: &[UpstreamProvider] = &[
@@ -210,8 +211,10 @@ pub fn is_vip_channel(name: &str, id: &str) -> bool {
 
 pub const KNOWN_BACKUP_MIRRORS: &[(&str, &[&str])] = &[
     ("colorshd", &["https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8"]),
-    ("zeebangla", &["https://live-bangla.akamaized.net/liveabr/playlist.m3u8"]),
+    ("zeebangla", &["https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/ZeeBanglaHD.m3u8"]),
     ("starjalsha", &["https://da86m1sqpm3o0.cloudfront.net/28072023/smil:starjalsha.smil/chunklist_b1928000.m3u8"]),
+    ("sonyaath", &["https://cloudplay-sonyliv.pages.dev/aath.m3u8"]),
+    ("sonymax", &["https://cloudplay-sonyliv.pages.dev/max.m3u8"]),
 ];
 
 pub fn matches_backup_mirror_key(channel_name: &str, tvg_id: &str, key: &str) -> bool {
@@ -250,11 +253,114 @@ pub fn matches_backup_mirror_key(channel_name: &str, tvg_id: &str, key: &str) ->
         "starjalsha" => {
             norm_name.starts_with("starjalsha") || norm_id.starts_with("starjalsha")
         }
+        "sonyaath" => {
+            norm_name.contains("sonyaath") || norm_id.contains("sonyaath")
+        }
+        "sonymax" => {
+            (norm_name.contains("sonymax") || norm_id.contains("sonymax")) && !norm_name.contains("max2")
+        }
         "tsports" => {
             norm_name == "tsports" || norm_id.starts_with("tsports")
         }
         _ => norm_name == key || norm_id == key,
     }
+}
+
+/// Detects if an external candidate URL is mismatched with the channel's identity
+pub fn is_stream_mismatched(channel_name: &str, stream_url: &str) -> bool {
+    let c_norm: String = channel_name
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric())
+        .collect();
+    let u_norm = stream_url.to_lowercase();
+
+    // Specific protection against cross-channel pollution
+    if c_norm.contains("zeebangla") {
+        if u_norm.contains("iobangla")
+            || u_norm.contains("enterr10")
+            || u_norm.contains("gazitv")
+            || u_norm.contains("starjalsha")
+            || u_norm.contains("ngchd")
+            || u_norm.contains("colors")
+        {
+            return true;
+        }
+    }
+    if c_norm.contains("starjalsha") {
+        if (!c_norm.contains("movie") && u_norm.contains("jalshamovies"))
+            || u_norm.contains("starplus")
+            || u_norm.contains("starbharat")
+            || u_norm.contains("starsports")
+            || u_norm.contains("zeebangla")
+            || u_norm.contains("iobangla")
+            || u_norm.contains("colors")
+            || u_norm.contains("ngchd")
+        {
+            return true;
+        }
+    }
+    if c_norm == "colors" || c_norm == "colorshd" || c_norm == "colorsin" {
+        if u_norm.contains("colorsbangla")
+            || u_norm.contains("colorscineplex")
+            || u_norm.contains("colorsgujarati")
+            || u_norm.contains("colorsmarathi")
+            || u_norm.contains("colorstamil")
+            || u_norm.contains("colorskannada")
+            || u_norm.contains("iobangla")
+            || u_norm.contains("zeebangla")
+            || u_norm.contains("enterr10")
+        {
+            return true;
+        }
+    }
+    if c_norm.contains("zeecinema") {
+        if u_norm.contains("ngchd") || u_norm.contains("zeebangla") || u_norm.contains("zeetv") {
+            return true;
+        }
+    }
+    false
+}
+
+/// Computes multi-factor quality & CDN reliability score for ranking candidate streams
+pub fn calculate_stream_score(url: &str, latency_ms: u64) -> i64 {
+    let mut score: i64 = 1000;
+    let lower = url.to_lowercase();
+
+    // Major Global & Indian CDNs get high priority boost (+300)
+    let is_major_cdn = lower.contains("cloudfront.net")
+        || lower.contains("akamaized.net")
+        || lower.contains("akamaihd.net")
+        || lower.contains("cloudflare.com")
+        || lower.contains("fastly.net")
+        || lower.contains("tatacommunications")
+        || lower.contains("pages.dev");
+
+    if is_major_cdn {
+        score += 300;
+    }
+
+    // Standard HTTPS (Port 443) (+150)
+    if lower.starts_with("https://") {
+        score += 150;
+    }
+
+    // Heavy penalty for Raw IP addresses with non-standard ports (e.g. :3141, :8080) (-500)
+    if let Some(rest) = url.split("://").nth(1) {
+        let host_port = rest.split('/').next().unwrap_or("");
+        if let Some((host, port_str)) = host_port.split_once(':') {
+            let is_ip = host.chars().all(|c| c.is_ascii_digit() || c == '.');
+            let is_standard_port = port_str == "80" || port_str == "443";
+            if is_ip && !is_standard_port {
+                score -= 500;
+            }
+        }
+    }
+
+    // Latency penalty (capped)
+    score -= (latency_ms / 10).min(300) as i64;
+
+    score
 }
 
 pub fn clean_channel_name(name: &str) -> String {
@@ -526,6 +632,7 @@ pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResul
             ok: false,
             active_url: url.to_string(),
             latency_ms: u64::MAX,
+            score: i64::MIN,
         };
     }
 
@@ -566,10 +673,12 @@ pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResul
 
                     if is_valid_stream_payload_with_content_type(&bytes, &ct) {
                         let latency_ms = t0.elapsed().as_millis() as u64;
+                        let score = calculate_stream_score(&effective_url, latency_ms);
                         return ProbeResult {
                             ok: true,
                             active_url: effective_url,
                             latency_ms,
+                            score,
                         };
                     }
                 }
@@ -581,6 +690,7 @@ pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResul
                         ok: false,
                         active_url: url.to_string(),
                         latency_ms: u64::MAX,
+                        score: i64::MIN,
                     };
                 }
 
@@ -590,6 +700,7 @@ pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResul
                         ok: false,
                         active_url: url.to_string(),
                         latency_ms: u64::MAX,
+                        score: i64::MIN,
                     };
                 }
             }
@@ -606,6 +717,7 @@ pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResul
         ok: false,
         active_url: url.to_string(),
         latency_ms: u64::MAX,
+        score: i64::MIN,
     }
 }
 
@@ -848,12 +960,14 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 Err(_) => return None,
             };
 
-            // Compile all candidate URLs for this channel (primary + all fallbacks)
+            // Compile all candidate URLs for this channel (filtering out mismatched cross-channel streams)
             let mut candidate_urls = Vec::with_capacity(1 + ch.fallbacks.len());
-            candidate_urls.push(ch.url.clone());
+            if !is_stream_mismatched(&ch.name, &ch.url) {
+                candidate_urls.push(ch.url.clone());
+            }
             for fb in &ch.fallbacks {
                 let trimmed = fb.trim().to_string();
-                if !trimmed.is_empty() && !candidate_urls.contains(&trimmed) {
+                if !trimmed.is_empty() && !candidate_urls.contains(&trimmed) && !is_stream_mismatched(&ch.name, &trimmed) {
                     candidate_urls.push(trimmed);
                 }
             }
@@ -882,8 +996,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 dead.fetch_add(1, Ordering::Relaxed);
                 None
             } else {
-                // Sort working streams by response latency ascending (lowest ping first)
-                working_streams.sort_by_key(|w| w.latency_ms);
+                // Sort working streams by multi-factor score descending (highest CDN reliability & speed first)
+                working_streams.sort_by(|a, b| b.score.cmp(&a.score));
 
                 let mut c = ch;
                 let primary_stream = working_streams.remove(0);

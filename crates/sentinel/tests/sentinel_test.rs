@@ -2,8 +2,9 @@
 // Unit tests for the MorningTV Sentinel Engine
 
 use sentinel::{
-    extract_attribute, format_m3u, is_valid_stream_payload, is_valid_stream_payload_with_content_type,
-    is_vip_channel, matches_backup_mirror_key, normalize_channel_key, parse_m3u, ChannelItem,
+    calculate_stream_score, extract_attribute, format_m3u, is_stream_mismatched,
+    is_valid_stream_payload, is_valid_stream_payload_with_content_type, is_vip_channel,
+    matches_backup_mirror_key, normalize_channel_key, parse_m3u, ChannelItem,
 };
 
 #[test]
@@ -201,3 +202,34 @@ fn test_multimedia_payload_dash_webm_flv_and_content_type() {
     let html_err = b"<!DOCTYPE html><html><body>Error 404</body></html>";
     assert!(!is_valid_stream_payload_with_content_type(html_err, "video/mp4"));
 }
+
+#[test]
+fn test_stream_score_and_mismatch_prevention() {
+    // 1. CDN and HTTPS boost vs Raw IP penalty
+    let cdn_url = "https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8";
+    let raw_ip_url = "http://51.75.127.199:3141/colorssd/index.m3u8";
+
+    let cdn_score = calculate_stream_score(cdn_url, 120);
+    let ip_score = calculate_stream_score(raw_ip_url, 80);
+
+    // CDN must heavily beat raw IP even if raw IP ping appeared lower in Europe CI
+    assert!(cdn_score > ip_score, "CDN score ({}) must exceed raw IP score ({})", cdn_score, ip_score);
+
+    // 2. Stream mismatch prevention
+    // Zee Bangla should REJECT an Enterr10 or iobangla stream
+    assert!(is_stream_mismatched("Zee Bangla HD", "https://live-bangla.akamaized.net/liveabr/pub-iobanglakp3sff/playlist.m3u8"));
+    assert!(is_stream_mismatched("Zee Bangla", "https://stream.server.com/live/enterr10bangla/index.m3u8"));
+
+    // Zee Bangla should ACCEPT valid Zee Bangla stream
+    assert!(!is_stream_mismatched("Zee Bangla HD", "https://raw.githubusercontent.com/.../ZeeBanglaHD.m3u8"));
+    assert!(!is_stream_mismatched("Zee Bangla", "http://server/zeebanglahd/index.m3u8"));
+
+    // Star Jalsha should REJECT Star Plus or Jalsha Movies
+    assert!(is_stream_mismatched("Star Jalsha", "https://cdn.example.com/live/starplus/index.m3u8"));
+    assert!(is_stream_mismatched("Star Jalsha", "https://cdn.example.com/live/jalshamovies/index.m3u8"));
+
+    // Colors Hindi should REJECT Colors Bangla or Colors Kannada
+    assert!(is_stream_mismatched("Colors", "https://cdn.example.com/colorsbangla/index.m3u8"));
+    assert!(!is_stream_mismatched("Colors HD", "https://cdn.example.com/ColorsHD/default/ColorsHD.m3u8"));
+}
+

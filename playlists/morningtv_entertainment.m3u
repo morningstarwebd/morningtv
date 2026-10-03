@@ -67,7 +67,6 @@ https://stream.thingnet.vn/live/smil:CRTV.smil/chunklist.m3u8
 https://cgentertainment-cgtv-1-it.samsung.wurl.tv/playlist.m3u8
 #EXTINF:-1 tvg-id="Colors.in@SD" tvg-name="Colors (576p)" tvg-logo="https://i.imgur.com/M8uCJ0D.png" group-title="Entertainment" provider="IPTV-Org Hindi",Colors (576p)
 #EXTFALLBACK: http://51.75.127.199:3141/colorssd/index.m3u8
-#EXTFALLBACK: https://live-bangla.akamaized.net/liveabr/playlist.m3u8
 https://d1g8wgjurz8via.cloudfront.net/bpk-tv/ColorsHD/default/ColorsHD.m3u8
 #EXTINF:-1 tvg-id="ColorsRishteyAmericas.in@SD" tvg-name="Colors Rishtey Americas (396p)" tvg-logo="https://i.imgur.com/xkOunuW.png" group-title="General" provider="IPTV-Org Hindi",Colors Rishtey Americas (396p)
 https://manatv.akamaized.net/090823/smil:ristheyamerica.smil/playlist.m3u8
@@ -155,9 +154,9 @@ http://120.70.60.179:9901/tsfile/live/1002_1.m3u8?authid=0&key=txiptv&playlive=1
 https://tv.vtibet.cn/live/r31M7Qa5hm7wrP.m3u8?secret=eb62ff9d9c8f8a145e9a333ca0a52ba0&time=6abf7a2f
 #EXTINF:-1 tvg-id="YachtingTV.cz@SD" tvg-name="Yachting TV (1080p)" tvg-logo="https://i.imgur.com/YxO60B1.png" group-title="Lifestyle" provider="IPTV-Org",Yachting TV (1080p)
 https://streams2.sofast.tv/vglive-sk-461164/index.m3u8
-#EXTINF:-1 tvg-id="ZeeBangla.in@HD" tvg-name="Zee Bangla HD (1080p)" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ZEE_BANGLA/images/LOGO_HD/LOGO_HD_image.png" group-title="Entertainment" provider="IPTV-Org Bangladesh",Zee Bangla HD (1080p)
-#EXTFALLBACK: https://live-bangla.akamaized.net/liveabr/playlist.m3u8
-http://51.75.127.199:3141/zeebanglahd/index.m3u8
+#EXTINF:-1 tvg-id="ZeeBangla.in@HD" tvg-name="Zee Bangla HD (1080p)" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ZEE_BANGLA/images/LOGO_HD/LOGO_HD_image.png" group-title="Entertainment" provider="AdaptiveStreams YuppTV",Zee Bangla HD (1080p)
+#EXTFALLBACK: http://51.75.127.199:3141/zeebanglahd/index.m3u8
+https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/ZeeBanglaHD.m3u8
 #EXTINF:-1 tvg-id="ZeeTV.in@SD" tvg-name="Zee TV (576p)" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ZEE_TV/images/LOGO_HD/LOGO_HD_image.png" group-title="Entertainment" provider="IPTV-Org Hindi",Zee TV (576p)
 #EXTFALLBACK: http://41.205.93.154/ZEE-TV/index.m3u8
 http://51.75.127.199:3141/zeetv/index.m3u8
