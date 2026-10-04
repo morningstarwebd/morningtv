@@ -9,15 +9,18 @@ import {
 	type UpdateStatus,
 	updaterService,
 } from "../services/updaterService";
+
 import type {
 	AppSettings,
 	AspectRatio,
 	Channel,
+	ProviderDetectionResult,
 	QualityLevel,
 	QualityTier,
 	StreamHealthStatus,
 	SyncProgressPayload,
 } from "../types";
+
 import { APP_VERSION, formatIpcError, getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
 import {
@@ -84,6 +87,9 @@ interface AppState {
 	activeYouTubeVideoId: string | null;
 	isSettingsOpen: boolean;
 	isShortcutsOpen: boolean;
+	isAiAssistantOpen: boolean;
+	aiAvatarPreset: "nova" | "jarvis" | "astra" | "retro" | "custom";
+	aiCustomAvatarUrl: string;
 	ambientGlow: boolean;
 	settings: AppSettings | null;
 	hideRegionBlocked: boolean;
@@ -92,6 +98,17 @@ interface AppState {
 	toast: { message: string; isError: boolean } | null;
 
 	// Actions
+	openAiAssistant: () => void;
+	closeAiAssistant: () => void;
+	toggleAiAssistant: () => void;
+	setAiAvatarPreset: (
+		preset: "nova" | "jarvis" | "astra" | "retro" | "custom",
+	) => void;
+	setAiCustomAvatarUrl: (url: string) => void;
+	executeAiAction: (
+		action: string,
+		param?: string,
+	) => Promise<string | undefined>;
 	init: () => Promise<void>;
 	fetchStartupStatus: () => Promise<void>;
 	toggleStartupStatus: (enabled: boolean) => Promise<void>;
@@ -187,6 +204,23 @@ interface AppState {
 	startDownloadUpdate: () => Promise<void>;
 	dismissUpdate: () => void;
 	relaunchApp: () => Promise<void>;
+
+	// AI Brain & Custom Sources
+	updateGroqApiKey: (key: string | null) => Promise<void>;
+	toggleAiBrain: () => Promise<void>;
+	addCustomSource: (url: string) => Promise<void>;
+	removeCustomSource: (url: string) => Promise<void>;
+	testGroqKey: (key: string) => Promise<{ success: boolean; message: string }>;
+	verifyAiKey: (
+		key: string,
+		endpoint?: string | null,
+	) => Promise<ProviderDetectionResult>;
+	saveAiConfiguration: (config: {
+		apiKey: string | null;
+		provider?: string | null;
+		model?: string | null;
+		endpoint?: string | null;
+	}) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -254,6 +288,20 @@ export const useAppStore = create<AppState>((set, get) => ({
 	activeYouTubeVideoId: null,
 	isSettingsOpen: false,
 	isShortcutsOpen: false,
+	isAiAssistantOpen: false,
+	aiAvatarPreset:
+		(typeof localStorage !== "undefined" &&
+			(localStorage.getItem("morningtv_ai_avatar") as
+				| "nova"
+				| "jarvis"
+				| "astra"
+				| "retro"
+				| "custom")) ||
+		"nova",
+	aiCustomAvatarUrl:
+		(typeof localStorage !== "undefined" &&
+			localStorage.getItem("morningtv_ai_custom_avatar")) ||
+		"",
 	ambientGlow: true,
 	settings: null,
 	hideRegionBlocked: false,
@@ -523,6 +571,117 @@ export const useAppStore = create<AppState>((set, get) => ({
 			await invoke("open_github_url");
 		} catch {
 			window.open("https://github.com/morningstarwebd/morningtv", "_blank");
+		}
+	},
+
+	updateGroqApiKey: async (key: string | null) => {
+		const { settings } = get();
+		if (!settings) return;
+		const next = { ...settings, groq_api_key: key };
+		set({ settings: next });
+		try {
+			await invoke("save_settings", { settings: next });
+			get().showToast(
+				key ? "✅ Groq API key saved" : "Groq API key removed",
+				false,
+			);
+		} catch (err) {
+			get().showToast(`Failed to save Groq key: ${err}`, true);
+		}
+	},
+
+	toggleAiBrain: async () => {
+		const { settings } = get();
+		if (!settings) return;
+		const nextState = !settings.ai_brain_enabled;
+		const next = { ...settings, ai_brain_enabled: nextState };
+		set({ settings: next });
+		try {
+			await invoke("save_settings", { settings: next });
+			get().showToast(
+				nextState
+					? "🧠 AI Brain enabled for smart stream healing"
+					: "AI Brain disabled",
+				false,
+			);
+		} catch (err) {
+			get().showToast(`Failed to update AI Brain setting: ${err}`, true);
+		}
+	},
+
+	addCustomSource: async (url: string) => {
+		try {
+			const updated = await invoke<AppSettings>("add_custom_upstream_source", {
+				sourceUrl: url,
+			});
+			set({ settings: updated });
+			get().showToast("✅ Custom upstream source added", false);
+		} catch (err) {
+			get().showToast(`Failed to add source: ${err}`, true);
+		}
+	},
+
+	removeCustomSource: async (url: string) => {
+		try {
+			const updated = await invoke<AppSettings>(
+				"remove_custom_upstream_source",
+				{
+					sourceUrl: url,
+				},
+			);
+			set({ settings: updated });
+			get().showToast("Custom source removed", false);
+		} catch (err) {
+			get().showToast(`Failed to remove source: ${err}`, true);
+		}
+	},
+
+	testGroqKey: async (key: string) => {
+		try {
+			const message = await invoke<string>("test_groq_api_key", {
+				apiKey: key,
+			});
+			return { success: true, message };
+		} catch (err) {
+			return { success: false, message: String(err) };
+		}
+	},
+
+	verifyAiKey: async (key: string, endpoint?: string | null) => {
+		return await invoke<ProviderDetectionResult>("verify_ai_provider_key", {
+			apiKey: key,
+			endpoint: endpoint || null,
+		});
+	},
+
+	saveAiConfiguration: async (config: {
+		apiKey: string | null;
+		provider?: string | null;
+		model?: string | null;
+		endpoint?: string | null;
+	}) => {
+		const { settings } = get();
+		if (!settings) return;
+		const next: AppSettings = {
+			...settings,
+			ai_api_key: config.apiKey,
+			groq_api_key: config.apiKey,
+			ai_provider: config.provider || null,
+			ai_model: config.model || null,
+			ai_endpoint: config.endpoint || null,
+			ai_brain_enabled: Boolean(config.apiKey),
+		};
+		set({ settings: next });
+		try {
+			await invoke("save_settings", { settings: next });
+			get().showToast(
+				config.apiKey
+					? `✅ AI Engine connected (${config.provider || "Active"})`
+					: "AI API key removed",
+				false,
+			);
+		} catch (err) {
+			get().showToast(`Failed to save AI configuration: ${err}`, true);
 		}
 	},
 
@@ -808,6 +967,95 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 	openShortcuts: () => set({ isShortcutsOpen: true }),
 	closeShortcuts: () => set({ isShortcutsOpen: false }),
+
+	openAiAssistant: () => set({ isAiAssistantOpen: true }),
+	closeAiAssistant: () => set({ isAiAssistantOpen: false }),
+	toggleAiAssistant: () =>
+		set((state) => ({ isAiAssistantOpen: !state.isAiAssistantOpen })),
+
+	setAiAvatarPreset: (preset) => {
+		if (typeof localStorage !== "undefined") {
+			localStorage.setItem("morningtv_ai_avatar", preset);
+		}
+		set({ aiAvatarPreset: preset });
+	},
+
+	setAiCustomAvatarUrl: (url) => {
+		if (typeof localStorage !== "undefined") {
+			localStorage.setItem("morningtv_ai_custom_avatar", url);
+		}
+		set({ aiCustomAvatarUrl: url });
+	},
+
+	executeAiAction: async (action: string, param?: string) => {
+		const store = get();
+		if (action === "play_channel" && param) {
+			const target = param.toLowerCase().trim();
+			const found = store.allChannels.find((c) => {
+				const n = c.name.toLowerCase();
+				return n.includes(target) || target.includes(n);
+			});
+			if (found) {
+				await store.selectChannel(found);
+				return `✅ "${found.name}" চালু করা হয়েছে`;
+			}
+			try {
+				const healed = await invoke<Channel | null>("ai_hunt_and_heal", {
+					channelName: param,
+				});
+				if (healed) {
+					await store.selectChannel(healed);
+					return `⚡ ইন্টারনেট থেকে "${healed.name}" এর লাইভ স্ট্রিম উদ্ধার করে চালু করা হলো!`;
+				}
+			} catch {}
+			return `"${param}" চ্যানেলটি পাওয়া যায়নি`;
+		}
+
+		if (action === "set_volume" && param) {
+			const vol = Number.parseInt(param, 10);
+			if (!Number.isNaN(vol)) {
+				store.setVolume(Math.max(0, Math.min(100, vol)));
+				return `ভলিউম ${vol}% করা হলো`;
+			}
+		}
+
+		if (action === "toggle_mute") {
+			store.toggleMute();
+			return "মিউট স্ট্যাটাস পরিবর্তন করা হয়েছে";
+		}
+
+		if (action === "hunt_stream" && param) {
+			store.showToast(`🔍 ইন্টারনেট থেকে "${param}" এর স্ট্রিম খোঁজা হচ্ছে...`, false);
+			try {
+				const healed = await invoke<Channel | null>("ai_hunt_and_heal", {
+					channelName: param,
+				});
+				if (healed) {
+					await store.selectChannel(healed);
+					return `✅ "${healed.name}" এর লাইভ সিগন্যাল উদ্ধার করা হয়েছে ও সেভ করা হয়েছে!`;
+				}
+				return `"${param}" এর কোনো সক্রিয় স্ট্রিম পাওয়া যায়নি`;
+			} catch (e) {
+				return `হিলিং করতে সমস্যা হয়েছে: ${e}`;
+			}
+		}
+
+		if (action === "set_category" && param) {
+			store.setCategory(param);
+			return `ক্যাটাগরি "${param}" ফিল্টার করা হলো`;
+		}
+
+		if (action === "toggle_fullscreen") {
+			if (!document.fullscreenElement) {
+				document.documentElement.requestFullscreen().catch(() => {});
+				return "ফুলস্ক্রিন মোড চালু করা হলো";
+			}
+			document.exitFullscreen().catch(() => {});
+			return "ফুলস্ক্রিন মোড বন্ধ করা হলো";
+		}
+
+		return undefined;
+	},
 
 	updatePlaylist: async (url: string) => {
 		try {

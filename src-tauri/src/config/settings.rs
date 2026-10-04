@@ -21,6 +21,20 @@ pub struct AppSettings {
     pub hide_region_blocked: bool,
     #[serde(default)]
     pub show_only_verified: bool,
+    #[serde(default)]
+    pub groq_api_key: Option<String>,
+    #[serde(default)]
+    pub ai_api_key: Option<String>,
+    #[serde(default)]
+    pub ai_provider: Option<String>,
+    #[serde(default)]
+    pub ai_model: Option<String>,
+    #[serde(default)]
+    pub ai_endpoint: Option<String>,
+    #[serde(default)]
+    pub ai_brain_enabled: bool,
+    #[serde(default)]
+    pub custom_upstream_sources: Vec<String>,
 }
 
 impl Default for AppSettings {
@@ -35,6 +49,13 @@ impl Default for AppSettings {
             last_played_channel_id: None,
             hide_region_blocked: false,
             show_only_verified: false,
+            groq_api_key: None,
+            ai_api_key: None,
+            ai_provider: None,
+            ai_model: None,
+            ai_endpoint: None,
+            ai_brain_enabled: false,
+            custom_upstream_sources: Vec::new(),
         }
     }
 }

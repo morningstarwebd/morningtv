@@ -65,6 +65,7 @@ impl ClientSentinel {
         client: &reqwest::Client,
         channel: &mut Channel,
         repo: &ChannelCacheRepository,
+        settings: &crate::config::AppSettings,
     ) -> bool {
         // Step 1: Probe existing fallbacks
         for (i, fallback_url) in channel.fallback_urls.iter().enumerate() {
@@ -112,6 +113,99 @@ impl ClientSentinel {
                             "Self-healed channel from known backup mirror"
                         );
                         return true;
+                    }
+                }
+            }
+        }
+
+        // Step 3: Search User-Configured Custom Upstream Sources
+        if !settings.custom_upstream_sources.is_empty() {
+            for custom_url in &settings.custom_upstream_sources {
+                if let Ok(resp) = client.get(custom_url).timeout(Duration::from_secs(6)).send().await {
+                    if resp.status().is_success() {
+                        if let Ok(text) = resp.text().await {
+                            let items = sentinel::parse_m3u(&text, "Custom", "Custom Feed", false);
+                            let norm_target: String = channel
+                                .name
+                                .to_lowercase()
+                                .chars()
+                                .filter(|c| c.is_ascii_alphanumeric())
+                                .collect();
+                            for item in items {
+                                let norm_cand: String = item
+                                    .name
+                                    .to_lowercase()
+                                    .chars()
+                                    .filter(|c| c.is_ascii_alphanumeric())
+                                    .collect();
+                                if norm_cand == norm_target
+                                    || (norm_cand.len() > 3 && norm_target.contains(&norm_cand))
+                                    || (norm_target.len() > 3 && norm_cand.contains(&norm_target))
+                                {
+                                    let res = sentinel::probe_single_url(client, &item.url).await;
+                                    if res.ok {
+                                        let working_url = res.active_url;
+                                        let old_primary = std::mem::replace(&mut channel.url, working_url);
+                                        if !channel.fallback_urls.contains(&old_primary) {
+                                            channel.fallback_urls.insert(0, old_primary);
+                                        }
+                                        let _ = repo.update_channel_stream(
+                                            &channel.id.0,
+                                            &channel.url,
+                                            &channel.fallback_urls,
+                                        );
+                                        tracing::info!(
+                                            channel = %channel.name,
+                                            new_url = %channel.url,
+                                            source = %custom_url,
+                                            "Self-healed channel from custom upstream source"
+                                        );
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Step 4: AI Brain Smart Semantic Match if enabled
+        if settings.ai_brain_enabled {
+            if let Some(ref api_key) = settings.groq_api_key {
+                if !api_key.trim().is_empty() {
+                    let candidate_names: Vec<String> = sentinel::KNOWN_BACKUP_MIRRORS
+                        .iter()
+                        .map(|(k, _)| k.to_string())
+                        .collect();
+                    if let Ok(Some(matched_key)) =
+                        crate::network::AiBrain::smart_channel_match(api_key, &channel.name, &candidate_names).await
+                    {
+                        for &(key, mirrors) in sentinel::KNOWN_BACKUP_MIRRORS {
+                            if key == matched_key {
+                                for mirror in mirrors {
+                                    let res = sentinel::probe_single_url(client, mirror).await;
+                                    if res.ok {
+                                        let working_url = res.active_url;
+                                        let old_primary = std::mem::replace(&mut channel.url, working_url);
+                                        if !channel.fallback_urls.contains(&old_primary) {
+                                            channel.fallback_urls.insert(0, old_primary);
+                                        }
+                                        let _ = repo.update_channel_stream(
+                                            &channel.id.0,
+                                            &channel.url,
+                                            &channel.fallback_urls,
+                                        );
+                                        tracing::info!(
+                                            channel = %channel.name,
+                                            new_url = %channel.url,
+                                            "Self-healed channel via AI Brain semantic match"
+                                        );
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }

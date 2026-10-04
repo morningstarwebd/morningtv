@@ -121,6 +121,12 @@ pub fn run() {
             commands::set_startup_status,
             commands::open_github_url,
             commands::toggle_devtools,
+            commands::test_groq_api_key,
+            commands::add_custom_upstream_source,
+            commands::remove_custom_upstream_source,
+            commands::ask_ai_assistant,
+            commands::ai_voice_chat,
+            commands::ai_hunt_and_heal,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

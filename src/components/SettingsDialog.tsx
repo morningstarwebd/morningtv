@@ -2,13 +2,19 @@ import {
 	ArrowDownCircle,
 	Check,
 	Cloud,
+	Cpu,
 	ExternalLink,
+	Eye,
+	EyeOff,
 	Globe,
+	Key,
 	Monitor,
+	Plus,
 	Power,
 	RefreshCw,
 	ShieldCheck,
 	Sparkles,
+	Trash2,
 	Tv,
 	Volume2,
 	Wifi,
@@ -25,6 +31,7 @@ type TabType =
 	| "playlist"
 	| "cinema"
 	| "audio"
+	| "ai"
 	| "cloud"
 	| "system"
 	| "updates"
@@ -61,10 +68,53 @@ export const SettingsDialog: React.FC = () => {
 		startDownloadUpdate,
 		dismissUpdate,
 		relaunchApp,
+		settings,
+		toggleAiBrain,
+		addCustomSource,
+		removeCustomSource,
+		verifyAiKey,
+		saveAiConfiguration,
 	} = useAppStore();
 
 	const [activeTab, setActiveTab] = useState<TabType>("playlist");
 	const [isFetchingGitHub, setIsFetchingGitHub] = useState(false);
+	const [aiKeyInput, setAiKeyInput] = useState("");
+	const [aiEndpointInput, setAiEndpointInput] = useState("");
+	const [showAiKey, setShowAiKey] = useState(false);
+	const [showEndpointField, setShowEndpointField] = useState(false);
+	const [isVerifyingAi, setIsVerifyingAi] = useState(false);
+	const [aiVerifyResult, setAiVerifyResult] = useState<{
+		success: boolean;
+		provider_name?: string;
+		active_model?: string;
+		latency_ms?: number;
+		message: string;
+	} | null>(null);
+	const [newSourceInput, setNewSourceInput] = useState("");
+	const [isAddingSource, setIsAddingSource] = useState(false);
+
+	useEffect(() => {
+		const key = settings?.ai_api_key || settings?.groq_api_key || "";
+		setAiKeyInput(key);
+		if (settings?.ai_endpoint) {
+			setAiEndpointInput(settings.ai_endpoint);
+			setShowEndpointField(true);
+		}
+		if (settings?.ai_provider && key) {
+			setAiVerifyResult({
+				success: true,
+				provider_name: settings.ai_provider,
+				active_model: settings.ai_model || undefined,
+				message: `Connected: ${settings.ai_provider}${settings.ai_model ? ` (${settings.ai_model})` : ""}`,
+			});
+		}
+	}, [
+		settings?.ai_api_key,
+		settings?.groq_api_key,
+		settings?.ai_endpoint,
+		settings?.ai_provider,
+		settings?.ai_model,
+	]);
 
 	const handleFetchGitHub = async () => {
 		setIsFetchingGitHub(true);
@@ -137,6 +187,16 @@ export const SettingsDialog: React.FC = () => {
 			badgeStyle: "bg-emerald-500/20 text-emerald-300",
 		},
 		{
+			id: "ai" as TabType,
+			label: "AI Neural Engine",
+			desc: "Universal Copilot & Sources",
+			icon: Cpu,
+			badge:
+				settings?.ai_provider ||
+				(settings?.ai_api_key || settings?.groq_api_key ? "ACTIVE" : undefined),
+			badgeStyle: "bg-purple-500/20 text-purple-300 font-semibold",
+		},
+		{
 			id: "cloud" as TabType,
 			label: "Cloud Repository",
 			desc: "Verified channel sync",
@@ -182,78 +242,76 @@ export const SettingsDialog: React.FC = () => {
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Left Sidebar Navigation (Locked to exactly 240px - Zero Jitter/Shake) */}
-				<div className="w-[240px] min-w-[240px] max-w-[240px] h-full bg-black/40 border-r border-white/10 p-3.5 sm:p-4 flex flex-col justify-between shrink-0 backdrop-blur-xl select-none">
-					<div>
-						{/* App Branding */}
-						<div className="flex items-center gap-2.5 pb-4 mb-3 border-b border-white/10">
-							<MorningTVLogo className="w-8 h-8" glow={true} />
-							<div>
-								<h2 className="text-xs font-black text-white tracking-wider uppercase">
-									MorningTV
-								</h2>
-								<p className="text-[10px] text-zinc-300 font-medium">
-									Player Preferences
-								</p>
-							</div>
+				<div className="w-[240px] min-w-[240px] max-w-[240px] h-full bg-black/40 border-r border-white/10 p-3 sm:p-3.5 flex flex-col shrink-0 backdrop-blur-xl select-none">
+					{/* App Branding (shrink-0) */}
+					<div className="flex items-center gap-2.5 pb-3 mb-2 border-b border-white/10 shrink-0">
+						<MorningTVLogo className="w-7 h-7" glow={true} />
+						<div>
+							<h2 className="text-xs font-black text-white tracking-wider uppercase">
+								MorningTV
+							</h2>
+							<p className="text-[10px] text-zinc-300 font-medium">
+								Player Preferences
+							</p>
 						</div>
-
-						{/* Nav Pills */}
-						<nav className="flex flex-col gap-1.5 overflow-hidden">
-							{tabs.map((tab) => {
-								const Icon = tab.icon;
-								const isActive = activeTab === tab.id;
-								return (
-									<button
-										key={tab.id}
-										type="button"
-										onClick={() => setActiveTab(tab.id)}
-										className={`group flex items-center justify-between w-full p-2.5 rounded-xl text-left border cursor-pointer shrink-0 transition-colors duration-150 ${
-											isActive
-												? "bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-md shadow-cyan-600/30 border-cyan-400/40"
-												: "border-transparent text-zinc-300 hover:text-white hover:bg-white/[0.08]"
-										}`}
-									>
-										<div className="flex items-center gap-2 min-w-0">
-											<Icon
-												className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-													isActive
-														? "text-white"
-														: "text-zinc-400 group-hover:text-white"
-												}`}
-											/>
-											<div className="truncate">
-												<div className="text-xs font-bold truncate">
-													{tab.label}
-												</div>
-												<div
-													className={`text-[9px] block truncate ${
-														isActive ? "text-cyan-100" : "text-zinc-400"
-													}`}
-												>
-													{tab.desc}
-												</div>
-											</div>
-										</div>
-
-										{tab.badge && (
-											<span
-												className={`ml-1.5 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-													isActive
-														? "bg-white/20 text-white"
-														: tab.badgeStyle || "bg-white/10 text-cyan-300"
-												}`}
-											>
-												{tab.badge}
-											</span>
-										)}
-									</button>
-								);
-							})}
-						</nav>
 					</div>
 
-					{/* Bottom System Info */}
-					<div className="flex items-center justify-between pt-3 border-t border-white/10">
+					{/* Nav Pills (Scrollable inside, firmly contained within modal bounds) */}
+					<nav className="flex-1 min-h-0 overflow-y-auto no-scrollbar flex flex-col gap-1 pr-0.5">
+						{tabs.map((tab) => {
+							const Icon = tab.icon;
+							const isActive = activeTab === tab.id;
+							return (
+								<button
+									key={tab.id}
+									type="button"
+									onClick={() => setActiveTab(tab.id)}
+									className={`group flex items-center justify-between w-full p-2.5 rounded-xl text-left border cursor-pointer shrink-0 transition-colors duration-150 ${
+										isActive
+											? "bg-gradient-to-r from-cyan-600/80 to-blue-600/80 text-white shadow-md shadow-cyan-600/30 border-cyan-400/40"
+											: "border-transparent text-zinc-300 hover:text-white hover:bg-white/[0.08]"
+									}`}
+								>
+									<div className="flex items-center gap-2 min-w-0">
+										<Icon
+											className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+												isActive
+													? "text-white"
+													: "text-zinc-400 group-hover:text-white"
+											}`}
+										/>
+										<div className="truncate">
+											<div className="text-xs font-bold truncate">
+												{tab.label}
+											</div>
+											<div
+												className={`text-[9px] block truncate ${
+													isActive ? "text-cyan-100" : "text-zinc-400"
+												}`}
+											>
+												{tab.desc}
+											</div>
+										</div>
+									</div>
+
+									{tab.badge && (
+										<span
+											className={`ml-1.5 text-[9px] font-mono font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+												isActive
+													? "bg-white/20 text-white"
+													: tab.badgeStyle || "bg-white/10 text-cyan-300"
+											}`}
+										>
+											{tab.badge}
+										</span>
+									)}
+								</button>
+							);
+						})}
+					</nav>
+
+					{/* Bottom System Info (Firmly anchored at the bottom, zero clipping) */}
+					<div className="flex items-center justify-between pt-2.5 mt-2 border-t border-white/10 shrink-0">
 						<div className="flex items-center gap-1.5">
 							<span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
 							<span className="text-[10px] font-medium text-zinc-300">
@@ -275,6 +333,7 @@ export const SettingsDialog: React.FC = () => {
 								{activeTab === "playlist" && "Playlist & Channels"}
 								{activeTab === "cinema" && "Cinema & Display"}
 								{activeTab === "audio" && "Sound & Acoustics"}
+								{activeTab === "ai" && "AI Neural Engine & Sources"}
 								{activeTab === "cloud" && "Cloud Repository"}
 								{activeTab === "system" && "System & Startup"}
 								{activeTab === "updates" && "Software Update"}
@@ -287,6 +346,8 @@ export const SettingsDialog: React.FC = () => {
 									"Customize visual ambient lighting and stream buffer stability"}
 								{activeTab === "audio" &&
 									"Fine-tune channel volume balance and prevent sudden loudness spikes"}
+								{activeTab === "ai" &&
+									"Universal multi-model AI copilot (Groq, OpenAI, Gemini, Claude, OpenRouter, DeepSeek) & stream healing"}
 								{activeTab === "cloud" &&
 									"Sync verified channels and backup mirrors directly from cloud repository"}
 								{activeTab === "system" &&
@@ -639,6 +700,302 @@ export const SettingsDialog: React.FC = () => {
 											<div className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
 										</div>
 									</div>
+								</div>
+							</div>
+						)}
+
+						{/* TAB: AI BRAIN & SOURCES */}
+						{activeTab === "ai" && (
+							<div className="flex flex-col gap-3.5">
+								{/* Card 1: Universal AI Neural Engine */}
+								<div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col gap-3.5">
+									<div className="flex items-center justify-between gap-4">
+										<div className="flex items-center gap-3.5 min-w-0">
+											<div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 shadow-sm">
+												<Cpu className="w-5 h-5" />
+											</div>
+											<div className="min-w-0">
+												<div className="flex items-center gap-2">
+													<h4 className="text-sm font-semibold text-white tracking-normal">
+														AI Neural Engine
+													</h4>
+													<span className="px-1.5 py-0.5 text-[10px] font-medium rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+														{settings?.ai_provider || "Multi-Provider"}
+													</span>
+												</div>
+												<p className="text-[11px] text-zinc-400 mt-0.5">
+													Multi-model voice copilot, semantic channel navigation
+													& autonomous stream healing
+												</p>
+											</div>
+										</div>
+
+										{/* Toggle Switch */}
+										<button
+											type="button"
+											onClick={toggleAiBrain}
+											className={`w-12 h-6.5 rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer relative shrink-0 ${
+												settings?.ai_brain_enabled
+													? "bg-purple-600"
+													: "bg-white/10"
+											}`}
+										>
+											<div
+												className={`w-4.5 h-4.5 rounded-full bg-white transition-transform duration-200 ease-in-out shadow-sm ${
+													settings?.ai_brain_enabled
+														? "translate-x-5.5"
+														: "translate-x-0"
+												}`}
+											/>
+										</button>
+									</div>
+
+									{/* API Key Input Section */}
+									<div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+										<div className="flex items-center justify-between">
+											<label
+												htmlFor="universal-ai-key-input"
+												className="text-xs font-medium text-zinc-300 flex items-center gap-1.5"
+											>
+												<Key className="w-3.5 h-3.5 text-purple-400" />
+												<span>Universal AI API Key</span>
+											</label>
+											<span className="text-[10px] text-zinc-400">
+												Auto-detects Groq, OpenAI, Gemini, Claude, OpenRouter,
+												DeepSeek
+											</span>
+										</div>
+
+										<div className="flex items-center gap-2">
+											<div className="relative flex-1">
+												<input
+													id="universal-ai-key-input"
+													type={showAiKey ? "text" : "password"}
+													value={aiKeyInput}
+													onChange={(e) => setAiKeyInput(e.target.value)}
+													placeholder="Paste any API Key (gsk_..., sk-..., AIzaSy..., dsk_...)"
+													className="w-full px-3 py-2 pr-9 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 font-mono transition-colors"
+												/>
+												<button
+													type="button"
+													onClick={() => setShowAiKey(!showAiKey)}
+													className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+													title={showAiKey ? "Hide key" : "Show key"}
+												>
+													{showAiKey ? (
+														<EyeOff className="w-3.5 h-3.5" />
+													) : (
+														<Eye className="w-3.5 h-3.5" />
+													)}
+												</button>
+											</div>
+
+											{/* Verify & Connect Button */}
+											<button
+												type="button"
+												disabled={isVerifyingAi || !aiKeyInput.trim()}
+												onClick={async () => {
+													setIsVerifyingAi(true);
+													setAiVerifyResult(null);
+													try {
+														const res = await verifyAiKey(
+															aiKeyInput.trim(),
+															aiEndpointInput.trim() || null,
+														);
+														setAiVerifyResult(res);
+														if (res.success) {
+															await saveAiConfiguration({
+																apiKey: aiKeyInput.trim(),
+																provider: res.provider_name,
+																model: res.active_model,
+																endpoint: res.endpoint,
+															});
+														}
+													} catch (err) {
+														setAiVerifyResult({
+															success: false,
+															message: String(err),
+														});
+													} finally {
+														setIsVerifyingAi(false);
+													}
+												}}
+												className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-xs font-semibold text-white transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-md"
+											>
+												<Zap
+													className={`w-3.5 h-3.5 ${
+														isVerifyingAi ? "animate-spin" : ""
+													}`}
+												/>
+												<span>
+													{isVerifyingAi ? "Detecting..." : "Verify & Connect"}
+												</span>
+											</button>
+
+											{/* Clear / Disconnect if present */}
+											{(settings?.ai_api_key || settings?.groq_api_key) && (
+												<button
+													type="button"
+													onClick={async () => {
+														setAiKeyInput("");
+														setAiVerifyResult(null);
+														await saveAiConfiguration({
+															apiKey: null,
+															provider: null,
+															model: null,
+															endpoint: null,
+														});
+													}}
+													className="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/10 text-xs transition-colors cursor-pointer shrink-0"
+													title="Disconnect and remove key"
+												>
+													Disconnect
+												</button>
+											)}
+										</div>
+
+										{/* Custom Endpoint Option Toggle */}
+										<div className="pt-1">
+											<button
+												type="button"
+												onClick={() => setShowEndpointField(!showEndpointField)}
+												className="text-[11px] text-zinc-400 hover:text-purple-300 transition-colors flex items-center gap-1 cursor-pointer"
+											>
+												<span>
+													{showEndpointField ? "▼" : "▶"} Advanced: Custom
+													Endpoint (Ollama / Local AI)
+												</span>
+											</button>
+											{showEndpointField && (
+												<div className="mt-1.5 flex items-center gap-2 animate-in fade-in">
+													<input
+														type="url"
+														value={aiEndpointInput}
+														onChange={(e) => setAiEndpointInput(e.target.value)}
+														placeholder="http://localhost:11434/v1 or custom gateway"
+														className="flex-1 px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 font-mono"
+													/>
+												</div>
+											)}
+										</div>
+
+										{/* Test & Verification Result Card */}
+										{aiVerifyResult && (
+											<div
+												className={`mt-1 p-2.5 rounded-xl border text-xs flex flex-col gap-1 ${
+													aiVerifyResult.success
+														? "bg-emerald-500/10 border-emerald-500/25 text-emerald-200"
+														: "bg-rose-500/10 border-rose-500/25 text-rose-300"
+												}`}
+											>
+												<div className="flex items-center gap-2">
+													{aiVerifyResult.success ? (
+														<Check className="w-4 h-4 shrink-0 text-emerald-400" />
+													) : (
+														<X className="w-4 h-4 shrink-0 text-rose-400" />
+													)}
+													<span className="font-semibold">
+														{aiVerifyResult.success
+															? `${aiVerifyResult.provider_name || "Provider"} Connected Successfully`
+															: "Verification Failed"}
+													</span>
+													{aiVerifyResult.latency_ms !== undefined && (
+														<span className="ml-auto text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+															⚡ {aiVerifyResult.latency_ms}ms
+														</span>
+													)}
+												</div>
+												{aiVerifyResult.active_model && (
+													<p className="text-[11px] text-emerald-300/80 pl-6">
+														Active Model:{" "}
+														<span className="font-mono font-bold text-white">
+															{aiVerifyResult.active_model}
+														</span>
+													</p>
+												)}
+												<p className="text-[10px] opacity-80 pl-6">
+													{aiVerifyResult.message}
+												</p>
+											</div>
+										)}
+									</div>
+								</div>
+
+								{/* Card 2: Custom Upstream Sources */}
+								<div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col gap-3.5">
+									<div className="flex items-center gap-3.5 min-w-0">
+										<div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 shadow-sm">
+											<Globe className="w-5 h-5" />
+										</div>
+										<div className="min-w-0">
+											<h4 className="text-sm font-semibold text-white tracking-normal">
+												Custom Upstream Sources
+											</h4>
+											<p className="text-[11px] text-zinc-400 mt-0.5">
+												Add your own M3U playlist URLs for Sentinel to search &
+												heal channels
+											</p>
+										</div>
+									</div>
+
+									{/* Add Custom Source Input */}
+									<div className="flex items-center gap-2">
+										<input
+											type="url"
+											value={newSourceInput}
+											onChange={(e) => setNewSourceInput(e.target.value)}
+											placeholder="https://example.com/live.m3u8 or .m3u"
+											className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50 font-mono transition-colors"
+										/>
+										<button
+											type="button"
+											disabled={isAddingSource || !newSourceInput.trim()}
+											onClick={async () => {
+												if (!newSourceInput.trim()) return;
+												setIsAddingSource(true);
+												try {
+													await addCustomSource(newSourceInput.trim());
+													setNewSourceInput("");
+												} finally {
+													setIsAddingSource(false);
+												}
+											}}
+											className="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-xs font-semibold text-white transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+										>
+											<Plus className="w-3.5 h-3.5" />
+											<span>Add Source</span>
+										</button>
+									</div>
+
+									{/* List of Custom Sources */}
+									{settings?.custom_upstream_sources &&
+									settings.custom_upstream_sources.length > 0 ? (
+										<div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
+											{settings.custom_upstream_sources.map((src) => (
+												<div
+													key={src}
+													className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex items-center justify-between gap-2 text-xs"
+												>
+													<span className="font-mono text-zinc-300 truncate text-[11px]">
+														{src}
+													</span>
+													<button
+														type="button"
+														onClick={() => removeCustomSource(src)}
+														className="text-zinc-500 hover:text-rose-400 transition-colors p-1 rounded-lg hover:bg-rose-500/10 cursor-pointer shrink-0"
+														title="Remove source"
+													>
+														<Trash2 className="w-3.5 h-3.5" />
+													</button>
+												</div>
+											))}
+										</div>
+									) : (
+										<div className="p-3 rounded-xl bg-black/20 border border-dashed border-white/10 text-center text-xs text-zinc-500">
+											No custom sources added. Sentinel is using built-in master
+											feeds.
+										</div>
+									)}
 								</div>
 							</div>
 						)}

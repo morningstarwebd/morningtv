@@ -266,7 +266,7 @@ impl AppState {
         for ch in &mut self.all_channels {
             if ch.id.0 == channel_id {
                 let healed =
-                    crate::network::ClientSentinel::heal_single_channel(&client, ch, &repo).await;
+                    crate::network::ClientSentinel::heal_single_channel(&client, ch, &repo, &self.settings).await;
                 if healed {
                     healed_channel = Some(ch.clone());
                 }

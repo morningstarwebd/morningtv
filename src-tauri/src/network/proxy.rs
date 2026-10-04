@@ -442,20 +442,7 @@ async fn handle_return() -> Response {
 
 async fn handle_logo(uri: Uri) -> Response {
     let query_str = uri.query().unwrap_or("");
-    let target_url = extract_target_url(query_str).unwrap_or_default();
-
-    // Extract channel name if provided (&name=...)
-    let channel_name = if let Some(idx) = query_str.find("name=") {
-        let after = &query_str[idx + 5..];
-        let raw = if let Some(amp) = after.find('&') {
-            &after[..amp]
-        } else {
-            after
-        };
-        urlencoding_decode(raw)
-    } else {
-        String::new()
-    };
+    let (target_url, channel_name) = parse_logo_query(query_str);
 
     let (bytes, content_type) =
         crate::storage::logo_cache::get_or_fetch_logo(&target_url, &channel_name).await;
@@ -550,6 +537,60 @@ pub fn verify_auth(uri: &Uri, headers: &HeaderMap) -> bool {
     }
 
     false
+}
+
+/// Safely extracts target logo URL and channel name without corrupting parameters
+pub fn parse_logo_query(query_str: &str) -> (String, String) {
+    if query_str.is_empty() {
+        return (String::new(), String::new());
+    }
+
+    let mut target_url = String::new();
+    let mut channel_name = String::new();
+
+    if let Some(name_pos) = query_str.find("&name=") {
+        let url_part = &query_str[..name_pos];
+        let name_part = &query_str[name_pos + 6..];
+
+        let raw_url = if let Some(stripped) = url_part.strip_prefix("url=") {
+            stripped
+        } else {
+            url_part
+        };
+        target_url = urlencoding_decode(raw_url);
+
+        let raw_name = if let Some(amp) = name_part.find('&') {
+            &name_part[..amp]
+        } else {
+            name_part
+        };
+        channel_name = urlencoding_decode(raw_name);
+    } else if let Some(url_pos) = query_str.find("&url=") {
+        let name_part = &query_str[..url_pos];
+        let url_part = &query_str[url_pos + 5..];
+
+        let raw_name = if let Some(stripped) = name_part.strip_prefix("name=") {
+            stripped
+        } else {
+            name_part
+        };
+        channel_name = urlencoding_decode(raw_name);
+
+        let raw_url = if let Some(amp) = url_part.find('&') {
+            &url_part[..amp]
+        } else {
+            url_part
+        };
+        target_url = urlencoding_decode(raw_url);
+    } else if let Some(stripped) = query_str.strip_prefix("url=") {
+        target_url = urlencoding_decode(stripped);
+    } else if let Some(stripped) = query_str.strip_prefix("name=") {
+        channel_name = urlencoding_decode(stripped);
+    } else {
+        target_url = urlencoding_decode(query_str);
+    }
+
+    (target_url, channel_name)
 }
 
 /// Robust query parameter extractor that safely preserves target URLs containing '&' and nested stream tokens

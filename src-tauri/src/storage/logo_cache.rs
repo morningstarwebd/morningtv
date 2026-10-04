@@ -112,71 +112,71 @@ pub fn find_canonical_logo_url(name: &str) -> Option<&'static str> {
         .collect();
 
     if lower.contains("zeebangla") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/ZeeBangla.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Zee_Bangla.png")
     } else if lower.contains("starjalsha") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/StarJalsha.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Star_Jalsha.png")
     } else if lower.contains("colorsbangla") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/ColorsBangla.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Colors_Bangla.png")
     } else if lower.contains("abpananda") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/ABPAnanda.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/ABP_Ananda.png")
     } else if lower.contains("sonyaath") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/SonyAath.png")
+        Some("https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_SONY_8/images/LOGO_HD/image.png")
     } else if lower.contains("sonymax") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/SonyMax.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Sony_Max.png")
     } else if lower.contains("colorshd") || lower == "colors" {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/ColorsHD.png")
+        Some("https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_COLORS/images/LOGO_HD/image.png")
     } else if lower.contains("zeenews") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/ZeeNews.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Zee_News.png")
     } else if lower.contains("zeecinema") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/ZeeCinema.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Zee_Cinema.png")
     } else if lower.contains("zeetv") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/ZeeTV.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Zee_TV.png")
     } else if lower.contains("starplus") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/StarPlus.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Star_Plus.png")
     } else if lower.contains("starsports") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/StarSports1.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Star_Sports_1.png")
     } else if lower.contains("ddbangla") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/DDBangla.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/DD_Bangla.png")
     } else if lower.contains("ddsports") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/DDSports.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/DD_Sports.png")
     } else if lower.contains("calcuttanews") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/CalcuttaNews.png")
+        Some("https://tvpnlogopus.samsungcloud.tv/platform/sub/la/channel/INBA33000100H/logo.png")
     } else if lower.contains("kolkatatv") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/KolkataTV.png")
+        Some("https://tvpnlogopus.samsungcloud.tv/platform/sub/la/channel/INBA3300009G9/logo.png")
     } else if lower.contains("tv9bangla") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/TV9Bangla.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/TV9_Bangla.png")
     } else if lower.contains("news18bangla") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/News18Bangla.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/News18_Bangla.png")
     } else if lower.contains("republicbangla") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/RepublicBangla.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Republic_Bangla.png")
     } else if lower.contains("aajtak") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/AajTak.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Aaj_Tak.png")
     } else if lower.contains("ndtvindia") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/NDTVIndia.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/NDTV_India.png")
     } else if lower.contains("discovery") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/DiscoveryChannel.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Discovery.png")
     } else if lower.contains("cartoonnetwork") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/CartoonNetwork.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Cartoon_Network.png")
     } else if lower.contains("pogo") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/Pogo.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Pogo.png")
     } else if lower.contains("nickelodeon") || lower == "nick" {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/Nickelodeon.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Nick.png")
     } else if lower.contains("sonic") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/SonicNickelodeon.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Sonic_Nickelodeon.png")
     } else if lower.contains("mtv") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/MTVIndia.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/MTV_Beats.png")
     } else if lower.contains("9xm") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/9XM.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/9XM.png")
     } else if lower.contains("b4umusic") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/B4UMusic.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/B4U_Music.png")
     } else if lower.contains("b4umovies") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/B4UMovies.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/B4U_Movies.png")
     } else if lower.contains("goldmines") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/Goldmines.png")
+        Some("https://jiotvimages.cdn.jio.com/dare_images/images/Goldmines.png")
     } else if lower.contains("tsports") {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/TSports.png")
+        Some("https://tvpnlogopus.samsungcloud.tv/platform/sub/la/channel/INBA3300015O7/logo.png")
     } else if lower.contains("gazitv") || lower == "gtv" {
-        Some("https://raw.githubusercontent.com/iptv-org/logos/master/logos/GaziTV.png")
+        Some("https://tvpnlogopus.samsungcloud.tv/platform/sub/la/channel/INBA3300016N9/logo.png")
     } else {
         None
     }

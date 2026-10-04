@@ -5,6 +5,7 @@ import {
 	Activity,
 	HelpCircle,
 	Layers,
+	Mic,
 	RefreshCw,
 	Server,
 	Settings,
@@ -30,6 +31,7 @@ export const AppleTVTopBar: React.FC = () => {
 		openChannelDrawer,
 		openSettings,
 		openShortcuts,
+		openAiAssistant,
 		channels,
 		totalChannels,
 		showOnlyVerified,
@@ -208,6 +210,19 @@ export const AppleTVTopBar: React.FC = () => {
 					<RefreshCw
 						className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin text-cyan-400" : ""}`}
 					/>
+				</button>
+
+				{/* AI Voice Assistant Button */}
+				<button
+					type="button"
+					onClick={openAiAssistant}
+					className="px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600/80 to-pink-600/80 hover:from-purple-500 hover:to-pink-500 text-white border border-purple-400/40 backdrop-blur-2xl transition-all cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.35)] flex items-center gap-1.5 hover:scale-105 active:scale-95 group"
+					title="Open AI Voice Co-Pilot"
+				>
+					<Mic className="w-3.5 h-3.5 text-purple-200 group-hover:scale-110 transition-transform animate-pulse" />
+					<span className="text-xs font-semibold hidden sm:inline">
+						AI Voice
+					</span>
 				</button>
 
 				{/* Settings */}

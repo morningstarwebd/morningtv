@@ -54,6 +54,23 @@ export interface AppSettings {
 	normalize_audio?: boolean;
 	hide_region_blocked?: boolean;
 	show_only_verified?: boolean;
+	groq_api_key?: string | null;
+	ai_api_key?: string | null;
+	ai_provider?: string | null;
+	ai_model?: string | null;
+	ai_endpoint?: string | null;
+	ai_brain_enabled?: boolean;
+	custom_upstream_sources?: string[];
+}
+
+export interface ProviderDetectionResult {
+	success: boolean;
+	provider_name: string;
+	active_model: string;
+	available_models: string[];
+	latency_ms: number;
+	endpoint: string;
+	message: string;
 }
 
 export interface EpgProgram {

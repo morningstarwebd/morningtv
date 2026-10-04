@@ -10,7 +10,6 @@ import {
 	Play,
 	SkipBack,
 	SkipForward,
-	Sparkles,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
@@ -23,13 +22,13 @@ export const AppleTVDock: React.FC = () => {
 		isPlaying,
 		bufferSecs,
 		aspectRatio,
-		ambientGlow,
+		isAiAssistantOpen,
 		togglePlayPause,
 		nextChannel,
 		prevChannel,
 		openChannelDrawer,
 		cycleAspectRatio,
-		toggleAmbientGlow,
+		toggleAiAssistant,
 	} = useAppStore();
 
 	const [isFullscreen, setIsFullscreen] = useState(false);
@@ -159,17 +158,56 @@ export const AppleTVDock: React.FC = () => {
 					<Maximize className="w-3.5 h-3.5" />
 				</button>
 
-				{/* Ambient Glow */}
+				{/* AI Voice Assistant Trigger */}
 				<button
-					onClick={toggleAmbientGlow}
-					className={`p-2 rounded-full transition-all cursor-pointer hidden sm:block shrink-0 ${
-						ambientGlow
-							? "text-cyan-400 bg-cyan-500/10"
-							: "text-zinc-400 hover:text-white"
+					onClick={toggleAiAssistant}
+					className={`p-2 rounded-full transition-all duration-300 cursor-pointer hidden sm:flex items-center justify-center shrink-0 relative group ${
+						isAiAssistantOpen
+							? "text-cyan-300 bg-cyan-500/20 ring-1 ring-cyan-400/50 shadow-[0_0_14px_rgba(6,182,212,0.6)]"
+							: "text-zinc-400 hover:text-white hover:bg-white/10"
 					}`}
-					title="Ambient Glow Aura"
+					title={
+						isAiAssistantOpen
+							? "Close AI Voice Assistant"
+							: "AI Voice Assistant"
+					}
 				>
-					<Sparkles className="w-3.5 h-3.5" />
+					<svg
+						className="w-4 h-4 transition-transform duration-300 group-hover:scale-110"
+						viewBox="0 0 24 24"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+					>
+						<circle
+							cx="12"
+							cy="12"
+							r="9"
+							stroke="currentColor"
+							strokeWidth="1.5"
+							strokeDasharray="4 3"
+							className={isAiAssistantOpen ? "animate-spin" : "opacity-60"}
+							style={{ transformOrigin: "center", animationDuration: "8s" }}
+						/>
+						<path
+							d="M8 12V12.01M12 9V15M16 11V13"
+							stroke="currentColor"
+							strokeWidth="2"
+							strokeLinecap="round"
+						/>
+						<circle
+							cx="12"
+							cy="12"
+							r="1.75"
+							className={
+								isAiAssistantOpen
+									? "fill-cyan-400 animate-pulse"
+									: "fill-current opacity-40"
+							}
+						/>
+					</svg>
+					{isAiAssistantOpen && (
+						<span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+					)}
 				</button>
 
 				<div className="w-px h-5 bg-white/10 shrink-0" />

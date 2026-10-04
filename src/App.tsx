@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type React from "react";
 import { useEffect } from "react";
+import { AiVoiceAssistantModal } from "./components/AiVoiceAssistantModal";
 import { AppleTVChannelShelf } from "./components/AppleTVChannelShelf";
 import { AppleTVDock } from "./components/AppleTVDock";
 import { AppleTVTopBar } from "./components/AppleTVTopBar";
@@ -76,6 +77,9 @@ const App: React.FC = () => {
 
 			{/* Settings Dialog */}
 			<SettingsDialog />
+
+			{/* AI Voice & Chat Assistant Modal */}
+			<AiVoiceAssistantModal />
 
 			{/* Shortcuts Guide Modal */}
 			<ShortcutsModal />
