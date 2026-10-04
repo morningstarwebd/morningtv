@@ -67,7 +67,7 @@ export function filterChannelsClient(
 ): Channel[] {
 	const q = searchQuery.trim().toLowerCase();
 	return allChannels.filter((ch) => {
-		if (showOnlyVerified && ch.is_verified === false) {
+		if (showOnlyVerified && !ch.is_verified) {
 			return false;
 		}
 

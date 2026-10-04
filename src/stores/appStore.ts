@@ -358,9 +358,14 @@ export const useAppStore = create<AppState>((set, get) => ({
 			const providers = ["All", ...Array.from(provSet)];
 
 			const hideRegion = settings.hide_region_blocked ?? false;
-			const initialFiltered = hideRegion
-				? filterChannelsClient(channels, "All", "", true)
-				: channels;
+			const showVerified = settings.show_only_verified ?? false;
+			const initialFiltered = filterChannelsClient(
+				channels,
+				"All",
+				"",
+				hideRegion,
+				showVerified,
+			);
 			const rawTotal = totalCount > 0 ? totalCount : channels.length;
 
 			const baseCats =
@@ -382,6 +387,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				providers: providers.length > 1 ? providers : ["All"],
 				settings,
 				hideRegionBlocked: hideRegion,
+				showOnlyVerified: showVerified,
 				isLaunchAtStartup: startupStatus ?? false,
 				volume: settings.volume ?? 85,
 				isMuted: settings.is_muted ?? false,
@@ -454,8 +460,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 	toggleShowOnlyVerified: () => {
 		const next = !get().showOnlyVerified;
-		const { allChannels, activeCategory, searchQuery, hideRegionBlocked } =
-			get();
+		const {
+			allChannels,
+			activeCategory,
+			searchQuery,
+			hideRegionBlocked,
+			settings,
+		} = get();
 		const nextFiltered = filterChannelsClient(
 			allChannels,
 			activeCategory,
@@ -467,6 +478,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 			showOnlyVerified: next,
 			channels: nextFiltered,
 		});
+		if (settings) {
+			invoke("save_settings", {
+				settings: { ...settings, show_only_verified: next },
+			}).catch((err) =>
+				log.error("Failed to save verified setting", { error: err }),
+			);
+		}
 		get().showToast(
 			next
 				? `⚡ Showing only verified streams for your network (${nextFiltered.length.toLocaleString()} available)`

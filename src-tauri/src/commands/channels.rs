@@ -17,10 +17,10 @@ pub async fn get_channels(state: State<'_, SharedAppState>) -> Result<Vec<Channe
             let playlist_url = guard.settings.playlist_url.clone();
             let _ = guard.load_playlist(&playlist_url).await;
         }
-        Ok(guard.filtered_channels.clone())
+        Ok(guard.all_channels.clone())
     } else {
         let guard = state.read().await;
-        Ok(guard.filtered_channels.clone())
+        Ok(guard.all_channels.clone())
     }
 }
 
@@ -289,8 +289,10 @@ pub async fn background_refresh_playlist(
         .build()
         .map_err(|e| e.to_string())?;
 
-    // Gather indices of priority channels to audit
-    let mut audit_indices: Vec<usize> = Vec::new();
+    // Gather indices of all channels to audit, sorting high-priority channels first
+    let mut priority_indices: Vec<usize> = Vec::new();
+    let mut regular_indices: Vec<usize> = Vec::new();
+
     for (idx, ch) in staging_channels.iter().enumerate() {
         let is_priority = ch.is_favorite 
             || !ch.fallback_urls.is_empty()
@@ -302,19 +304,20 @@ pub async fn background_refresh_playlist(
             || ch.id.0.contains(".in")
             || ch.id.0.contains(".bd");
         if is_priority {
-            audit_indices.push(idx);
+            priority_indices.push(idx);
+        } else {
+            regular_indices.push(idx);
         }
     }
 
-    if audit_indices.len() > 300 {
-        audit_indices.truncate(300);
-    }
+    let mut audit_indices = priority_indices;
+    audit_indices.extend(regular_indices);
     let total_to_audit = audit_indices.len();
 
     let _ = app_handle.emit(
         "sync_progress",
         SyncProgressPayload {
-            phase: format!("Auditing local network (0 / {} priority streams tested)...", total_to_audit),
+            phase: format!("Auditing local network (0 / {} streams queued)...", total_to_audit),
             percent: 30,
             updated_count: 0,
             total_count,
@@ -323,7 +326,7 @@ pub async fn background_refresh_playlist(
     );
 
     // Multi-threaded audit with bounded concurrency and non-blocking mpsc completion streaming
-    let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(18));
+    let sem = std::sync::Arc::new(tokio::sync::Semaphore::new(12));
     let (tx, mut rx) = tokio::sync::mpsc::channel(total_to_audit.max(1));
 
     for &idx in &audit_indices {
@@ -388,6 +391,7 @@ pub async fn background_refresh_playlist(
     let mut updated_count = 0;
     let mut working_count = 0;
     let mut last_emit = std::time::Instant::now();
+    let mut last_checkpoint = std::time::Instant::now();
 
     while let Some((idx, is_ok, promoted_f_idx, backup_mirror_url)) = rx.recv().await {
         audited_count += 1;
@@ -414,6 +418,22 @@ pub async fn background_refresh_playlist(
         }
 
         let is_done = audited_count == total_to_audit;
+
+        // Periodic checkpoint: every 50 channels or 4 seconds, checkpoint in-memory state and notify frontend
+        let should_checkpoint = (audited_count % 50 == 0)
+            || (last_checkpoint.elapsed().as_secs() >= 4)
+            || is_done;
+
+        if should_checkpoint {
+            last_checkpoint = std::time::Instant::now();
+            {
+                let mut guard = state.write().await;
+                guard.all_channels = staging_channels.clone();
+                guard.refresh_filtered_channels();
+            }
+            let _ = app_handle.emit("playlist_updated", ());
+        }
+
         let should_emit = audited_count % 5 == 0
             || promoted_f_idx.is_some()
             || had_backup_promotion

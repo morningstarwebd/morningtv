@@ -53,6 +53,7 @@ export interface AppSettings {
 	last_played_channel_id: string | null;
 	normalize_audio?: boolean;
 	hide_region_blocked?: boolean;
+	show_only_verified?: boolean;
 }
 
 export interface EpgProgram {

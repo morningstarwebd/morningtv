@@ -103,7 +103,7 @@ impl ChannelCacheRepository {
                 let http_user_agent: Option<String> = row.get(7)?;
                 let http_referrer: Option<String> = row.get(8)?;
                 let is_verified_val: Option<i32> = row.get(9).ok();
-                let is_verified = is_verified_val.map(|v| v == 1).unwrap_or(true);
+                let is_verified = is_verified_val.map(|v| v == 1).unwrap_or(false);
 
                 let fallback_urls: Vec<String> =
                     serde_json::from_str(&fallbacks_json).unwrap_or_default();

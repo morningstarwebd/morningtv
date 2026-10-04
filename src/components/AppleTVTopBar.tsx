@@ -32,6 +32,7 @@ export const AppleTVTopBar: React.FC = () => {
 		openShortcuts,
 		channels,
 		totalChannels,
+		showOnlyVerified,
 		isSyncing,
 		syncCloudStreams,
 	} = useAppStore();
@@ -167,9 +168,11 @@ export const AppleTVTopBar: React.FC = () => {
 					<span>Guide</span>
 					<span className="text-[10px] text-zinc-400 font-mono">
 						(
-						{(totalChannels > 0
-							? totalChannels
-							: channels.length
+						{(showOnlyVerified
+							? channels.length
+							: totalChannels > 0
+								? totalChannels
+								: channels.length
 						).toLocaleString()}
 						)
 					</span>

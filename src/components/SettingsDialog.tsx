@@ -106,7 +106,7 @@ export const SettingsDialog: React.FC = () => {
 
 	const verifiedChannelsCount = (
 		allChannels.length > 0 ? allChannels : channels
-	).filter((c) => c.is_verified !== false).length;
+	).filter((c) => Boolean(c.is_verified)).length;
 
 	const tabs = [
 		{
@@ -451,9 +451,11 @@ export const SettingsDialog: React.FC = () => {
 									<div className="flex items-center p-1 rounded-xl bg-black/40 border border-white/10 shrink-0 self-start sm:self-auto">
 										<button
 											type="button"
-											onClick={() =>
-												showOnlyVerified && toggleShowOnlyVerified()
-											}
+											onClick={() => {
+												if (showOnlyVerified) {
+													toggleShowOnlyVerified();
+												}
+											}}
 											className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
 												!showOnlyVerified
 													? "bg-white/20 text-white shadow-sm"
@@ -468,9 +470,11 @@ export const SettingsDialog: React.FC = () => {
 										</button>
 										<button
 											type="button"
-											onClick={() =>
-												!showOnlyVerified && toggleShowOnlyVerified()
-											}
+											onClick={() => {
+												if (!showOnlyVerified) {
+													toggleShowOnlyVerified();
+												}
+											}}
 											className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
 												showOnlyVerified
 													? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25"

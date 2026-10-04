@@ -19,6 +19,8 @@ pub struct AppSettings {
     pub last_played_channel_id: Option<String>,
     #[serde(default)]
     pub hide_region_blocked: bool,
+    #[serde(default)]
+    pub show_only_verified: bool,
 }
 
 impl Default for AppSettings {
@@ -32,6 +34,7 @@ impl Default for AppSettings {
             cache_duration_secs: DEFAULT_CACHE_SECS,
             last_played_channel_id: None,
             hide_region_blocked: false,
+            show_only_verified: false,
         }
     }
 }

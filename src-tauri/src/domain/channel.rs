@@ -29,7 +29,7 @@ fn md5_hash(bytes: &[u8]) -> u64 {
 }
 
 fn default_verified() -> bool {
-    true
+    false
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -75,7 +75,7 @@ impl Channel {
             http_referrer,
             is_favorite: false,
             provider: None,
-            is_verified: true,
+            is_verified: false,
         }
     }
 

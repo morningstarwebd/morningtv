@@ -83,7 +83,7 @@ impl Database {
                 http_user_agent TEXT,
                 http_referrer   TEXT,
                 cached_at       INTEGER NOT NULL,
-                is_verified     INTEGER NOT NULL DEFAULT 1
+                is_verified     INTEGER NOT NULL DEFAULT 0
             );
 
             CREATE INDEX IF NOT EXISTS idx_cache_group
