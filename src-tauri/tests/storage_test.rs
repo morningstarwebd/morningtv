@@ -20,6 +20,7 @@ fn test_sqlite_channel_cache_roundtrip_with_headers() {
         http_user_agent: Some("CustomPlayer/2.0".to_string()),
         http_referrer: Some("https://auth.example.com/".to_string()),
         is_favorite: false,
+        is_verified: true,
     };
 
     // Save channel into SQLite cache
@@ -86,6 +87,7 @@ fn test_channel_cache_clear_and_empty() {
         http_user_agent: None,
         http_referrer: None,
         is_favorite: false,
+        is_verified: true,
     };
 
     repo.save_all(&[ch1]).expect("save ok");

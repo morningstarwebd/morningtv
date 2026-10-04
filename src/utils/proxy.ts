@@ -121,3 +121,12 @@ export function buildPrewarmUrl(
 	const tokenParam = token ? `&token=${encodeURIComponent(token)}` : "";
 	return `http://127.0.0.1:${port}/prewarm?url=${encodeURIComponent(targetUrl)}${tokenParam}`;
 }
+
+export function buildProxyLogoUrl(
+	targetUrl?: string | null,
+	channelName = "",
+	port = cachedPort,
+): string {
+	const rawUrl = targetUrl?.trim() || "";
+	return `http://127.0.0.1:${port}/logo?url=${encodeURIComponent(rawUrl)}&name=${encodeURIComponent(channelName)}`;
+}

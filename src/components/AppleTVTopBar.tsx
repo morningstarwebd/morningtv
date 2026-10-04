@@ -175,9 +175,15 @@ export const AppleTVTopBar: React.FC = () => {
 					</span>
 				</button>
 
-				{/* Clock */}
-				<div className="px-3.5 py-1.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-2xl text-xs font-mono font-bold text-white shadow-xl">
-					{timeStr}
+				{/* Clock & Sync Status */}
+				<div className="px-3.5 py-1.5 rounded-full bg-black/60 border border-white/10 backdrop-blur-2xl text-xs font-mono font-bold text-white shadow-xl flex items-center gap-2">
+					<span>{timeStr}</span>
+					{isSyncing && (
+						<span
+							className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping"
+							title="Local Network Sync Active"
+						/>
+					)}
 				</div>
 
 				{/* Shortcuts */}

@@ -2,9 +2,10 @@
 // Apple TV / Google TV-inspired spacious live channel card with sleek glassmorphism and focus effects
 
 import { Star, Tv } from "lucide-react";
-import { memo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import type { Channel } from "../types";
 import { getChannelIdString } from "../types";
+import { buildProxyLogoUrl } from "../utils/proxy";
 
 interface AppleTVCardProps {
 	channel: Channel;
@@ -38,6 +39,10 @@ export const AppleTVCard = memo<AppleTVCardProps>(
 			.trim();
 
 		const formattedNum = String(index + 1).padStart(2, "0");
+
+		const logoSrc = useMemo(() => {
+			return buildProxyLogoUrl(channel.logo, cleanName);
+		}, [channel.logo, cleanName]);
 
 		return (
 			<div
@@ -94,13 +99,13 @@ export const AppleTVCard = memo<AppleTVCardProps>(
 
 				{/* Center Logo */}
 				<div className="flex-1 flex items-center justify-center my-1 z-10 px-2 relative">
-					{channel.logo && !logoError ? (
+					{!logoError ? (
 						<>
 							{!imageLoaded && (
 								<div className="w-20 h-10 rounded-xl animate-shimmer bg-white/[0.04] border border-white/5 flex items-center justify-center absolute" />
 							)}
 							<img
-								src={channel.logo}
+								src={logoSrc}
 								alt={cleanName}
 								onLoad={() => setImageLoaded(true)}
 								onError={() => setLogoError(true)}

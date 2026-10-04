@@ -2,6 +2,7 @@
 // Central Zustand state store with Next-Level Studio & Cinema UI, 3G Data Saver, and Audio Booster
 
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { create } from "zustand";
 import {
 	type UpdateInfo,
@@ -15,6 +16,7 @@ import type {
 	QualityLevel,
 	QualityTier,
 	StreamHealthStatus,
+	SyncProgressPayload,
 } from "../types";
 import { APP_VERSION, formatIpcError, getChannelIdString } from "../types";
 import { audioBooster } from "../utils/audioBooster";
@@ -85,6 +87,7 @@ interface AppState {
 	ambientGlow: boolean;
 	settings: AppSettings | null;
 	hideRegionBlocked: boolean;
+	showOnlyVerified: boolean;
 	isLaunchAtStartup: boolean;
 	toast: { message: string; isError: boolean } | null;
 
@@ -93,6 +96,7 @@ interface AppState {
 	fetchStartupStatus: () => Promise<void>;
 	toggleStartupStatus: (enabled: boolean) => Promise<void>;
 	toggleHideRegionBlocked: () => void;
+	toggleShowOnlyVerified: () => void;
 	openGitHubRepo: () => Promise<void>;
 	selectChannel: (channel: Channel) => Promise<void>;
 	selectChannelByIndex: (index: number) => Promise<void>;
@@ -166,6 +170,8 @@ interface AppState {
 	markChannelDead: (channelId: string) => void;
 	toggleNormalizeAudio: () => void;
 	isSyncing: boolean;
+	syncProgress: SyncProgressPayload | null;
+	setSyncProgress: (progress: SyncProgressPayload | null) => void;
 	syncCloudStreams: () => Promise<void>;
 	loadChannels: () => Promise<void>;
 	forceRefreshChannels: () => Promise<void>;
@@ -251,9 +257,13 @@ export const useAppStore = create<AppState>((set, get) => ({
 	ambientGlow: true,
 	settings: null,
 	hideRegionBlocked: false,
+	showOnlyVerified: false,
 	isLaunchAtStartup: false,
 	toast: null,
 	isSyncing: false,
+	syncProgress: null,
+	setSyncProgress: (progress: SyncProgressPayload | null) =>
+		set({ syncProgress: progress }),
 	updateInfo: null,
 	updateStatus: "idle",
 	updateProgress: 0,
@@ -351,17 +361,24 @@ export const useAppStore = create<AppState>((set, get) => ({
 			const initialFiltered = hideRegion
 				? filterChannelsClient(channels, "All", "", true)
 				: channels;
-			const effectiveTotal = hideRegion
-				? channels.filter((c) => !isGeoRestrictedStream(c)).length
-				: totalCount > 0
-					? totalCount
-					: channels.length;
+			const rawTotal = totalCount > 0 ? totalCount : channels.length;
+
+			const baseCats =
+				categories.length > 0 ? categories : ["All", "Favorites"];
+			const enrichedCats = baseCats.includes("India")
+				? baseCats
+				: [
+						"All",
+						"Favorites",
+						"India",
+						...baseCats.filter((c) => c !== "All" && c !== "Favorites"),
+					];
 
 			set({
 				allChannels: channels,
 				channels: initialFiltered,
-				totalChannels: effectiveTotal,
-				categories: categories.length > 0 ? categories : ["All", "Favorites"],
+				totalChannels: rawTotal,
+				categories: enrichedCats,
 				providers: providers.length > 1 ? providers : ["All"],
 				settings,
 				hideRegionBlocked: hideRegion,
@@ -370,6 +387,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 				isMuted: settings.is_muted ?? false,
 				currentQuality: settings.preferred_quality ?? "Auto",
 			});
+
+			// Real-time synchronization progress from background Rust sentinel
+			listen<SyncProgressPayload>("sync_progress", (event) => {
+				set({
+					syncProgress: event.payload,
+					isSyncing: !event.payload.is_complete,
+				});
+			}).catch((err) =>
+				log.warn("Failed to listen for sync_progress", { error: err }),
+			);
 
 			if (initialFiltered.length > 0) {
 				let defaultChannel = initialFiltered[0];
@@ -406,7 +433,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 		set({
 			hideRegionBlocked: next,
 			channels: nextFiltered,
-			totalChannels: effectiveTotal,
+			totalChannels: allChannels.length,
 		});
 
 		if (settings) {
@@ -421,6 +448,29 @@ export const useAppStore = create<AppState>((set, get) => ({
 			next
 				? `🛡️ Direct Playback Active (${effectiveTotal.toLocaleString()} channels available)`
 				: `🌐 Global Channels Active (${effectiveTotal.toLocaleString()} channels available)`,
+			false,
+		);
+	},
+
+	toggleShowOnlyVerified: () => {
+		const next = !get().showOnlyVerified;
+		const { allChannels, activeCategory, searchQuery, hideRegionBlocked } =
+			get();
+		const nextFiltered = filterChannelsClient(
+			allChannels,
+			activeCategory,
+			searchQuery,
+			hideRegionBlocked,
+			next,
+		);
+		set({
+			showOnlyVerified: next,
+			channels: nextFiltered,
+		});
+		get().showToast(
+			next
+				? `⚡ Showing only verified streams for your network (${nextFiltered.length.toLocaleString()} available)`
+				: `🌐 Showing all cloud channels (${allChannels.length.toLocaleString()} available)`,
 			false,
 		);
 	},
@@ -541,6 +591,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 					state.activeCategory,
 					state.searchQuery,
 					state.hideRegionBlocked,
+					state.showOnlyVerified,
 				);
 				return {
 					allChannels: updatedAll,
@@ -559,6 +610,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				category,
 				state.searchQuery,
 				state.hideRegionBlocked,
+				state.showOnlyVerified,
 			);
 			return { activeCategory: category, channels: filtered };
 		});
@@ -571,6 +623,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				state.activeCategory,
 				query,
 				state.hideRegionBlocked,
+				state.showOnlyVerified,
 			);
 			return { searchQuery: query, channels: filtered };
 		});
@@ -778,30 +831,66 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 	syncCloudStreams: async () => {
 		try {
-			set({ isSyncing: true });
+			set({
+				isSyncing: true,
+				syncProgress: {
+					phase: "Connecting to GitHub Sentinel release...",
+					percent: 10,
+					updated_count: 0,
+					total_count: 0,
+					is_complete: false,
+				},
+			});
+			const result = await invoke<SyncProgressPayload>(
+				"background_refresh_playlist",
+			);
 			const [channels, categories, settings, totalCount] = await Promise.all([
-				invoke<Channel[]>("reset_playlist"),
+				invoke<Channel[]>("get_channels"),
 				invoke<string[]>("get_categories"),
 				invoke<AppSettings>("get_settings"),
 				invoke<number>("get_total_channel_count").catch(() => 0),
 			]);
 			const realCount = totalCount > 0 ? totalCount : channels.length;
-			set({
+			const provSet = new Set<string>();
+			channels.forEach((c) => {
+				if (c.provider) provSet.add(c.provider);
+			});
+			const providers = ["All", ...Array.from(provSet)];
+
+			const baseCats =
+				categories.length > 0 ? categories : ["All", "Favorites"];
+			const enrichedCats = baseCats.includes("India")
+				? baseCats
+				: [
+						"All",
+						"Favorites",
+						"India",
+						...baseCats.filter((c) => c !== "All" && c !== "Favorites"),
+					];
+
+			set((state) => ({
 				allChannels: channels,
-				channels,
+				channels: filterChannelsClient(
+					channels,
+					state.activeCategory,
+					state.searchQuery,
+					state.hideRegionBlocked,
+					state.showOnlyVerified,
+				),
 				totalChannels: realCount,
-				categories: categories.length > 0 ? categories : ["All", "Favorites"],
-				activeCategory: "All",
+				categories: enrichedCats,
+				providers: providers.length > 1 ? providers : ["All"],
 				settings,
 				isSyncing: false,
-			});
+				syncProgress: result,
+			}));
 			get().showToast(
-				`✅ Synced ${realCount.toLocaleString()} channels from GitHub!`,
+				`✅ Verified ${realCount.toLocaleString()} channels on your network (${result.updated_count} mirrors optimized)!`,
 				false,
 			);
 		} catch (err) {
-			set({ isSyncing: false });
-			get().showToast(`Failed to sync from GitHub: ${err}`, true);
+			set({ isSyncing: false, syncProgress: null });
+			get().showToast(`Failed to sync channels: ${formatIpcError(err)}`, true);
 		}
 	},
 
@@ -826,6 +915,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 					state.activeCategory,
 					state.searchQuery,
 					state.hideRegionBlocked,
+					state.showOnlyVerified,
 				),
 				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],
@@ -858,6 +948,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 					state.activeCategory,
 					state.searchQuery,
 					state.hideRegionBlocked,
+					state.showOnlyVerified,
 				),
 				totalChannels: totalCount > 0 ? totalCount : channels.length,
 				categories: categories.length > 0 ? categories : ["All", "Favorites"],

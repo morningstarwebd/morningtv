@@ -45,4 +45,5 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "fmt"]
 tracing-appender = "0.2"
 dirs = "5.0"
 dashmap = "6.0"
+sentinel = { path = "../crates/sentinel" }
 

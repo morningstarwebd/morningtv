@@ -2446,6 +2446,7 @@ dependencies = [
  "log",
  "reqwest 0.12.28",
  "rusqlite",
+ "sentinel",
  "serde",
  "serde_json",
  "sysinfo",
@@ -3681,6 +3682,18 @@ checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
 dependencies = [
  "serde",
  "serde_core",
+]
+
+[[package]]
+name = "sentinel"
+version = "1.0.0"
+dependencies = [
+ "chrono",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "url",
 ]
 
 [[package]]

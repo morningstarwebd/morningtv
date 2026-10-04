@@ -63,9 +63,14 @@ export function filterChannelsClient(
 	activeCategory: string,
 	searchQuery: string,
 	hideRegionBlocked = false,
+	showOnlyVerified = false,
 ): Channel[] {
 	const q = searchQuery.trim().toLowerCase();
 	return allChannels.filter((ch) => {
+		if (showOnlyVerified && ch.is_verified === false) {
+			return false;
+		}
+
 		if (hideRegionBlocked && isGeoRestrictedStream(ch)) {
 			return false;
 		}

@@ -114,6 +114,7 @@ pub fn run() {
             commands::get_proxy_auth_token,
             commands::get_proxy_port,
             commands::check_ffmpeg_status,
+            commands::heal_channel,
             commands::toggle_native_pip,
             commands::get_channel_epg,
             commands::get_startup_status,

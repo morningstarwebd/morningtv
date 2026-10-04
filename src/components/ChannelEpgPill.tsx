@@ -2,10 +2,11 @@
 // Smart Apple TV-Style Dynamic Island Channel Pill with Ambient EPG Ticker & Interactive Popover
 
 import { invoke } from "@tauri-apps/api/core";
-import { ChevronDown, Clock, Radio, Tv, X } from "lucide-react";
+import { ChevronDown, Clock, Tv, X } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type { Channel, ChannelEpg } from "../types";
+import { buildProxyLogoUrl } from "../utils/proxy";
 
 interface ChannelEpgPillProps {
 	activeChannel: Channel;
@@ -115,18 +116,14 @@ export const ChannelEpgPill: React.FC<ChannelEpgPillProps> = ({
 				title="Click to view full Program Schedule & EPG Timeline"
 			>
 				{/* Channel Logo */}
-				{activeChannel.logo ? (
-					<img
-						src={activeChannel.logo}
-						alt=""
-						className="w-4 h-4 object-contain rounded-xs shrink-0 drop-shadow-sm"
-						onError={(e) => {
-							(e.target as HTMLElement).style.display = "none";
-						}}
-					/>
-				) : (
-					<Radio className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-				)}
+				<img
+					src={buildProxyLogoUrl(activeChannel.logo, activeChannel.name)}
+					alt=""
+					className="w-4 h-4 object-contain rounded-xs shrink-0 drop-shadow-sm"
+					onError={(e) => {
+						(e.target as HTMLElement).style.display = "none";
+					}}
+				/>
 
 				{/* Animated Content Transition Window */}
 				<div className="relative overflow-hidden h-5 flex items-center min-w-[140px] max-w-[220px]">
@@ -195,13 +192,14 @@ export const ChannelEpgPill: React.FC<ChannelEpgPillProps> = ({
 					{/* Header Row */}
 					<div className="flex items-center justify-between pb-3 border-b border-white/10 mb-3">
 						<div className="flex items-center gap-2 min-w-0">
-							{activeChannel.logo && (
-								<img
-									src={activeChannel.logo}
-									alt=""
-									className="w-5 h-5 object-contain rounded-xs shrink-0"
-								/>
-							)}
+							<img
+								src={buildProxyLogoUrl(activeChannel.logo, activeChannel.name)}
+								alt=""
+								className="w-5 h-5 object-contain rounded-xs shrink-0"
+								onError={(e) => {
+									(e.target as HTMLElement).style.display = "none";
+								}}
+							/>
 							<div className="min-w-0">
 								<h4 className="text-xs font-black text-white truncate tracking-wide">
 									{activeChannel.name}

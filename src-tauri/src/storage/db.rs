@@ -82,7 +82,8 @@ impl Database {
                 provider        TEXT,
                 http_user_agent TEXT,
                 http_referrer   TEXT,
-                cached_at       INTEGER NOT NULL
+                cached_at       INTEGER NOT NULL,
+                is_verified     INTEGER NOT NULL DEFAULT 1
             );
 
             CREATE INDEX IF NOT EXISTS idx_cache_group
@@ -102,6 +103,7 @@ impl Database {
         // Non-destructive column additions for existing databases
         let _ = conn.execute("ALTER TABLE channels_cache ADD COLUMN http_user_agent TEXT", []);
         let _ = conn.execute("ALTER TABLE channels_cache ADD COLUMN http_referrer TEXT", []);
+        let _ = conn.execute("ALTER TABLE channels_cache ADD COLUMN is_verified INTEGER NOT NULL DEFAULT 1", []);
 
         Ok(())
     }

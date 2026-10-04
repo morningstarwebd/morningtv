@@ -7,12 +7,11 @@ import {
 	Monitor,
 	Power,
 	RefreshCw,
-	RotateCcw,
-	Save,
 	ShieldCheck,
 	Sparkles,
 	Tv,
 	Volume2,
+	Wifi,
 	X,
 	Zap,
 } from "lucide-react";
@@ -20,7 +19,6 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import { APP_VERSION } from "../types";
-import { isGeoRestrictedStream } from "../utils/channelFilter";
 import { MorningTVLogo } from "./MorningTVLogo";
 
 type TabType =
@@ -34,25 +32,25 @@ type TabType =
 
 export const SettingsDialog: React.FC = () => {
 	const {
+		channels,
 		allChannels,
 		totalChannels,
 		refreshTotalChannelCount,
 		isSettingsOpen,
-		settings,
+		showOnlyVerified,
+		toggleShowOnlyVerified,
 		ambientGlow,
 		normalizeAudio,
-		hideRegionBlocked,
-		toggleHideRegionBlocked,
 		is3GDataSaver,
 		toggle3GDataSaver,
 		isLaunchAtStartup,
 		toggleStartupStatus,
 		openGitHubRepo,
 		isSyncing,
+		syncProgress,
 		closeSettings,
-		updatePlaylist,
-		resetPlaylist,
 		syncCloudStreams,
+		forceRefreshChannels,
 		toggleAmbientGlow,
 		toggleNormalizeAudio,
 		isCheckingUpdate,
@@ -66,15 +64,17 @@ export const SettingsDialog: React.FC = () => {
 	} = useAppStore();
 
 	const [activeTab, setActiveTab] = useState<TabType>("playlist");
-	const [playlistUrl, setPlaylistUrl] = useState("");
-	const [isSaving, setIsSaving] = useState(false);
-	const [isResetting, setIsResetting] = useState(false);
+	const [isFetchingGitHub, setIsFetchingGitHub] = useState(false);
 
-	useEffect(() => {
-		if (settings?.playlist_url) {
-			setPlaylistUrl(settings.playlist_url);
+	const handleFetchGitHub = async () => {
+		setIsFetchingGitHub(true);
+		try {
+			await forceRefreshChannels();
+			await refreshTotalChannelCount();
+		} finally {
+			setIsFetchingGitHub(false);
 		}
-	}, [settings?.playlist_url]);
+	};
 
 	// Fetch full channel count whenever settings opens
 	useEffect(() => {
@@ -97,43 +97,16 @@ export const SettingsDialog: React.FC = () => {
 
 	if (!isSettingsOpen) return null;
 
-	const DEFAULT_PLAYLIST_URL =
-		"https://raw.githubusercontent.com/morningstarwebd/morningtv/main/playlists/morningtv_all.m3u";
-	const INDIA_PLAYLIST_URL =
-		"https://raw.githubusercontent.com/morningstarwebd/morningtv/main/playlists/morningtv_india.m3u";
-
-	const isCustomPlaylist =
-		settings?.playlist_url && settings.playlist_url !== DEFAULT_PLAYLIST_URL;
-
-	const allChannelsCount = allChannels.length || totalChannels || 10528;
-	const directPlayableCount = allChannels.length
-		? allChannels.filter((c) => !isGeoRestrictedStream(c)).length
-		: 9209;
-	const totalChannelsCount = hideRegionBlocked
-		? directPlayableCount
-		: totalChannels > 0
-			? totalChannels
-			: allChannelsCount;
+	const totalChannelsCount =
+		totalChannels > 0 ? totalChannels : allChannels.length || 10528;
 	const isUpdateAvailable =
 		updateStatus === "available" ||
 		updateStatus === "downloading" ||
 		updateStatus === "ready";
 
-	const handleSave = async (e: React.FormEvent) => {
-		e.preventDefault();
-		if (!playlistUrl.trim()) return;
-
-		setIsSaving(true);
-		await updatePlaylist(playlistUrl.trim());
-		setIsSaving(false);
-	};
-
-	const handleReset = async () => {
-		setIsResetting(true);
-		await resetPlaylist();
-		setPlaylistUrl(DEFAULT_PLAYLIST_URL);
-		setIsResetting(false);
-	};
+	const verifiedChannelsCount = (
+		allChannels.length > 0 ? allChannels : channels
+	).filter((c) => c.is_verified !== false).length;
 
 	const tabs = [
 		{
@@ -205,7 +178,7 @@ export const SettingsDialog: React.FC = () => {
 			onClick={closeSettings}
 		>
 			<div
-				className="w-[760px] max-w-[95vw] h-[520px] max-h-[92vh] bg-[#060814]/75 border border-white/20 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/15"
+				className="w-[780px] max-w-[95vw] h-[550px] max-h-[92vh] bg-[#060814]/85 border border-white/15 rounded-3xl shadow-[0_30px_90px_rgba(0,0,0,0.85)] flex flex-row overflow-hidden relative backdrop-blur-2xl ring-1 ring-white/10"
 				onClick={(e) => e.stopPropagation()}
 			>
 				{/* Left Sidebar Navigation (Locked to exactly 240px - Zero Jitter/Shake) */}
@@ -294,71 +267,110 @@ export const SettingsDialog: React.FC = () => {
 				</div>
 
 				{/* Right Content Area */}
-				<div className="flex-1 min-w-0 h-full p-4 sm:p-5 flex flex-col justify-between overflow-hidden bg-black/20 backdrop-blur-md">
-					<div>
-						{/* Top Header of Active View */}
-						<div className="flex items-start justify-between pb-2.5 mb-3 border-b border-white/10">
-							<div>
-								<h3 className="text-sm font-extrabold text-white tracking-wide">
-									{activeTab === "playlist" && "Playlist & Channels"}
-									{activeTab === "cinema" && "Cinema & Display"}
-									{activeTab === "audio" && "Sound & Acoustics"}
-									{activeTab === "cloud" && "Cloud Repository"}
-									{activeTab === "system" && "System & Startup"}
-									{activeTab === "updates" && "Software Update"}
-									{activeTab === "about" && "Legal & About"}
-								</h3>
-								<p className="text-[11px] text-zinc-300 mt-0.5">
-									{activeTab === "playlist" &&
-										"Manage streaming links, compatibility & verified channels"}
-									{activeTab === "cinema" &&
-										"Customize visual ambient lighting and stream buffer stability"}
-									{activeTab === "audio" &&
-										"Fine-tune channel volume balance and prevent sudden loudness spikes"}
-									{activeTab === "cloud" &&
-										"Sync verified channels and backup mirrors directly from cloud repository"}
-									{activeTab === "system" &&
-										"Windows boot autostart, system tray quick controls, and GitHub integration"}
-									{activeTab === "updates" &&
-										"Check for new releases, install updates, and review changelogs"}
-									{activeTab === "about" &&
-										"Compliance, open-source attribution, and architecture"}
-								</p>
-							</div>
-
-							<button
-								onClick={closeSettings}
-								className="p-1 rounded-full text-zinc-400 hover:text-white bg-white/10 hover:bg-white/20 border border-white/10 transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
-								title="Close (Esc)"
-							>
-								<X className="w-4 h-4" />
-							</button>
+				<div className="flex-1 min-w-0 h-full p-4 sm:p-5 flex flex-col overflow-hidden bg-black/20 backdrop-blur-md">
+					{/* Top Header of Active View */}
+					<div className="shrink-0 flex items-start justify-between pb-3 mb-3.5 border-b border-white/10">
+						<div>
+							<h3 className="text-sm font-bold text-white tracking-wide">
+								{activeTab === "playlist" && "Playlist & Channels"}
+								{activeTab === "cinema" && "Cinema & Display"}
+								{activeTab === "audio" && "Sound & Acoustics"}
+								{activeTab === "cloud" && "Cloud Repository"}
+								{activeTab === "system" && "System & Startup"}
+								{activeTab === "updates" && "Software Update"}
+								{activeTab === "about" && "Legal & About"}
+							</h3>
+							<p className="text-[11px] text-zinc-400 mt-0.5">
+								{activeTab === "playlist" &&
+									"Manage streaming links, compatibility & verified channels"}
+								{activeTab === "cinema" &&
+									"Customize visual ambient lighting and stream buffer stability"}
+								{activeTab === "audio" &&
+									"Fine-tune channel volume balance and prevent sudden loudness spikes"}
+								{activeTab === "cloud" &&
+									"Sync verified channels and backup mirrors directly from cloud repository"}
+								{activeTab === "system" &&
+									"Windows boot autostart, system tray quick controls, and GitHub integration"}
+								{activeTab === "updates" &&
+									"Check for new releases, install updates, and review changelogs"}
+								{activeTab === "about" &&
+									"Compliance, open-source attribution, and architecture"}
+							</p>
 						</div>
 
-						{/* Content Container (Spacious Interior Scroll Canvas with stable scrollbar) */}
-						<div className="h-[395px] overflow-y-auto pr-1 flex flex-col justify-start gap-3 [scrollbar-gutter:stable] scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-							{/* TAB 1: PLAYLIST & CHANNELS */}
-							{activeTab === "playlist" && (
-								<form onSubmit={handleSave} className="flex flex-col gap-3">
-									{/* Dynamic Channel Counter Card */}
-									<div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-950/40 via-cyan-950/20 to-black/30 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-										<div className="flex items-center gap-3">
-											<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
-												<Tv className="w-4.5 h-4.5" />
+						<button
+							onClick={closeSettings}
+							className="p-1.5 rounded-full text-zinc-400 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
+							title="Close (Esc)"
+						>
+							<X className="w-4 h-4" />
+						</button>
+					</div>
+
+					{/* Content Container (dynamically fills vertical space with custom scrollbar, zero clipping) */}
+					<div className="flex-1 min-h-0 overflow-y-auto pr-1 flex flex-col justify-start gap-3.5 [scrollbar-gutter:stable] scrollbar-thin scrollbar-thumb-white/15 hover:scrollbar-thumb-white/25 scrollbar-track-transparent">
+						{/* TAB 1: PLAYLIST & CHANNELS */}
+						{activeTab === "playlist" && (
+							<div className="flex flex-col gap-3.5">
+								{/* Card 1: Cloud Channels Library */}
+								<div className="p-4 sm:p-4.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex items-center justify-between gap-4">
+									<div className="flex items-center gap-3.5 min-w-0">
+										<div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 shadow-sm">
+											<Tv className="w-5 h-5" />
+										</div>
+										<div className="min-w-0">
+											<div className="flex items-center gap-2.5 flex-wrap">
+												<span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+													{totalChannelsCount > 0
+														? totalChannelsCount.toLocaleString()
+														: "11,046"}
+												</span>
+												<span className="text-xs text-zinc-400 font-medium">
+													Total Channels
+												</span>
+												<span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+													<span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+													Cloud Synced
+												</span>
 											</div>
-											<div>
-												<div className="flex items-center gap-2">
-													<span className="text-xl font-black text-white tracking-tight">
-														{totalChannelsCount > 0
-															? totalChannelsCount.toLocaleString()
-															: "0"}
-													</span>
-													<span className="text-[10px] font-bold text-cyan-300 bg-cyan-500/20 border border-cyan-500/30 px-2 py-0.5 rounded-full">
-														Verified Channels
-													</span>
-												</div>
+											<p className="text-[11px] text-zinc-400 mt-1 truncate">
+												GitHub Master Cloud Feed • Updated automatically
+											</p>
+										</div>
+									</div>
+
+									<button
+										type="button"
+										onClick={handleFetchGitHub}
+										disabled={isFetchingGitHub || isSyncing}
+										className="px-3.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] active:scale-95 border border-white/10 text-zinc-200 hover:text-white text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer disabled:opacity-40 shrink-0 shadow-sm"
+										title="Fetch latest channels directly from GitHub"
+									>
+										<RefreshCw
+											className={`w-3.5 h-3.5 ${
+												isFetchingGitHub ? "animate-spin text-cyan-400" : ""
+											}`}
+										/>
+										<span>
+											{isFetchingGitHub ? "Fetching..." : "Fetch Master"}
+										</span>
+									</button>
+								</div>
+
+								{/* Card 2: Local ISP Stream Verification */}
+								<div className="p-4 sm:p-4.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col gap-3.5">
+									<div className="flex items-center justify-between gap-4">
+										<div className="flex items-center gap-3.5 min-w-0">
+											<div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
+												<Wifi className="w-5 h-5" />
+											</div>
+											<div className="min-w-0">
+												<h4 className="text-sm font-semibold text-white tracking-normal">
+													Local ISP Stream Verification
+												</h4>
 												<p className="text-[11px] text-zinc-400 mt-0.5">
-													Total channels currently loaded in your library
+													Audits live streams on your connection and
+													auto-promotes backup mirrors
 												</p>
 											</div>
 										</div>
@@ -366,45 +378,136 @@ export const SettingsDialog: React.FC = () => {
 										<button
 											type="button"
 											onClick={syncCloudStreams}
-											disabled={isSyncing}
-											className="px-3 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/20 shrink-0 self-end sm:self-auto"
+											disabled={isSyncing || isFetchingGitHub}
+											className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-95 text-white text-xs font-semibold transition-all flex items-center gap-2 disabled:opacity-40 cursor-pointer shadow-[0_2px_12px_rgba(6,182,212,0.25)] shrink-0"
 										>
 											<RefreshCw
-												className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
+												className={`w-3.5 h-3.5 ${
+													isSyncing ? "animate-spin" : ""
+												}`}
 											/>
 											<span>
-												{isSyncing ? "Syncing..." : "Sync Fresh List"}
+												{isSyncing
+													? "Auditing Network..."
+													: "Verify on My Network"}
 											</span>
 										</button>
 									</div>
 
-									{/* Region-Blocked / Network Stream Compatibility Filter */}
-									<div className="rounded-2xl p-3 bg-white/[0.03] border border-white/10 flex items-center justify-between gap-3">
-										<div className="flex items-center gap-2.5">
-											<div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
-												<ShieldCheck className="w-4 h-4" />
-											</div>
-											<div>
-												<div className="flex items-center gap-2">
-													<span className="text-xs font-bold text-white">
-														Direct Playback Only (India / Mobile)
-													</span>
-													<span
-														className={`px-1.5 py-0.2 rounded-full text-[8px] font-bold border ${
-															hideRegionBlocked
-																? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-																: "bg-white/10 text-zinc-400 border-white/10"
-														}`}
-													>
-														{hideRegionBlocked
-															? `${directPlayableCount.toLocaleString()} Playable`
-															: `${allChannelsCount.toLocaleString()} Global`}
+									{/* Live Audit Progress (Clean Glassmorphism Panel) */}
+									{(isSyncing ||
+										(syncProgress && !syncProgress.is_complete)) && (
+										<div className="rounded-xl p-3.5 bg-white/[0.025] border border-cyan-500/20 flex flex-col gap-2.5 shadow-sm">
+											<div className="flex items-center justify-between text-xs">
+												<div className="flex items-center gap-2 min-w-0">
+													<span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+													<span className="font-medium text-zinc-200 truncate">
+														{syncProgress?.phase ||
+															"Testing stream mirrors on your network..."}
 													</span>
 												</div>
-												<p className="text-[10px] text-zinc-400 mt-0.5">
-													{hideRegionBlocked
-														? `Hiding ${(allChannelsCount - directPlayableCount).toLocaleString()} US/UK geo-blocked streams (Pluto, Roku) for 100% direct playback`
-														: "Showing all channels including feeds requiring a US IP / VPN"}
+												<span className="font-mono font-bold text-cyan-300 text-xs shrink-0 ml-2">
+													{syncProgress?.percent ?? 0}%
+												</span>
+											</div>
+
+											<div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+												<div
+													className="h-full bg-gradient-to-r from-cyan-500 via-blue-500 to-emerald-400 rounded-full transition-all duration-300"
+													style={{ width: `${syncProgress?.percent ?? 0}%` }}
+												/>
+											</div>
+
+											<div className="flex items-center justify-between text-[11px] text-zinc-400">
+												<span className="text-zinc-300 font-medium">
+													{syncProgress?.updated_count
+														? `⚡ ${syncProgress.updated_count} stream mirrors optimized`
+														: "Testing link response and latency..."}
+												</span>
+												<span className="font-mono text-cyan-400 font-semibold text-[10px]">
+													{syncProgress?.total_count
+														? `${syncProgress.total_count.toLocaleString()} Channels Loaded`
+														: `${totalChannelsCount.toLocaleString()} Channels Loaded`}
+												</span>
+											</div>
+										</div>
+									)}
+								</div>
+
+								{/* Card 3: Playback Filter Mode (Independent Card) */}
+								<div className="p-4 sm:p-4.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+									<div className="min-w-0">
+										<h4 className="text-sm font-semibold text-white tracking-normal">
+											Playback Filter Mode
+										</h4>
+										<p className="text-[11px] text-zinc-400 mt-0.5">
+											{showOnlyVerified
+												? "Showing only streams verified to work on your network"
+												: "Showing all channels from the cloud library"}
+										</p>
+									</div>
+
+									{/* Clean Segmented Switch: All Channels vs Verified Only */}
+									<div className="flex items-center p-1 rounded-xl bg-black/40 border border-white/10 shrink-0 self-start sm:self-auto">
+										<button
+											type="button"
+											onClick={() =>
+												showOnlyVerified && toggleShowOnlyVerified()
+											}
+											className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+												!showOnlyVerified
+													? "bg-white/20 text-white shadow-sm"
+													: "text-zinc-400 hover:text-white"
+											}`}
+										>
+											All Channels (
+											{totalChannelsCount > 0
+												? totalChannelsCount.toLocaleString()
+												: "11,046"}
+											)
+										</button>
+										<button
+											type="button"
+											onClick={() =>
+												!showOnlyVerified && toggleShowOnlyVerified()
+											}
+											className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+												showOnlyVerified
+													? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25"
+													: "text-zinc-400 hover:text-white"
+											}`}
+										>
+											<span
+												className={`w-1.5 h-1.5 rounded-full ${
+													showOnlyVerified
+														? "bg-emerald-400 animate-pulse"
+														: "bg-zinc-500"
+												}`}
+											/>
+											Verified Only ({verifiedChannelsCount.toLocaleString()})
+										</button>
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* TAB 2: CINEMA & DISPLAY */}
+						{activeTab === "cinema" && (
+							<div className="flex flex-col gap-3">
+								{/* Ambilight Card */}
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+									<div className="flex items-start justify-between gap-3">
+										<div className="flex items-center gap-2.5">
+											<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
+												<Sparkles className="w-4.5 h-4.5" />
+											</div>
+											<div>
+												<h4 className="text-xs sm:text-sm font-bold text-white">
+													Ambilight Ambient Glow
+												</h4>
+												<p className="text-[11px] text-zinc-400 mt-0.5">
+													Projects dynamic ambient colors on the wall behind the
+													player
 												</p>
 											</div>
 										</div>
@@ -412,808 +515,654 @@ export const SettingsDialog: React.FC = () => {
 										<button
 											type="button"
 											role="switch"
-											aria-checked={hideRegionBlocked}
-											onClick={toggleHideRegionBlocked}
-											className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-												hideRegionBlocked ? "bg-cyan-500" : "bg-zinc-800"
+											aria-checked={ambientGlow}
+											onClick={toggleAmbientGlow}
+											className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+												ambientGlow ? "bg-cyan-600" : "bg-zinc-800"
 											}`}
-											title={
-												hideRegionBlocked
-													? "Show all global channels"
-													: "Filter to only directly playable channels"
-											}
 										>
 											<span
-												className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white transition-transform ${
-													hideRegionBlocked
-														? "translate-x-4.5"
-														: "translate-x-0"
+												className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+													ambientGlow ? "translate-x-5" : "translate-x-0"
 												}`}
 											/>
 										</button>
 									</div>
 
-									{/* M3U Link Input Card */}
-									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-										<div className="flex items-center justify-between flex-wrap gap-2">
-											<div className="flex items-center gap-2">
-												<Globe className="w-3.5 h-3.5 text-cyan-400" />
-												<span className="text-xs font-bold text-white">
-													M3U Playlist Source
-												</span>
-												{isCustomPlaylist ? (
-													<span className="px-2 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 text-[9px] font-bold">
-														Custom Link
-													</span>
-												) : (
-													<span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold">
-														Default Channels
-													</span>
-												)}
+									{/* Visual Preview Box */}
+									<div className="relative h-14 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center bg-black/60">
+										{ambientGlow && (
+											<div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-cyan-500/30 to-purple-600/30 filter blur-xl animate-pulse" />
+										)}
+										<div className="relative z-10 flex items-center gap-2 text-xs text-zinc-300 font-medium">
+											<div className="w-10 h-6 rounded-md bg-zinc-800 border border-white/20 flex items-center justify-center text-[9px] font-mono text-zinc-400">
+												TV
 											</div>
-
-											{isCustomPlaylist && (
-												<button
-													type="button"
-													onClick={handleReset}
-													disabled={isResetting || isSaving}
-													className="text-[11px] text-amber-300 hover:text-amber-200 flex items-center gap-1.5 cursor-pointer font-bold px-2 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/25 transition-all"
-												>
-													<RotateCcw
-														className={`w-3.5 h-3.5 ${isResetting ? "animate-spin" : ""}`}
-													/>
-													<span>Reset to Default</span>
-												</button>
-											)}
-										</div>
-
-										<input
-											type="text"
-											value={playlistUrl}
-											onChange={(e) => setPlaylistUrl(e.target.value)}
-											placeholder="https://.../playlist.m3u"
-											className="w-full bg-[#05070d] text-xs text-white rounded-xl px-3 py-2 border border-white/10 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all font-mono"
-										/>
-
-										{/* Quick Master Presets */}
-										<div className="flex items-center gap-2 pt-0.5 flex-wrap">
-											<span className="text-[10px] text-zinc-400 font-semibold">
-												Quick Presets:
+											<span className="text-[11px]">
+												{ambientGlow
+													? "Cinema aura is active and reacting to video colors"
+													: "Ambient glow is currently turned off"}
 											</span>
-											<button
-												type="button"
-												onClick={() => setPlaylistUrl(DEFAULT_PLAYLIST_URL)}
-												className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-bold ${
-													playlistUrl === DEFAULT_PLAYLIST_URL
-														? "bg-cyan-500/20 text-cyan-300 border-cyan-400/40"
-														: "bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10"
-												}`}
-											>
-												🌐 Global Master ({allChannelsCount.toLocaleString()})
-											</button>
-											<button
-												type="button"
-												onClick={() => setPlaylistUrl(INDIA_PLAYLIST_URL)}
-												className={`text-[10px] px-2.5 py-1 rounded-lg border transition-all cursor-pointer font-bold ${
-													playlistUrl === INDIA_PLAYLIST_URL
-														? "bg-emerald-500/20 text-emerald-300 border-emerald-400/40"
-														: "bg-white/5 text-zinc-300 border-white/10 hover:bg-white/10"
-												}`}
-											>
-												🇮🇳 India & Regional Feeds
-											</button>
 										</div>
-
-										<p className="text-[10px] text-zinc-400">
-											Paste any valid M3U or M3U8 link, or select a preset
-											above. All channels will be loaded and indexed
-											automatically.
-										</p>
 									</div>
+								</div>
 
-									{/* Action Buttons */}
-									<div className="flex items-center justify-end gap-3">
-										<button
-											type="submit"
-											disabled={isSaving || isResetting || !playlistUrl.trim()}
-											className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-lg shadow-blue-500/25 transition-all cursor-pointer"
-										>
-											{isSaving ? (
-												<>
-													<RefreshCw className="w-3.5 h-3.5 animate-spin" />
-													<span>Indexing Channels...</span>
-												</>
-											) : (
-												<>
-													<Save className="w-3.5 h-3.5" />
-													<span>Save & Load Playlist</span>
-												</>
-											)}
-										</button>
-									</div>
-								</form>
-							)}
-
-							{/* TAB 2: CINEMA & DISPLAY */}
-							{activeTab === "cinema" && (
-								<div className="flex flex-col gap-3">
-									{/* Ambilight Card */}
-									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-										<div className="flex items-start justify-between gap-3">
-											<div className="flex items-center gap-2.5">
-												<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
-													<Sparkles className="w-4.5 h-4.5" />
-												</div>
-												<div>
-													<h4 className="text-xs sm:text-sm font-bold text-white">
-														Ambilight Ambient Glow
-													</h4>
-													<p className="text-[11px] text-zinc-400 mt-0.5">
-														Projects dynamic ambient colors on the wall behind
-														the player
-													</p>
-												</div>
-											</div>
-
-											<button
-												type="button"
-												role="switch"
-												aria-checked={ambientGlow}
-												onClick={toggleAmbientGlow}
-												className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-													ambientGlow ? "bg-cyan-600" : "bg-zinc-800"
-												}`}
-											>
-												<span
-													className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-														ambientGlow ? "translate-x-5" : "translate-x-0"
-													}`}
-												/>
-											</button>
+								{/* Anti-Stall Buffer Card */}
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex items-start justify-between gap-4">
+									<div className="flex items-center gap-2.5">
+										<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+											<Zap className="w-4.5 h-4.5" />
 										</div>
-
-										{/* Visual Preview Box */}
-										<div className="relative h-14 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center bg-black/60">
-											{ambientGlow && (
-												<div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-cyan-500/30 to-purple-600/30 filter blur-xl animate-pulse" />
-											)}
-											<div className="relative z-10 flex items-center gap-2 text-xs text-zinc-300 font-medium">
-												<div className="w-10 h-6 rounded-md bg-zinc-800 border border-white/20 flex items-center justify-center text-[9px] font-mono text-zinc-400">
-													TV
-												</div>
-												<span className="text-[11px]">
-													{ambientGlow
-														? "Cinema aura is active and reacting to video colors"
-														: "Ambient glow is currently turned off"}
+										<div>
+											<div className="flex items-center gap-2">
+												<h4 className="text-xs sm:text-sm font-bold text-white">
+													Smooth Stream Protection
+												</h4>
+												<span className="flex items-center gap-1 text-[8px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+													<span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+													PROTECTED
 												</span>
 											</div>
+											<p className="text-[11px] text-zinc-400 mt-0.5">
+												Deep background buffering and automated failover keep
+												playback smooth without freezing
+											</p>
 										</div>
 									</div>
 
-									{/* Anti-Stall Buffer Card */}
-									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex items-start justify-between gap-4">
+									<div className="text-emerald-400 text-xs font-bold shrink-0 flex items-center gap-1 pt-0.5">
+										<ShieldCheck className="w-4 h-4" />
+										<span>Zero-Freeze</span>
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* TAB 3: AUDIO & ACOUSTICS */}
+						{activeTab === "audio" && (
+							<div className="flex flex-col gap-3">
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+									<div className="flex items-start justify-between gap-3">
 										<div className="flex items-center gap-2.5">
 											<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-												<Zap className="w-4.5 h-4.5" />
+												<Volume2 className="w-4.5 h-4.5" />
 											</div>
 											<div>
 												<div className="flex items-center gap-2">
 													<h4 className="text-xs sm:text-sm font-bold text-white">
-														Smooth Stream Protection
+														Smart Volume Leveler
 													</h4>
-													<span className="flex items-center gap-1 text-[8px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-														<span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-														PROTECTED
-													</span>
+													{normalizeAudio && (
+														<span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[8px] font-bold">
+															ACTIVE
+														</span>
+													)}
 												</div>
 												<p className="text-[11px] text-zinc-400 mt-0.5">
-													Deep background buffering and automated failover keep
-													playback smooth without freezing
+													Balances loudness variations between channels so
+													switching never hurts your ears
 												</p>
 											</div>
 										</div>
 
-										<div className="text-emerald-400 text-xs font-bold shrink-0 flex items-center gap-1 pt-0.5">
-											<ShieldCheck className="w-4 h-4" />
-											<span>Zero-Freeze</span>
+										<button
+											type="button"
+											role="switch"
+											aria-checked={normalizeAudio}
+											onClick={toggleNormalizeAudio}
+											className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+												normalizeAudio ? "bg-emerald-600" : "bg-zinc-800"
+											}`}
+										>
+											<span
+												className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+													normalizeAudio ? "translate-x-5" : "translate-x-0"
+												}`}
+											/>
+										</button>
+									</div>
+
+									{/* Simulated Audio Equalizer Bars */}
+									<div className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
+										<span className="text-[11px] text-zinc-400">
+											Dynamic range limiter & audio spike guard
+										</span>
+										<div className="flex items-end gap-1 h-4">
+											<div className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-4 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-3.5 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
 										</div>
 									</div>
 								</div>
-							)}
+							</div>
+						)}
 
-							{/* TAB 3: AUDIO & ACOUSTICS */}
-							{activeTab === "audio" && (
-								<div className="flex flex-col gap-3">
-									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
-										<div className="flex items-start justify-between gap-3">
-											<div className="flex items-center gap-2.5">
-												<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-													<Volume2 className="w-4.5 h-4.5" />
+						{/* TAB 4: CLOUD REPOSITORY */}
+						{activeTab === "cloud" && (
+							<div className="flex flex-col gap-3">
+								{/* Cloud Repository Card */}
+								<div className="rounded-2xl p-3.5 bg-gradient-to-br from-cyan-950/30 via-blue-950/20 to-black/40 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+									<div className="flex items-center gap-2.5">
+										<div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
+											<Cloud className="w-4.5 h-4.5" />
+										</div>
+										<div>
+											<h4 className="text-xs sm:text-sm font-bold text-white">
+												Cloud Repository Sync
+											</h4>
+											<p className="text-[11px] text-zinc-400 mt-0.5">
+												Refreshes verified live streaming channels from the
+												cloud mirror
+											</p>
+											<div className="text-[10px] text-cyan-300 font-mono mt-0.5 font-bold">
+												{totalChannelsCount > 0
+													? `${totalChannelsCount.toLocaleString()} channels currently verified`
+													: "Ready to sync channels"}
+											</div>
+										</div>
+									</div>
+
+									<button
+										type="button"
+										onClick={syncCloudStreams}
+										disabled={isSyncing}
+										className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/25 shrink-0 active:scale-95"
+									>
+										<RefreshCw
+											className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
+										/>
+										<span>
+											{isSyncing ? "Syncing..." : "Sync Channels Now"}
+										</span>
+									</button>
+								</div>
+
+								{/* Cloud Mirror Health Card */}
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+									<div className="flex items-center gap-2.5">
+										<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+											<ShieldCheck className="w-4.5 h-4.5" />
+										</div>
+										<div>
+											<h4 className="text-xs sm:text-sm font-bold text-white">
+												High-Speed Cloud Resilience
+											</h4>
+											<p className="text-[11px] text-zinc-400 mt-0.5">
+												All channels are verified with automatic fallback
+												mirrors
+											</p>
+										</div>
+									</div>
+
+									<div className="grid grid-cols-3 gap-2 pt-1 text-xs">
+										<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
+											<span className="text-[9px] uppercase font-bold text-zinc-500">
+												Live Channels
+											</span>
+											<span className="text-xs sm:text-sm font-black text-cyan-300 font-mono">
+												{totalChannelsCount > 0
+													? totalChannelsCount.toLocaleString()
+													: "8,300+"}
+											</span>
+										</div>
+										<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
+											<span className="text-[9px] uppercase font-bold text-zinc-500">
+												Mirror Fallback
+											</span>
+											<span className="text-xs sm:text-sm font-black text-emerald-400 font-mono">
+												Multi-Server
+											</span>
+										</div>
+										<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
+											<span className="text-[9px] uppercase font-bold text-zinc-500">
+												Sync Protocol
+											</span>
+											<span className="text-xs sm:text-sm font-black text-white font-mono">
+												HTTPS Cloud
+											</span>
+										</div>
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* TAB: SYSTEM & STARTUP */}
+						{activeTab === "system" && (
+							<div className="flex flex-col gap-2.5 max-h-[365px] overflow-y-auto pr-1 scrollbar-thin">
+								{/* Autostart Card */}
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+									<div className="flex items-center justify-between gap-4">
+										<div className="flex items-center gap-3">
+											<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
+												<Power className="w-4 h-4" />
+											</div>
+											<div>
+												<h4 className="text-sm font-bold text-white flex items-center gap-2">
+													Start With Windows
+													<span
+														className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
+															isLaunchAtStartup
+																? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+																: "bg-zinc-800 text-zinc-400 border border-zinc-700"
+														}`}
+													>
+														{isLaunchAtStartup ? "Enabled" : "Disabled"}
+													</span>
+												</h4>
+												<p className="text-xs text-zinc-400">
+													Automatically launch MorningTV when Windows boots or
+													restarts
+												</p>
+											</div>
+										</div>
+										<button
+											type="button"
+											onClick={() => toggleStartupStatus(!isLaunchAtStartup)}
+											className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 ${
+												isLaunchAtStartup ? "bg-cyan-500" : "bg-zinc-700"
+											}`}
+										>
+											<div
+												className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+													isLaunchAtStartup ? "translate-x-6" : "translate-x-0"
+												}`}
+											/>
+										</button>
+									</div>
+								</div>
+
+								{/* Tray Quick Controls Card */}
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+									<div className="flex items-center gap-3">
+										<div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/25 flex items-center justify-center shrink-0">
+											<Monitor className="w-4 h-4" />
+										</div>
+										<div>
+											<h4 className="text-sm font-bold text-white">
+												Windows Taskbar System Tray
+											</h4>
+											<p className="text-xs text-zinc-400">
+												MorningTV runs quietly in the Windows Notification Area
+											</p>
+										</div>
+									</div>
+
+									<div className="grid grid-cols-2 gap-2 text-xs text-zinc-300 pt-0.5">
+										<div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
+											<span className="font-bold text-white flex items-center gap-1.5 text-xs">
+												📺 Left Click Tray
+											</span>
+											<span className="text-[10px] text-zinc-400 leading-tight">
+												Instantly show, unminimize, or focus player window.
+											</span>
+										</div>
+										<div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
+											<span className="font-bold text-white flex items-center gap-1.5 text-xs">
+												🖱️ Right Click Tray
+											</span>
+											<span className="text-[10px] text-zinc-400 leading-tight">
+												Access Quick Menu: Autostart, GitHub, Reload, and Exit.
+											</span>
+										</div>
+									</div>
+								</div>
+
+								{/* 3G Data Saver & Adaptive Playback Card */}
+								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+									<div className="flex items-center justify-between gap-4">
+										<div className="flex items-center gap-3">
+											<div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/25 flex items-center justify-center shrink-0">
+												<Zap className="w-4 h-4" />
+											</div>
+											<div>
+												<h4 className="text-sm font-bold text-white flex items-center gap-2">
+													Adaptive 3G / Low-Speed Data Saver
+													<span
+														className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
+															is3GDataSaver
+																? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+																: "bg-zinc-800 text-zinc-400 border border-zinc-700"
+														}`}
+													>
+														{is3GDataSaver ? "Active" : "Auto"}
+													</span>
+												</h4>
+												<p className="text-xs text-zinc-400">
+													Locks to 360p/480p and tightens buffer under weak
+													networks (&lt;700 kbps)
+												</p>
+											</div>
+										</div>
+										<button
+											type="button"
+											onClick={() => toggle3GDataSaver()}
+											className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 ${
+												is3GDataSaver ? "bg-amber-500" : "bg-zinc-700"
+											}`}
+										>
+											<div
+												className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+													is3GDataSaver ? "translate-x-6" : "translate-x-0"
+												}`}
+											/>
+										</button>
+									</div>
+								</div>
+
+								{/* GitHub Repository Card */}
+								<div className="rounded-2xl p-3.5 bg-gradient-to-r from-blue-950/30 to-purple-950/30 border border-blue-500/20 flex items-center justify-between gap-4">
+									<div>
+										<h4 className="text-sm font-bold text-white flex items-center gap-2">
+											🌐 GitHub Open Source Repository
+										</h4>
+										<p className="text-xs text-zinc-400">
+											View source code, star the project, report stream issues,
+											and check latest releases
+										</p>
+									</div>
+									<button
+										type="button"
+										onClick={openGitHubRepo}
+										className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer shrink-0"
+									>
+										<ExternalLink className="w-3.5 h-3.5" />
+										Open Repo
+									</button>
+								</div>
+							</div>
+						)}
+
+						{/* TAB 5: SOFTWARE UPDATE */}
+						{activeTab === "updates" && (
+							<div className="flex flex-col gap-3">
+								{!isUpdateAvailable ? (
+									/* Default Clean Update Card */
+									<div className="rounded-2xl p-4 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+										<div className="flex items-center justify-between gap-3">
+											<div className="flex items-center gap-3">
+												<div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center shrink-0">
+													<Check className="w-4 h-4" />
 												</div>
 												<div>
 													<div className="flex items-center gap-2">
-														<h4 className="text-xs sm:text-sm font-bold text-white">
-															Smart Volume Leveler
+														<h4 className="text-sm font-bold text-white">
+															MorningTV Desktop
 														</h4>
-														{normalizeAudio && (
-															<span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[8px] font-bold">
-																ACTIVE
-															</span>
-														)}
-													</div>
-													<p className="text-[11px] text-zinc-400 mt-0.5">
-														Balances loudness variations between channels so
-														switching never hurts your ears
-													</p>
-												</div>
-											</div>
-
-											<button
-												type="button"
-												role="switch"
-												aria-checked={normalizeAudio}
-												onClick={toggleNormalizeAudio}
-												className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
-													normalizeAudio ? "bg-emerald-600" : "bg-zinc-800"
-												}`}
-											>
-												<span
-													className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-														normalizeAudio ? "translate-x-5" : "translate-x-0"
-													}`}
-												/>
-											</button>
-										</div>
-
-										{/* Simulated Audio Equalizer Bars */}
-										<div className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
-											<span className="text-[11px] text-zinc-400">
-												Dynamic range limiter & audio spike guard
-											</span>
-											<div className="flex items-end gap-1 h-4">
-												<div className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
-												<div className="w-1 h-4 bg-emerald-400 rounded-full animate-pulse" />
-												<div className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" />
-												<div className="w-1 h-3.5 bg-emerald-400 rounded-full animate-pulse" />
-												<div className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
-											</div>
-										</div>
-									</div>
-								</div>
-							)}
-
-							{/* TAB 4: CLOUD REPOSITORY */}
-							{activeTab === "cloud" && (
-								<div className="flex flex-col gap-3">
-									{/* Cloud Repository Card */}
-									<div className="rounded-2xl p-3.5 bg-gradient-to-br from-cyan-950/30 via-blue-950/20 to-black/40 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-										<div className="flex items-center gap-2.5">
-											<div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
-												<Cloud className="w-4.5 h-4.5" />
-											</div>
-											<div>
-												<h4 className="text-xs sm:text-sm font-bold text-white">
-													Cloud Repository Sync
-												</h4>
-												<p className="text-[11px] text-zinc-400 mt-0.5">
-													Refreshes verified live streaming channels from the
-													cloud mirror
-												</p>
-												<div className="text-[10px] text-cyan-300 font-mono mt-0.5 font-bold">
-													{totalChannelsCount > 0
-														? `${totalChannelsCount.toLocaleString()} channels currently verified`
-														: "Ready to sync channels"}
-												</div>
-											</div>
-										</div>
-
-										<button
-											type="button"
-											onClick={syncCloudStreams}
-											disabled={isSyncing}
-											className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/25 shrink-0 active:scale-95"
-										>
-											<RefreshCw
-												className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
-											/>
-											<span>
-												{isSyncing ? "Syncing..." : "Sync Channels Now"}
-											</span>
-										</button>
-									</div>
-
-									{/* Cloud Mirror Health Card */}
-									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-										<div className="flex items-center gap-2.5">
-											<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-												<ShieldCheck className="w-4.5 h-4.5" />
-											</div>
-											<div>
-												<h4 className="text-xs sm:text-sm font-bold text-white">
-													High-Speed Cloud Resilience
-												</h4>
-												<p className="text-[11px] text-zinc-400 mt-0.5">
-													All channels are verified with automatic fallback
-													mirrors
-												</p>
-											</div>
-										</div>
-
-										<div className="grid grid-cols-3 gap-2 pt-1 text-xs">
-											<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
-												<span className="text-[9px] uppercase font-bold text-zinc-500">
-													Live Channels
-												</span>
-												<span className="text-xs sm:text-sm font-black text-cyan-300 font-mono">
-													{totalChannelsCount > 0
-														? totalChannelsCount.toLocaleString()
-														: "8,300+"}
-												</span>
-											</div>
-											<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
-												<span className="text-[9px] uppercase font-bold text-zinc-500">
-													Mirror Fallback
-												</span>
-												<span className="text-xs sm:text-sm font-black text-emerald-400 font-mono">
-													Multi-Server
-												</span>
-											</div>
-											<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
-												<span className="text-[9px] uppercase font-bold text-zinc-500">
-													Sync Protocol
-												</span>
-												<span className="text-xs sm:text-sm font-black text-white font-mono">
-													HTTPS Cloud
-												</span>
-											</div>
-										</div>
-									</div>
-								</div>
-							)}
-
-							{/* TAB: SYSTEM & STARTUP */}
-							{activeTab === "system" && (
-								<div className="flex flex-col gap-2.5 max-h-[365px] overflow-y-auto pr-1 scrollbar-thin">
-									{/* Autostart Card */}
-									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-										<div className="flex items-center justify-between gap-4">
-											<div className="flex items-center gap-3">
-												<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
-													<Power className="w-4 h-4" />
-												</div>
-												<div>
-													<h4 className="text-sm font-bold text-white flex items-center gap-2">
-														Start With Windows
-														<span
-															className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
-																isLaunchAtStartup
-																	? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-																	: "bg-zinc-800 text-zinc-400 border border-zinc-700"
-															}`}
-														>
-															{isLaunchAtStartup ? "Enabled" : "Disabled"}
+														<span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold font-mono">
+															v{APP_VERSION}
 														</span>
-													</h4>
-													<p className="text-xs text-zinc-400">
-														Automatically launch MorningTV when Windows boots or
-														restarts
+													</div>
+													<p className="text-xs text-zinc-400 mt-0.5">
+														{updateStatus === "checking"
+															? "Connecting to update server..."
+															: updateStatus === "upToDate"
+																? "Your desktop player is completely up to date"
+																: updateStatus === "error"
+																	? "Unable to connect to update server"
+																	: "Your desktop player is active and running the latest release"}
 													</p>
 												</div>
 											</div>
+
 											<button
 												type="button"
-												onClick={() => toggleStartupStatus(!isLaunchAtStartup)}
-												className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 ${
-													isLaunchAtStartup ? "bg-cyan-500" : "bg-zinc-700"
-												}`}
+												onClick={() => checkForUpdates(true)}
+												disabled={isCheckingUpdate}
+												className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer disabled:opacity-50 shrink-0"
 											>
-												<div
-													className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-														isLaunchAtStartup
-															? "translate-x-6"
-															: "translate-x-0"
+												<RefreshCw
+													className={`w-3.5 h-3.5 ${
+														isCheckingUpdate ? "animate-spin text-cyan-400" : ""
 													}`}
 												/>
+												<span>
+													{isCheckingUpdate
+														? "Checking..."
+														: updateStatus === "upToDate"
+															? "Up to Date"
+															: "Check for Updates"}
+												</span>
 											</button>
 										</div>
 									</div>
-
-									{/* Tray Quick Controls Card */}
-									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-										<div className="flex items-center gap-3">
-											<div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/25 flex items-center justify-center shrink-0">
-												<Monitor className="w-4 h-4" />
-											</div>
-											<div>
-												<h4 className="text-sm font-bold text-white">
-													Windows Taskbar System Tray
-												</h4>
-												<p className="text-xs text-zinc-400">
-													MorningTV runs quietly in the Windows Notification
-													Area
-												</p>
-											</div>
-										</div>
-
-										<div className="grid grid-cols-2 gap-2 text-xs text-zinc-300 pt-0.5">
-											<div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
-												<span className="font-bold text-white flex items-center gap-1.5 text-xs">
-													📺 Left Click Tray
-												</span>
-												<span className="text-[10px] text-zinc-400 leading-tight">
-													Instantly show, unminimize, or focus player window.
-												</span>
-											</div>
-											<div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
-												<span className="font-bold text-white flex items-center gap-1.5 text-xs">
-													🖱️ Right Click Tray
-												</span>
-												<span className="text-[10px] text-zinc-400 leading-tight">
-													Access Quick Menu: Autostart, GitHub, Reload, and
-													Exit.
-												</span>
-											</div>
-										</div>
-									</div>
-
-									{/* 3G Data Saver & Adaptive Playback Card */}
-									<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-										<div className="flex items-center justify-between gap-4">
-											<div className="flex items-center gap-3">
-												<div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/25 flex items-center justify-center shrink-0">
-													<Zap className="w-4 h-4" />
+								) : (
+									/* Expanded Update Showcase Card (Shows What's New & Download) */
+									<div className="rounded-2xl p-3.5 sm:p-4 bg-gradient-to-br from-blue-950/40 via-indigo-950/25 to-black/60 border border-blue-500/30 flex flex-col gap-2.5 shadow-xl shadow-blue-950/30 animate-in fade-in zoom-in-95 duration-200">
+										{/* Update Header */}
+										<div className="flex items-start justify-between gap-2.5">
+											<div className="flex items-center gap-2.5 min-w-0">
+												<div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
+													<ArrowDownCircle className="w-4 h-4 text-cyan-400 animate-pulse" />
 												</div>
-												<div>
-													<h4 className="text-sm font-bold text-white flex items-center gap-2">
-														Adaptive 3G / Low-Speed Data Saver
-														<span
-															className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
-																is3GDataSaver
-																	? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-																	: "bg-zinc-800 text-zinc-400 border border-zinc-700"
-															}`}
-														>
-															{is3GDataSaver ? "Active" : "Auto"}
+												<div className="min-w-0">
+													<div className="flex items-center gap-2 flex-wrap">
+														<h4 className="text-xs sm:text-sm font-bold text-white truncate">
+															MorningTV Feature Update
+														</h4>
+														<span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-bold font-mono shrink-0">
+															v{updateInfo?.version} Available
 														</span>
-													</h4>
-													<p className="text-xs text-zinc-400">
-														Locks to 360p/480p and tightens buffer under weak
-														networks (&lt;700 kbps)
+													</div>
+													<p className="text-[11px] text-zinc-300 mt-0.5 truncate">
+														A new verified version is ready with performance and
+														channel improvements
 													</p>
 												</div>
 											</div>
-											<button
-												type="button"
-												onClick={() => toggle3GDataSaver()}
-												className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 ${
-													is3GDataSaver ? "bg-amber-500" : "bg-zinc-700"
-												}`}
-											>
-												<div
-													className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-														is3GDataSaver ? "translate-x-6" : "translate-x-0"
-													}`}
-												/>
-											</button>
-										</div>
-									</div>
 
-									{/* GitHub Repository Card */}
-									<div className="rounded-2xl p-3.5 bg-gradient-to-r from-blue-950/30 to-purple-950/30 border border-blue-500/20 flex items-center justify-between gap-4">
-										<div>
-											<h4 className="text-sm font-bold text-white flex items-center gap-2">
-												🌐 GitHub Open Source Repository
-											</h4>
-											<p className="text-xs text-zinc-400">
-												View source code, star the project, report stream
-												issues, and check latest releases
-											</p>
-										</div>
-										<button
-											type="button"
-											onClick={openGitHubRepo}
-											className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer shrink-0"
-										>
-											<ExternalLink className="w-3.5 h-3.5" />
-											Open Repo
-										</button>
-									</div>
-								</div>
-							)}
-
-							{/* TAB 5: SOFTWARE UPDATE */}
-							{activeTab === "updates" && (
-								<div className="flex flex-col gap-3">
-									{!isUpdateAvailable ? (
-										/* Default Clean Update Card */
-										<div className="rounded-2xl p-4 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
-											<div className="flex items-center justify-between gap-3">
-												<div className="flex items-center gap-3">
-													<div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center shrink-0">
-														<Check className="w-4 h-4" />
-													</div>
-													<div>
-														<div className="flex items-center gap-2">
-															<h4 className="text-sm font-bold text-white">
-																MorningTV Desktop
-															</h4>
-															<span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold font-mono">
-																v{APP_VERSION}
-															</span>
-														</div>
-														<p className="text-xs text-zinc-400 mt-0.5">
-															{updateStatus === "checking"
-																? "Connecting to update server..."
-																: updateStatus === "upToDate"
-																	? "Your desktop player is completely up to date"
-																	: updateStatus === "error"
-																		? "Unable to connect to update server"
-																		: "Your desktop player is active and running the latest release"}
-														</p>
-													</div>
-												</div>
-
+											{updateStatus !== "downloading" && (
 												<button
 													type="button"
-													onClick={() => checkForUpdates(true)}
-													disabled={isCheckingUpdate}
-													className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+													onClick={dismissUpdate}
+													className="p-1 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all cursor-pointer shrink-0"
+													title="Dismiss update view"
 												>
-													<RefreshCw
-														className={`w-3.5 h-3.5 ${
-															isCheckingUpdate
-																? "animate-spin text-cyan-400"
-																: ""
-														}`}
-													/>
-													<span>
-														{isCheckingUpdate
-															? "Checking..."
-															: updateStatus === "upToDate"
-																? "Up to Date"
-																: "Check for Updates"}
-													</span>
+													<X className="w-4 h-4" />
 												</button>
+											)}
+										</div>
+
+										{/* What's New Section */}
+										<div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-black/40 border border-white/10">
+											<div className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+												<Sparkles className="w-3 h-3 text-cyan-400" />
+												<span>What's New in v{updateInfo?.version}:</span>
+											</div>
+											<div className="flex flex-col gap-1.5 text-xs text-zinc-300 max-h-36 overflow-y-auto pr-1">
+												{updateInfo?.body ? (
+													updateInfo.body
+														.split("\n")
+														.filter(Boolean)
+														.map((line, idx) => (
+															<div
+																key={idx}
+																className="flex items-start gap-1.5 text-[11px] text-zinc-300"
+															>
+																<span className="text-cyan-400 font-bold shrink-0 mt-0.5">
+																	•
+																</span>
+																<span>{line.replace(/^[•\-*]\s*/, "")}</span>
+															</div>
+														))
+												) : (
+													<p className="text-[11px] text-zinc-400">
+														Verified production stability updates and stream
+														performance enhancements.
+													</p>
+												)}
 											</div>
 										</div>
-									) : (
-										/* Expanded Update Showcase Card (Shows What's New & Download) */
-										<div className="rounded-2xl p-3.5 sm:p-4 bg-gradient-to-br from-blue-950/40 via-indigo-950/25 to-black/60 border border-blue-500/30 flex flex-col gap-2.5 shadow-xl shadow-blue-950/30 animate-in fade-in zoom-in-95 duration-200">
-											{/* Update Header */}
-											<div className="flex items-start justify-between gap-2.5">
-												<div className="flex items-center gap-2.5 min-w-0">
-													<div className="w-8 h-8 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
-														<ArrowDownCircle className="w-4 h-4 text-cyan-400 animate-pulse" />
-													</div>
-													<div className="min-w-0">
-														<div className="flex items-center gap-2 flex-wrap">
-															<h4 className="text-xs sm:text-sm font-bold text-white truncate">
-																MorningTV Feature Update
-															</h4>
-															<span className="px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 text-[9px] font-bold font-mono shrink-0">
-																v{updateInfo?.version} Available
-															</span>
-														</div>
-														<p className="text-[11px] text-zinc-300 mt-0.5 truncate">
-															A new verified version is ready with performance
-															and channel improvements
-														</p>
-													</div>
-												</div>
 
-												{updateStatus !== "downloading" && (
+										{/* Download / Install Controls */}
+										{updateStatus === "available" && (
+											<div className="flex items-center justify-between pt-2 border-t border-white/10">
+												<div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-mono">
+													<ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+													<span>Ed25519 Verified</span>
+												</div>
+												<div className="flex items-center gap-2">
 													<button
 														type="button"
 														onClick={dismissUpdate}
-														className="p-1 text-zinc-400 hover:text-white hover:bg-white/10 rounded-lg transition-all cursor-pointer shrink-0"
-														title="Dismiss update view"
+														className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
 													>
-														<X className="w-4 h-4" />
+														Later
 													</button>
-												)}
-											</div>
-
-											{/* What's New Section */}
-											<div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-black/40 border border-white/10">
-												<div className="text-[10px] font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-													<Sparkles className="w-3 h-3 text-cyan-400" />
-													<span>What's New in v{updateInfo?.version}:</span>
-												</div>
-												<div className="flex flex-col gap-1.5 text-xs text-zinc-300 max-h-36 overflow-y-auto pr-1">
-													{updateInfo?.body ? (
-														updateInfo.body
-															.split("\n")
-															.filter(Boolean)
-															.map((line, idx) => (
-																<div
-																	key={idx}
-																	className="flex items-start gap-1.5 text-[11px] text-zinc-300"
-																>
-																	<span className="text-cyan-400 font-bold shrink-0 mt-0.5">
-																		•
-																	</span>
-																	<span>{line.replace(/^[•\-*]\s*/, "")}</span>
-																</div>
-															))
-													) : (
-														<p className="text-[11px] text-zinc-400">
-															Verified production stability updates and stream
-															performance enhancements.
-														</p>
-													)}
+													<button
+														type="button"
+														onClick={startDownloadUpdate}
+														className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-cyan-600/30 active:scale-95"
+													>
+														<ArrowDownCircle className="w-3.5 h-3.5" />
+														<span>Download & Install Now</span>
+													</button>
 												</div>
 											</div>
+										)}
 
-											{/* Download / Install Controls */}
-											{updateStatus === "available" && (
-												<div className="flex items-center justify-between pt-2 border-t border-white/10">
-													<div className="flex items-center gap-1.5 text-[10px] text-zinc-400 font-mono">
-														<ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-														<span>Ed25519 Verified</span>
-													</div>
-													<div className="flex items-center gap-2">
-														<button
-															type="button"
-															onClick={dismissUpdate}
-															className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
-														>
-															Later
-														</button>
-														<button
-															type="button"
-															onClick={startDownloadUpdate}
-															className="px-4 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-cyan-600/30 active:scale-95"
-														>
-															<ArrowDownCircle className="w-3.5 h-3.5" />
-															<span>Download & Install Now</span>
-														</button>
-													</div>
-												</div>
-											)}
-
-											{/* Downloading Progress Bar */}
-											{updateStatus === "downloading" && (
-												<div className="flex flex-col gap-1.5 p-2.5 bg-cyan-950/20 border border-cyan-500/20 rounded-xl">
-													<div className="flex items-center justify-between text-xs font-bold text-cyan-300">
-														<span className="flex items-center gap-2">
-															<RefreshCw className="w-3 h-3 animate-spin" />
-															<span>Downloading & verifying package...</span>
-														</span>
-														<span className="font-mono text-xs">
-															{updateProgress}%
-														</span>
-													</div>
-													<div className="w-full h-2 bg-black/60 rounded-full overflow-hidden border border-white/10">
-														<div
-															className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-200"
-															style={{ width: `${updateProgress}%` }}
-														/>
-													</div>
-													<span className="text-[9px] text-zinc-400 font-mono">
-														Silent background update in progress
+										{/* Downloading Progress Bar */}
+										{updateStatus === "downloading" && (
+											<div className="flex flex-col gap-1.5 p-2.5 bg-cyan-950/20 border border-cyan-500/20 rounded-xl">
+												<div className="flex items-center justify-between text-xs font-bold text-cyan-300">
+													<span className="flex items-center gap-2">
+														<RefreshCw className="w-3 h-3 animate-spin" />
+														<span>Downloading & verifying package...</span>
+													</span>
+													<span className="font-mono text-xs">
+														{updateProgress}%
 													</span>
 												</div>
-											)}
-
-											{/* Ready to Restart */}
-											{updateStatus === "ready" && (
-												<div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between gap-3">
-													<div className="flex items-center gap-2 text-xs text-emerald-300 font-bold min-w-0">
-														<Check className="w-4 h-4 text-emerald-400 shrink-0" />
-														<span className="truncate">
-															Update downloaded! Restart to apply changes.
-														</span>
-													</div>
-													<div className="flex items-center gap-2 shrink-0">
-														<button
-															type="button"
-															onClick={dismissUpdate}
-															className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-semibold cursor-pointer"
-														>
-															Later
-														</button>
-														<button
-															type="button"
-															onClick={relaunchApp}
-															className="px-3.5 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
-														>
-															Restart Now
-														</button>
-													</div>
+												<div className="w-full h-2 bg-black/60 rounded-full overflow-hidden border border-white/10">
+													<div
+														className="h-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-200"
+														style={{ width: `${updateProgress}%` }}
+													/>
 												</div>
-											)}
-										</div>
-									)}
-								</div>
-							)}
+												<span className="text-[9px] text-zinc-400 font-mono">
+													Silent background update in progress
+												</span>
+											</div>
+										)}
 
-							{/* Tab: Legal & About */}
-							{activeTab === "about" && (
-								<div className="space-y-4">
+										{/* Ready to Restart */}
+										{updateStatus === "ready" && (
+											<div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center justify-between gap-3">
+												<div className="flex items-center gap-2 text-xs text-emerald-300 font-bold min-w-0">
+													<Check className="w-4 h-4 text-emerald-400 shrink-0" />
+													<span className="truncate">
+														Update downloaded! Restart to apply changes.
+													</span>
+												</div>
+												<div className="flex items-center gap-2 shrink-0">
+													<button
+														type="button"
+														onClick={dismissUpdate}
+														className="px-2.5 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white text-xs font-semibold cursor-pointer"
+													>
+														Later
+													</button>
+													<button
+														type="button"
+														onClick={relaunchApp}
+														className="px-3.5 py-1 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-black transition-all cursor-pointer shadow-lg shadow-emerald-500/20 active:scale-95"
+													>
+														Restart Now
+													</button>
+												</div>
+											</div>
+										)}
+									</div>
+								)}
+							</div>
+						)}
+
+						{/* Tab: Legal & About */}
+						{activeTab === "about" && (
+							<div className="space-y-4">
+								<div>
+									<h3 className="text-sm font-black text-white">
+										Legal & Compliance Notice
+									</h3>
+									<p className="text-[11px] text-zinc-400 mt-0.5">
+										Open-source architecture, stream attributions, and privacy
+										policies
+									</p>
+								</div>
+
+								<div className="p-3.5 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+									<div className="flex items-start gap-2.5">
+										<ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
+										<div className="space-y-1.5 text-xs text-zinc-300">
+											<div className="font-bold text-white">
+												Non-Hosting & Aggregation Policy
+											</div>
+											<p className="text-zinc-400 leading-relaxed text-[11px]">
+												MorningTV is an open-source client media player.
+												MorningTV does{" "}
+												<strong className="text-white">not</strong> host, store,
+												cache, distribute, or rebroadcast any video, audio, or
+												copyrighted stream content. All playlist items are
+												aggregated from publicly available IPTV repositories
+												maintained by the open-source community.
+											</p>
+										</div>
+									</div>
+
+									<div className="flex items-start gap-2.5 pt-2.5 border-t border-white/10">
+										<Globe className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+										<div className="space-y-1.5 text-xs text-zinc-300">
+											<div className="font-bold text-white">
+												Third-Party Web Services & Attribution
+											</div>
+											<p className="text-zinc-400 leading-relaxed text-[11px]">
+												The embedded YouTube and JioHotstar buttons launch
+												official provider web applications directly in native
+												sandboxed webviews. MorningTV is not affiliated with,
+												endorsed by, or sponsored by YouTube, Google LLC, Jio,
+												or Star India. All trademarks and brand assets belong to
+												their respective holders.
+											</p>
+										</div>
+									</div>
+
+									<div className="flex items-start gap-2.5 pt-2.5 border-t border-white/10">
+										<Zap className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+										<div className="space-y-1.5 text-xs text-zinc-300">
+											<div className="font-bold text-white">
+												Local Security & Privacy Guard
+											</div>
+											<p className="text-zinc-400 leading-relaxed text-[11px]">
+												MorningTV runs a hardened local Axum proxy with
+												Anti-SSRF protection, IPv4/IPv6 private range blocking,
+												and ephemeral cryptographic token authentication. Zero
+												personal tracking or viewing metrics are collected or
+												sent to external telemetry servers.
+											</p>
+										</div>
+									</div>
+								</div>
+
+								<div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between text-xs text-zinc-400">
 									<div>
-										<h3 className="text-sm font-black text-white">
-											Legal & Compliance Notice
-										</h3>
-										<p className="text-[11px] text-zinc-400 mt-0.5">
-											Open-source architecture, stream attributions, and privacy
-											policies
-										</p>
+										<span className="font-bold text-white">License:</span> MIT
+										Open Source
 									</div>
-
-									<div className="p-3.5 bg-black/40 border border-white/10 rounded-2xl space-y-3">
-										<div className="flex items-start gap-2.5">
-											<ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
-											<div className="space-y-1.5 text-xs text-zinc-300">
-												<div className="font-bold text-white">
-													Non-Hosting & Aggregation Policy
-												</div>
-												<p className="text-zinc-400 leading-relaxed text-[11px]">
-													MorningTV is an open-source client media player.
-													MorningTV does{" "}
-													<strong className="text-white">not</strong> host,
-													store, cache, distribute, or rebroadcast any video,
-													audio, or copyrighted stream content. All playlist
-													items are aggregated from publicly available IPTV
-													repositories maintained by the open-source community.
-												</p>
-											</div>
-										</div>
-
-										<div className="flex items-start gap-2.5 pt-2.5 border-t border-white/10">
-											<Globe className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-											<div className="space-y-1.5 text-xs text-zinc-300">
-												<div className="font-bold text-white">
-													Third-Party Web Services & Attribution
-												</div>
-												<p className="text-zinc-400 leading-relaxed text-[11px]">
-													The embedded YouTube and JioHotstar buttons launch
-													official provider web applications directly in native
-													sandboxed webviews. MorningTV is not affiliated with,
-													endorsed by, or sponsored by YouTube, Google LLC, Jio,
-													or Star India. All trademarks and brand assets belong
-													to their respective holders.
-												</p>
-											</div>
-										</div>
-
-										<div className="flex items-start gap-2.5 pt-2.5 border-t border-white/10">
-											<Zap className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-											<div className="space-y-1.5 text-xs text-zinc-300">
-												<div className="font-bold text-white">
-													Local Security & Privacy Guard
-												</div>
-												<p className="text-zinc-400 leading-relaxed text-[11px]">
-													MorningTV runs a hardened local Axum proxy with
-													Anti-SSRF protection, IPv4/IPv6 private range
-													blocking, and ephemeral cryptographic token
-													authentication. Zero personal tracking or viewing
-													metrics are collected or sent to external telemetry
-													servers.
-												</p>
-											</div>
-										</div>
-									</div>
-
-									<div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between text-xs text-zinc-400">
-										<div>
-											<span className="font-bold text-white">License:</span> MIT
-											Open Source
-										</div>
-										<div className="font-mono text-[11px]">
-											MorningTV v{APP_VERSION} (Production Release)
-										</div>
+									<div className="font-mono text-[11px]">
+										MorningTV v{APP_VERSION} (Production Release)
 									</div>
 								</div>
-							)}
-						</div>
+							</div>
+						)}
 					</div>
 
 					{/* Modal Footer Controls */}
-					<div className="pt-2.5 border-t border-white/10 flex items-center justify-end text-xs text-zinc-300">
+					<div className="shrink-0 pt-3 mt-3 border-t border-white/10 flex items-center justify-end text-xs text-zinc-300">
 						<button
 							type="button"
 							onClick={closeSettings}
-							className="px-4 py-1.5 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs transition-all cursor-pointer border border-white/10 active:scale-95"
+							className="px-5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs transition-all cursor-pointer border border-white/10 active:scale-95 shadow-sm"
 						>
 							Done
 						</button>

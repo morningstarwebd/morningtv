@@ -28,6 +28,10 @@ fn md5_hash(bytes: &[u8]) -> u64 {
     hash
 }
 
+fn default_verified() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Channel {
     pub id: ChannelId,
@@ -42,6 +46,8 @@ pub struct Channel {
     pub is_favorite: bool,
     #[serde(default)]
     pub provider: Option<String>,
+    #[serde(default = "default_verified")]
+    pub is_verified: bool,
 }
 
 impl Channel {
@@ -69,6 +75,7 @@ impl Channel {
             http_referrer,
             is_favorite: false,
             provider: None,
+            is_verified: true,
         }
     }
 

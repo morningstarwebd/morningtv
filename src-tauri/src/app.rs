@@ -58,10 +58,30 @@ impl AppState {
     }
 
     pub async fn load_playlist(&mut self, source: &str) -> AppResult<()> {
-        // ── STEP A: SQLite cache check ──
+        // ── STEP 0: Check if GitHub master playlist was updated by remote Sentinel bot ──
+        let http_client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(3))
+            .build()
+            .ok();
+
+        let mut force_remote = false;
+        if let Some(ref c) = http_client {
+            let local_synced = self.channel_cache_repo.get_last_synced_at().ok().flatten();
+            if let Some(remote_ts) =
+                crate::network::ClientSentinel::check_remote_update_needed(c, local_synced.as_deref()).await
+            {
+                tracing::info!(
+                    remote_ts = %remote_ts,
+                    "Remote GitHub playlist updated by bot. Synchronizing fresh streams..."
+                );
+                force_remote = true;
+            }
+        }
+
+        // ── STEP A: SQLite cache check (bypassed if remote bot published newer update) ──
         let cache_max_age = 6 * 3600; // 6 hours in seconds
 
-        if self.channel_cache_repo.is_fresh(cache_max_age) {
+        if !force_remote && self.channel_cache_repo.is_fresh(cache_max_age) {
             if let Ok(cached) = self.channel_cache_repo.load_all() {
                 if cached.len() > 500 {
                     // Loaded from cache: populate favorites
@@ -74,12 +94,16 @@ impl AppState {
                     self.categories = ChannelFilter::extract_categories(&channels);
                     self.all_channels = channels;
                     self.refresh_filtered_channels();
+
+                    // Pre-cache logos and spawn local ISP audit if due (>12h)
+                    self.spawn_background_optimizations();
+
                     return Ok(()); // Cache hit: network call bypassed
                 }
             }
         }
 
-        // Step B: Cache miss, fetch from GitHub or remote source
+        // Step B: Cache miss or remote update available, fetch from GitHub or remote source
         let client = ResilientHttpClient::new()?;
         let fetcher = PlaylistFetcher::new(client);
 
@@ -113,6 +137,9 @@ impl AppState {
         let now_str = chrono::Utc::now().to_rfc3339();
         let _ = self.channel_cache_repo.set_last_synced_at(&now_str);
         self.last_synced_at = Some(now_str);
+
+        // Pre-cache logos and spawn local ISP audit for newly synced streams
+        self.spawn_background_optimizations();
 
         Ok(())
     }
@@ -167,6 +194,92 @@ impl AppState {
             tracing::warn!("Failed to persist settings after quality cycle: {}", e);
         }
         next_tier
+    }
+
+    /// Spawns incremental logo disk pre-caching and background ISP stream auditing
+    pub fn spawn_background_optimizations(&self) {
+        // 1. Pre-cache logos for top 250 channels (Favorites first, then others)
+        let mut logo_targets: Vec<(String, String)> = self
+            .all_channels
+            .iter()
+            .filter(|c| c.is_favorite)
+            .filter_map(|c| c.logo.as_ref().map(|l| (l.clone(), c.name.clone())))
+            .collect();
+
+        for ch in &self.all_channels {
+            if logo_targets.len() >= 250 {
+                break;
+            }
+            if let Some(ref l) = ch.logo {
+                if !logo_targets.iter().any(|(url, _)| url == l) {
+                    logo_targets.push((l.clone(), ch.name.clone()));
+                }
+            }
+        }
+
+        crate::storage::logo_cache::spawn_precache_worker(logo_targets);
+
+        // 2. Check if local ISP network audit is due (>12 hours)
+        let needs_local_audit = match self.channel_cache_repo.get_last_local_verified_at() {
+            Ok(Some(ts)) => {
+                if let Ok(dt) = chrono::DateTime::parse_from_rfc3339(&ts) {
+                    chrono::Utc::now()
+                        .signed_duration_since(dt.with_timezone(&chrono::Utc))
+                        .num_hours()
+                        >= 12
+                } else {
+                    true
+                }
+            }
+            _ => true,
+        };
+
+        if needs_local_audit {
+            let audit_candidates: Vec<Channel> = self
+                .all_channels
+                .iter()
+                .filter(|c| c.is_favorite || c.group.to_lowercase().contains("india") || !c.fallback_urls.is_empty())
+                .take(150)
+                .cloned()
+                .collect();
+
+            if !audit_candidates.is_empty() {
+                crate::network::ClientSentinel::spawn_local_audit(
+                    audit_candidates,
+                    std::sync::Arc::new(self.channel_cache_repo.clone()),
+                    150,
+                );
+            }
+        }
+    }
+
+    /// Just-in-time self-healing for failing or buffering channels
+    pub async fn heal_channel(&mut self, channel_id: &str) -> Option<Channel> {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(4))
+            .build()
+            .ok()?;
+
+        let repo = self.channel_cache_repo.clone();
+
+        let mut healed_channel = None;
+        for ch in &mut self.all_channels {
+            if ch.id.0 == channel_id {
+                let healed =
+                    crate::network::ClientSentinel::heal_single_channel(&client, ch, &repo).await;
+                if healed {
+                    healed_channel = Some(ch.clone());
+                }
+                break;
+            }
+        }
+
+        if let Some(ch) = healed_channel {
+            self.refresh_filtered_channels();
+            Some(ch)
+        } else {
+            None
+        }
     }
 
     /// Truncates SQLite WAL and executes graceful database checkpointing

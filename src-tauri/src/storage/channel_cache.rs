@@ -6,6 +6,7 @@ use crate::error::{StorageError, StorageResult};
 use crate::storage::Database;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[derive(Clone)]
 pub struct ChannelCacheRepository {
     db: Database,
 }
@@ -43,8 +44,8 @@ impl ChannelCacheRepository {
             let mut stmt = tx
                 .prepare(
                     "INSERT INTO channels_cache
-                 (id, name, url, group_title, logo, fallbacks, provider, http_user_agent, http_referrer, cached_at)
-                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
+                 (id, name, url, group_title, logo, fallbacks, provider, http_user_agent, http_referrer, cached_at, is_verified)
+                 VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)",
                 )
                 .map_err(StorageError::Sqlite)?;
 
@@ -63,6 +64,7 @@ impl ChannelCacheRepository {
                     ch.http_user_agent,
                     ch.http_referrer,
                     now,
+                    if ch.is_verified { 1 } else { 0 },
                 ])
                 .map_err(StorageError::Sqlite)?;
             }
@@ -82,7 +84,7 @@ impl ChannelCacheRepository {
         })?;
         let mut stmt = conn
             .prepare(
-                "SELECT id, name, url, group_title, logo, fallbacks, provider, http_user_agent, http_referrer
+                "SELECT id, name, url, group_title, logo, fallbacks, provider, http_user_agent, http_referrer, is_verified
              FROM channels_cache ORDER BY rowid",
             )
             .map_err(StorageError::Sqlite)?;
@@ -100,6 +102,8 @@ impl ChannelCacheRepository {
                 let provider: Option<String> = row.get(6)?;
                 let http_user_agent: Option<String> = row.get(7)?;
                 let http_referrer: Option<String> = row.get(8)?;
+                let is_verified_val: Option<i32> = row.get(9).ok();
+                let is_verified = is_verified_val.map(|v| v == 1).unwrap_or(true);
 
                 let fallback_urls: Vec<String> =
                     serde_json::from_str(&fallbacks_json).unwrap_or_default();
@@ -115,6 +119,7 @@ impl ChannelCacheRepository {
                     http_user_agent,
                     http_referrer,
                     is_favorite: false,
+                    is_verified,
                 })
             })
             .map_err(StorageError::Sqlite)?;
@@ -181,6 +186,58 @@ impl ChannelCacheRepository {
         })?;
         conn.execute(
             "INSERT INTO app_metadata (key, value) VALUES ('last_synced_at', ?1)
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            rusqlite::params![timestamp],
+        )
+        .map_err(StorageError::Sqlite)?;
+        Ok(())
+    }
+
+    /// Update a specific channel's primary stream URL and fallbacks in SQLite cache
+    pub fn update_channel_stream(&self, id: &str, primary_url: &str, fallbacks: &[String]) -> StorageResult<()> {
+        let conn_arc = self.db.conn();
+        let conn = conn_arc.lock().map_err(|e| {
+            tracing::error!(error = %e, "ChannelCache DB mutex poisoned in update_channel_stream");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
+        let fallbacks_json = serde_json::to_string(fallbacks).unwrap_or_else(|_| "[]".to_string());
+        conn.execute(
+            "UPDATE channels_cache SET url = ?1, fallbacks = ?2 WHERE id = ?3",
+            rusqlite::params![primary_url, fallbacks_json, id],
+        )
+        .map_err(StorageError::Sqlite)?;
+        Ok(())
+    }
+
+    /// Persistent metadata: get last local ISP verification timestamp
+    pub fn get_last_local_verified_at(&self) -> StorageResult<Option<String>> {
+        let conn_arc = self.db.conn();
+        let conn = conn_arc.lock().map_err(|e| {
+            tracing::error!(error = %e, "ChannelCache DB mutex poisoned in get_last_local_verified_at");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
+        let mut stmt = conn
+            .prepare("SELECT value FROM app_metadata WHERE key = 'last_local_verified_at'")
+            .map_err(StorageError::Sqlite)?;
+
+        let mut rows = stmt.query([]).map_err(StorageError::Sqlite)?;
+        if let Some(row) = rows.next().map_err(StorageError::Sqlite)? {
+            let val: String = row.get(0).map_err(StorageError::Sqlite)?;
+            Ok(Some(val))
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Persistent metadata: set last local ISP verification timestamp
+    pub fn set_last_local_verified_at(&self, timestamp: &str) -> StorageResult<()> {
+        let conn_arc = self.db.conn();
+        let conn = conn_arc.lock().map_err(|e| {
+            tracing::error!(error = %e, "ChannelCache DB mutex poisoned in set_last_local_verified_at");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
+        conn.execute(
+            "INSERT INTO app_metadata (key, value) VALUES ('last_local_verified_at', ?1)
              ON CONFLICT(key) DO UPDATE SET value = excluded.value",
             rusqlite::params![timestamp],
         )

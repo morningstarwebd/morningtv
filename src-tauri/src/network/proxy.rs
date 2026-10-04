@@ -348,6 +348,7 @@ impl StreamProxy {
                 .route("/stream", get(handle_stream))
                 .route("/transcode", get(handle_transcode))
                 .route("/prewarm", get(handle_prewarm))
+                .route("/logo", get(handle_logo))
                 .route("/health", get(handle_health))
                 .route("/metrics", get(handle_metrics))
                 .route("/return_to_morningtv", get(handle_return))
@@ -437,6 +438,42 @@ async fn handle_transcode(incoming_headers: HeaderMap, uri: Uri) -> Response {
 
 async fn handle_return() -> Response {
     (StatusCode::OK, "Returning to MorningTV").into_response()
+}
+
+async fn handle_logo(uri: Uri) -> Response {
+    let query_str = uri.query().unwrap_or("");
+    let target_url = extract_target_url(query_str).unwrap_or_default();
+
+    // Extract channel name if provided (&name=...)
+    let channel_name = if let Some(idx) = query_str.find("name=") {
+        let after = &query_str[idx + 5..];
+        let raw = if let Some(amp) = after.find('&') {
+            &after[..amp]
+        } else {
+            after
+        };
+        urlencoding_decode(raw)
+    } else {
+        String::new()
+    };
+
+    let (bytes, content_type) =
+        crate::storage::logo_cache::get_or_fetch_logo(&target_url, &channel_name).await;
+
+    let mut headers = HeaderMap::new();
+    if let Ok(val) = HeaderValue::from_str(&content_type) {
+        headers.insert(axum::http::header::CONTENT_TYPE, val);
+    }
+    headers.insert(
+        axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
+        HeaderValue::from_static("*"),
+    );
+    headers.insert(
+        axum::http::header::CACHE_CONTROL,
+        HeaderValue::from_static("public, max-age=31536000, immutable"),
+    );
+
+    (StatusCode::OK, headers, Body::from(bytes)).into_response()
 }
 
 async fn handle_health(uri: Uri, headers: HeaderMap, State(state): State<ProxyState>) -> Response {

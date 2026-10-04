@@ -14,7 +14,7 @@ import { useStreamTelemetry } from "../hooks/useStreamTelemetry";
 import { useWakeLock } from "../hooks/useWakeLock";
 import { useAppStore } from "../stores/appStore";
 import { isGeoRestrictedUrl } from "../utils/channelFilter";
-import { getProxyToken } from "../utils/proxy";
+import { buildProxyLogoUrl, getProxyToken } from "../utils/proxy";
 import { MorningTVLogo } from "./MorningTVLogo";
 
 export const VideoPlayer: React.FC = () => {
@@ -329,18 +329,17 @@ export const VideoPlayer: React.FC = () => {
 					{isChannelLoading && activeChannel && (
 						<div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/75 backdrop-blur-xl transition-opacity duration-300 pointer-events-none animate-in fade-in">
 							<div className="flex flex-col items-center justify-center p-6 rounded-3xl bg-zinc-950/60 border border-white/10 shadow-2xl backdrop-blur-2xl">
-								{activeChannel.logo ? (
-									<img
-										src={activeChannel.logo}
-										alt={activeChannel.name}
-										className="w-16 h-16 object-contain rounded-2xl drop-shadow-[0_0_24px_rgba(6,182,212,0.5)] animate-pulse"
-										onError={(e) => {
-											(e.target as HTMLElement).style.display = "none";
-										}}
-									/>
-								) : (
-									<MorningTVLogo className="w-16 h-16" glow={true} />
-								)}
+								<img
+									src={buildProxyLogoUrl(
+										activeChannel.logo,
+										activeChannel.name,
+									)}
+									alt={activeChannel.name}
+									className="w-16 h-16 object-contain rounded-2xl drop-shadow-[0_0_24px_rgba(6,182,212,0.5)] animate-pulse"
+									onError={(e) => {
+										(e.target as HTMLElement).style.display = "none";
+									}}
+								/>
 								<span className="text-sm font-black text-white mt-3 tracking-wide">
 									{activeChannel.name}
 								</span>

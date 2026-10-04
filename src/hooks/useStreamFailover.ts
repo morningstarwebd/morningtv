@@ -1,9 +1,10 @@
 // src/hooks/useStreamFailover.ts
 // Manages mirror switching, failed stream blacklisting, and exponential backoff reconnection
 
+import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef } from "react";
 import { useAppStore } from "../stores/appStore";
-import type { StreamHealthStatus } from "../types";
+import type { Channel, StreamHealthStatus } from "../types";
 import { createLogger } from "../utils/logger";
 
 const log = createLogger("StreamFailover");
@@ -97,6 +98,26 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 			useAppStore.getState().setSelectedQualityLevel(-1);
 			setMirrorIndex(nextAvailableIndex);
 		} else {
+			// Trigger JIT Self-Healing from GitHub / Backup mirrors
+			if (activeChannelId) {
+				invoke<Channel | null>("heal_channel", { channelId: activeChannelId })
+					.then((healed) => {
+						if (healed?.url && healed.url !== currentUrl) {
+							log.info("Stream automatically healed via JIT Sentinel", {
+								healedUrl: healed.url,
+							});
+							showToast(
+								"Stream signal automatically healed! Resuming...",
+								false,
+							);
+							clearReconnectTimers();
+							failedUrlsRef.current.clear();
+							useAppStore.getState().selectChannel(healed);
+						}
+					})
+					.catch(() => {});
+			}
+
 			// All URLs in the pool failed (or channel has only 1 URL): enter reconnect backoff loop
 			const delay = backoffDelayRef.current;
 			setStreamHealthStatus("reconnecting");
@@ -157,6 +178,7 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 			}, delay * 1000);
 		}
 	}, [
+		activeChannelId,
 		allUrls,
 		currentUrl,
 		mirrorIndex,

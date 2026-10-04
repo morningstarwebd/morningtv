@@ -18,6 +18,7 @@ export interface Channel {
 	http_referrer?: string | null;
 	is_favorite: boolean;
 	provider?: string | null;
+	is_verified?: boolean;
 }
 
 export function getChannelIdString(id: ChannelId | string): string {
@@ -65,6 +66,14 @@ export interface EpgProgram {
 export interface ChannelEpg {
 	current: EpgProgram | null;
 	next: EpgProgram | null;
+}
+
+export interface SyncProgressPayload {
+	phase: string;
+	percent: number;
+	updated_count: number;
+	total_count: number;
+	is_complete: boolean;
 }
 
 interface IpcError {
