@@ -491,27 +491,27 @@ export const SettingsDialog: React.FC = () => {
 						{activeTab === "playlist" && (
 							<div className="flex flex-col gap-3.5">
 								{/* Card 1: Cloud Channels Library */}
-								<div className="p-4 sm:p-4.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex items-center justify-between gap-4">
-									<div className="flex items-center gap-3.5 min-w-0">
-										<div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 shadow-sm">
-											<Tv className="w-5 h-5" />
+								<div className="p-3 sm:p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex items-center justify-between gap-3">
+									<div className="flex items-center gap-3 min-w-0">
+										<div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 shadow-sm">
+											<Tv className="w-4 h-4" />
 										</div>
 										<div className="min-w-0">
-											<div className="flex items-center gap-2.5 flex-wrap">
-												<span className="text-xl sm:text-2xl font-bold tracking-tight text-white">
+											<div className="flex items-center gap-2 flex-wrap">
+												<span className="text-lg sm:text-xl font-bold tracking-tight text-white">
 													{totalChannelsCount > 0
 														? totalChannelsCount.toLocaleString()
 														: "11,046"}
 												</span>
-												<span className="text-xs text-zinc-400 font-medium">
+												<span className="text-[11px] text-zinc-400 font-medium">
 													Total Channels
 												</span>
-												<span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+												<span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
 													<span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
 													Cloud Synced
 												</span>
 											</div>
-											<p className="text-[11px] text-zinc-400 mt-1 truncate">
+											<p className="text-[10px] text-zinc-400 mt-0.5 truncate">
 												GitHub Master Cloud Feed • Updated automatically
 											</p>
 										</div>
@@ -521,11 +521,11 @@ export const SettingsDialog: React.FC = () => {
 										type="button"
 										onClick={handleFetchGitHub}
 										disabled={isFetchingGitHub || isSyncing}
-										className="px-3.5 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.12] active:scale-95 border border-white/10 text-zinc-200 hover:text-white text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer disabled:opacity-40 shrink-0 shadow-sm"
+										className="px-2.5 py-1.5 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] active:scale-95 border border-white/10 text-zinc-200 hover:text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 shrink-0 shadow-sm"
 										title="Fetch latest channels directly from GitHub"
 									>
 										<RefreshCw
-											className={`w-3.5 h-3.5 ${
+											className={`w-3 h-3 ${
 												isFetchingGitHub ? "animate-spin text-cyan-400" : ""
 											}`}
 										/>
@@ -536,19 +536,18 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* Card 2: Local ISP Stream Verification */}
-								<div className="p-4 sm:p-4.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col gap-3.5">
-									<div className="flex items-center justify-between gap-4">
-										<div className="flex items-center gap-3.5 min-w-0">
-											<div className="w-11 h-11 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
-												<Wifi className="w-5 h-5" />
+								<div className="p-3 sm:p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col gap-2.5">
+									<div className="flex items-center justify-between gap-3">
+										<div className="flex items-center gap-3 min-w-0">
+											<div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 shadow-sm">
+												<Wifi className="w-4 h-4" />
 											</div>
 											<div className="min-w-0">
-												<h4 className="text-sm font-semibold text-white tracking-normal">
+												<h4 className="text-xs font-semibold text-white tracking-normal">
 													Local ISP Stream Verification
 												</h4>
-												<p className="text-[11px] text-zinc-400 mt-0.5">
-													Audits live streams on your connection and
-													auto-promotes backup mirrors
+												<p className="text-[10px] text-zinc-400 mt-0.5">
+													Audits live streams on your connection and auto-promotes backup mirrors
 												</p>
 											</div>
 										</div>
@@ -557,10 +556,10 @@ export const SettingsDialog: React.FC = () => {
 											type="button"
 											onClick={syncCloudStreams}
 											disabled={isSyncing || isFetchingGitHub}
-											className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-95 text-white text-xs font-semibold transition-all flex items-center gap-2 disabled:opacity-40 cursor-pointer shadow-[0_2px_12px_rgba(6,182,212,0.25)] shrink-0"
+											className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-95 text-white text-[11px] font-semibold transition-all flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-sm shrink-0"
 										>
 											<RefreshCw
-												className={`w-3.5 h-3.5 ${
+												className={`w-3 h-3 ${
 													isSyncing ? "animate-spin" : ""
 												}`}
 											/>
@@ -575,16 +574,16 @@ export const SettingsDialog: React.FC = () => {
 									{/* Live Audit Progress (Clean Glassmorphism Panel) */}
 									{(isSyncing ||
 										(syncProgress && !syncProgress.is_complete)) && (
-										<div className="rounded-xl p-3.5 bg-white/[0.025] border border-cyan-500/20 flex flex-col gap-2.5 shadow-sm">
-											<div className="flex items-center justify-between text-xs">
-												<div className="flex items-center gap-2 min-w-0">
-													<span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+										<div className="rounded-lg p-2.5 bg-white/[0.025] border border-cyan-500/20 flex flex-col gap-2 shadow-sm">
+											<div className="flex items-center justify-between text-[11px]">
+												<div className="flex items-center gap-1.5 min-w-0">
+													<span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse shrink-0" />
 													<span className="font-medium text-zinc-200 truncate">
 														{syncProgress?.phase ||
 															"Testing stream mirrors on your network..."}
 													</span>
 												</div>
-												<span className="font-mono font-bold text-cyan-300 text-xs shrink-0 ml-2">
+												<span className="font-mono font-bold text-cyan-300 text-[11px] shrink-0 ml-2">
 													{syncProgress?.percent ?? 0}%
 												</span>
 											</div>
@@ -596,16 +595,16 @@ export const SettingsDialog: React.FC = () => {
 												/>
 											</div>
 
-											<div className="flex items-center justify-between text-[11px] text-zinc-400">
+											<div className="flex items-center justify-between text-[10px] text-zinc-400">
 												<span className="text-zinc-300 font-medium">
 													{syncProgress?.updated_count
-														? `⚡ ${syncProgress.updated_count} stream mirrors optimized`
-														: "Testing link response and latency..."}
+														? `⚡ ${syncProgress.updated_count} mirrors optimized`
+														: "Testing latency..."}
 												</span>
-												<span className="font-mono text-cyan-400 font-semibold text-[10px]">
+												<span className="font-mono text-cyan-400 font-semibold text-[9.5px]">
 													{syncProgress?.total_count
-														? `${syncProgress.total_count.toLocaleString()} Channels Loaded`
-														: `${totalChannelsCount.toLocaleString()} Channels Loaded`}
+														? `${syncProgress.total_count.toLocaleString()} Channels`
+														: `${totalChannelsCount.toLocaleString()} Channels`}
 												</span>
 											</div>
 										</div>
@@ -613,12 +612,12 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* Card 3: Playback Filter Mode (Independent Card) */}
-								<div className="p-4 sm:p-4.5 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+								<div className="p-3 sm:p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 									<div className="min-w-0">
-										<h4 className="text-sm font-semibold text-white tracking-normal">
+										<h4 className="text-xs font-semibold text-white tracking-normal">
 											Playback Filter Mode
 										</h4>
-										<p className="text-[11px] text-zinc-400 mt-0.5">
+										<p className="text-[10px] text-zinc-400 mt-0.5">
 											{showOnlyVerified
 												? "Showing only streams verified to work on your network"
 												: "Showing all channels from the cloud library"}
@@ -626,7 +625,7 @@ export const SettingsDialog: React.FC = () => {
 									</div>
 
 									{/* Clean Segmented Switch: All Channels vs Verified Only */}
-									<div className="flex items-center p-1 rounded-xl bg-black/40 border border-white/10 shrink-0 self-start sm:self-auto">
+									<div className="flex items-center p-0.5 rounded-lg bg-black/40 border border-white/10 shrink-0 self-start sm:self-auto">
 										<button
 											type="button"
 											onClick={() => {
@@ -634,13 +633,13 @@ export const SettingsDialog: React.FC = () => {
 													toggleShowOnlyVerified();
 												}
 											}}
-											className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+											className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap ${
 												!showOnlyVerified
 													? "bg-white/20 text-white shadow-sm"
 													: "text-zinc-400 hover:text-white"
 											}`}
 										>
-											All Channels (
+											All (
 											{totalChannelsCount > 0
 												? totalChannelsCount.toLocaleString()
 												: "11,046"}
@@ -653,7 +652,7 @@ export const SettingsDialog: React.FC = () => {
 													toggleShowOnlyVerified();
 												}
 											}}
-											className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+											className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1 ${
 												showOnlyVerified
 													? "bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-md shadow-cyan-500/25"
 													: "text-zinc-400 hover:text-white"
@@ -675,21 +674,20 @@ export const SettingsDialog: React.FC = () => {
 
 						{/* TAB 2: CINEMA & DISPLAY */}
 						{activeTab === "cinema" && (
-							<div className="flex flex-col gap-3">
+							<div className="flex flex-col gap-2.5">
 								{/* Ambilight Card */}
-								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-									<div className="flex items-start justify-between gap-3">
+								<div className="rounded-xl p-3 bg-white/[0.03] border border-white/10 flex flex-col gap-2">
+									<div className="flex items-start justify-between gap-2.5">
 										<div className="flex items-center gap-2.5">
-											<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
-												<Sparkles className="w-4.5 h-4.5" />
+											<div className="w-8 h-8 rounded-lg bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
+												<Sparkles className="w-4 h-4" />
 											</div>
 											<div>
-												<h4 className="text-xs sm:text-sm font-bold text-white">
+												<h4 className="text-xs font-semibold text-white">
 													Ambilight Ambient Glow
 												</h4>
-												<p className="text-[11px] text-zinc-400 mt-0.5">
-													Projects dynamic ambient colors on the wall behind the
-													player
+												<p className="text-[10px] text-zinc-400 mt-0.5">
+													Projects dynamic ambient colors on the wall behind the player
 												</p>
 											</div>
 										</div>
@@ -699,28 +697,28 @@ export const SettingsDialog: React.FC = () => {
 											role="switch"
 											aria-checked={ambientGlow}
 											onClick={toggleAmbientGlow}
-											className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+											className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
 												ambientGlow ? "bg-cyan-600" : "bg-zinc-800"
 											}`}
 										>
 											<span
-												className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-													ambientGlow ? "translate-x-5" : "translate-x-0"
+												className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white transition-transform ${
+													ambientGlow ? "translate-x-4.5" : "translate-x-0"
 												}`}
 											/>
 										</button>
 									</div>
 
 									{/* Visual Preview Box */}
-									<div className="relative h-14 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center bg-black/60">
+									<div className="relative h-10 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center bg-black/60">
 										{ambientGlow && (
 											<div className="absolute inset-0 bg-gradient-to-r from-blue-600/30 via-cyan-500/30 to-purple-600/30 filter blur-xl animate-pulse" />
 										)}
-										<div className="relative z-10 flex items-center gap-2 text-xs text-zinc-300 font-medium">
-											<div className="w-10 h-6 rounded-md bg-zinc-800 border border-white/20 flex items-center justify-center text-[9px] font-mono text-zinc-400">
+										<div className="relative z-10 flex items-center gap-2 text-[10px] text-zinc-300 font-medium">
+											<div className="w-8 h-5 rounded bg-zinc-800 border border-white/20 flex items-center justify-center text-[8px] font-mono text-zinc-400">
 												TV
 											</div>
-											<span className="text-[11px]">
+											<span>
 												{ambientGlow
 													? "Cinema aura is active and reacting to video colors"
 													: "Ambient glow is currently turned off"}
@@ -730,14 +728,14 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* Anti-Stall Buffer Card */}
-								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex items-start justify-between gap-4">
+								<div className="rounded-xl p-3 bg-white/[0.03] border border-white/10 flex items-start justify-between gap-3">
 									<div className="flex items-center gap-2.5">
-										<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-											<Zap className="w-4.5 h-4.5" />
+										<div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+											<Zap className="w-4 h-4" />
 										</div>
 										<div>
 											<div className="flex items-center gap-2">
-												<h4 className="text-xs sm:text-sm font-bold text-white">
+												<h4 className="text-xs font-semibold text-white">
 													Smooth Stream Protection
 												</h4>
 												<span className="flex items-center gap-1 text-[8px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
@@ -745,15 +743,14 @@ export const SettingsDialog: React.FC = () => {
 													PROTECTED
 												</span>
 											</div>
-											<p className="text-[11px] text-zinc-400 mt-0.5">
-												Deep background buffering and automated failover keep
-												playback smooth without freezing
+											<p className="text-[10px] text-zinc-400 mt-0.5">
+												Deep background buffering and automated failover keep playback smooth without freezing
 											</p>
 										</div>
 									</div>
 
-									<div className="text-emerald-400 text-xs font-bold shrink-0 flex items-center gap-1 pt-0.5">
-										<ShieldCheck className="w-4 h-4" />
+									<div className="text-emerald-400 text-[10px] font-bold shrink-0 flex items-center gap-1 pt-0.5">
+										<ShieldCheck className="w-3.5 h-3.5" />
 										<span>Zero-Freeze</span>
 									</div>
 								</div>
@@ -762,16 +759,16 @@ export const SettingsDialog: React.FC = () => {
 
 						{/* TAB 3: AUDIO & ACOUSTICS */}
 						{activeTab === "audio" && (
-							<div className="flex flex-col gap-3">
-								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+							<div className="flex flex-col gap-2.5">
+								<div className="rounded-xl p-3 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
 									<div className="flex items-start justify-between gap-3">
 										<div className="flex items-center gap-2.5">
-											<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-												<Volume2 className="w-4.5 h-4.5" />
+											<div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+												<Volume2 className="w-4 h-4" />
 											</div>
 											<div>
 												<div className="flex items-center gap-2">
-													<h4 className="text-xs sm:text-sm font-bold text-white">
+													<h4 className="text-xs font-semibold text-white">
 														Smart Volume Leveler
 													</h4>
 													{normalizeAudio && (
@@ -780,9 +777,8 @@ export const SettingsDialog: React.FC = () => {
 														</span>
 													)}
 												</div>
-												<p className="text-[11px] text-zinc-400 mt-0.5">
-													Balances loudness variations between channels so
-													switching never hurts your ears
+												<p className="text-[10px] text-zinc-400 mt-0.5">
+													Balances loudness variations between channels so switching never hurts your ears
 												</p>
 											</div>
 										</div>
@@ -792,29 +788,29 @@ export const SettingsDialog: React.FC = () => {
 											role="switch"
 											aria-checked={normalizeAudio}
 											onClick={toggleNormalizeAudio}
-											className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer shrink-0 ${
+											className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
 												normalizeAudio ? "bg-emerald-600" : "bg-zinc-800"
 											}`}
 										>
 											<span
-												className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-													normalizeAudio ? "translate-x-5" : "translate-x-0"
+												className={`absolute top-0.5 left-0.5 w-4.5 h-4.5 rounded-full bg-white transition-transform ${
+													normalizeAudio ? "translate-x-4.5" : "translate-x-0"
 												}`}
 											/>
 										</button>
 									</div>
 
 									{/* Simulated Audio Equalizer Bars */}
-									<div className="p-2.5 rounded-xl bg-black/40 border border-white/5 flex items-center justify-between">
-										<span className="text-[11px] text-zinc-400">
+									<div className="p-2 rounded-lg bg-black/40 border border-white/5 flex items-center justify-between">
+										<span className="text-[10px] text-zinc-400">
 											Dynamic range limiter & audio spike guard
 										</span>
-										<div className="flex items-end gap-1 h-4">
-											<div className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
-											<div className="w-1 h-4 bg-emerald-400 rounded-full animate-pulse" />
+										<div className="flex items-end gap-1 h-3.5">
 											<div className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" />
 											<div className="w-1 h-3.5 bg-emerald-400 rounded-full animate-pulse" />
-											<div className="w-1 h-2.5 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-1.5 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-3 bg-emerald-400 rounded-full animate-pulse" />
+											<div className="w-1 h-2 bg-emerald-400 rounded-full animate-pulse" />
 										</div>
 									</div>
 								</div>
@@ -825,24 +821,23 @@ export const SettingsDialog: React.FC = () => {
 						{activeTab === "ai" && (
 							<div className="flex flex-col gap-3.5">
 								{/* Card 1: Universal AI Neural Engine */}
-								<div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col gap-3.5">
-									<div className="flex items-center justify-between gap-4">
-										<div className="flex items-center gap-3.5 min-w-0">
-											<div className="w-11 h-11 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 shadow-sm">
-												<Cpu className="w-5 h-5" />
+								<div className="p-3 sm:p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col gap-3">
+									<div className="flex items-center justify-between gap-3">
+										<div className="flex items-center gap-2.5 min-w-0">
+											<div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 shadow-sm">
+												<Cpu className="w-4 h-4" />
 											</div>
 											<div className="min-w-0">
 												<div className="flex items-center gap-2">
-													<h4 className="text-sm font-semibold text-white tracking-normal">
+													<h4 className="text-xs font-semibold text-white tracking-normal">
 														AI Neural Engine
 													</h4>
-													<span className="px-1.5 py-0.5 text-[10px] font-medium rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+													<span className="px-1.5 py-0.5 text-[9px] font-medium rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
 														{settings?.ai_provider || "Multi-Provider"}
 													</span>
 												</div>
-												<p className="text-[11px] text-zinc-400 mt-0.5">
-													Multi-model voice copilot, semantic channel navigation
-													& autonomous stream healing
+												<p className="text-[10px] text-zinc-400 mt-0.5">
+													Multi-model voice copilot, semantic channel navigation & autonomous stream healing
 												</p>
 											</div>
 										</div>
@@ -851,16 +846,16 @@ export const SettingsDialog: React.FC = () => {
 										<button
 											type="button"
 											onClick={toggleAiBrain}
-											className={`w-12 h-6.5 rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer relative shrink-0 ${
+											className={`w-11 h-6 rounded-full p-1 transition-colors duration-200 ease-in-out cursor-pointer relative shrink-0 ${
 												settings?.ai_brain_enabled
 													? "bg-purple-600"
 													: "bg-white/10"
 											}`}
 										>
 											<div
-												className={`w-4.5 h-4.5 rounded-full bg-white transition-transform duration-200 ease-in-out shadow-sm ${
+												className={`w-4 h-4 rounded-full bg-white transition-transform duration-200 ease-in-out shadow-sm ${
 													settings?.ai_brain_enabled
-														? "translate-x-5.5"
+														? "translate-x-5"
 														: "translate-x-0"
 												}`}
 											/>
@@ -868,13 +863,13 @@ export const SettingsDialog: React.FC = () => {
 									</div>
 
 									{/* Step 1: Select AI Provider */}
-									<div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+									<div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
 										<div className="flex items-center justify-between">
-											<span className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-												<Cpu className="w-3.5 h-3.5 text-purple-400" />
+											<span className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1.5">
+												<Cpu className="w-3 h-3 text-purple-400" />
 												<span>AI Provider</span>
 											</span>
-											<span className="text-[10px] text-zinc-400">
+											<span className="text-[9.5px] text-zinc-400">
 												Choose provider to fetch live models
 											</span>
 										</div>
@@ -900,17 +895,17 @@ export const SettingsDialog: React.FC = () => {
 																prov.id === "ollama" ? (aiEndpointInput || "http://localhost:11434/v1") : aiEndpointInput,
 															);
 														}}
-														className={`p-2.5 rounded-xl text-left transition-all border flex flex-col gap-1 cursor-pointer relative ${
+														className={`p-2 rounded-lg text-left transition-all border flex flex-col gap-0.5 cursor-pointer relative ${
 															isSelected
 																? "bg-purple-600/20 border-purple-500/60 shadow-[0_0_15px_rgba(168,85,247,0.15)] ring-1 ring-purple-500/40"
 																: "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10"
 														}`}
 													>
 														<div className="flex items-center justify-between gap-1">
-															<span className={`text-[11px] font-bold ${isSelected ? "text-white" : "text-zinc-200"}`}>
+															<span className={`text-[10px] font-bold ${isSelected ? "text-white" : "text-zinc-200"}`}>
 																{prov.name}
 															</span>
-															<span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
+															<span className={`text-[7.5px] font-bold px-1 py-0.2 rounded ${
 																prov.badge.includes("Free") || prov.badge.includes("100%")
 																	? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
 																	: "bg-white/10 text-zinc-400"
@@ -918,7 +913,7 @@ export const SettingsDialog: React.FC = () => {
 																{prov.badge}
 															</span>
 														</div>
-														<span className="text-[9px] text-zinc-400 line-clamp-1">
+														<span className="text-[8.5px] text-zinc-400 line-clamp-1">
 															{prov.desc}
 														</span>
 													</button>
@@ -930,17 +925,17 @@ export const SettingsDialog: React.FC = () => {
 										{(() => {
 											const provObj = AI_PROVIDERS.find((p) => p.id === selectedProvider) || AI_PROVIDERS[0];
 											return (
-												<div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 mt-1">
+												<div className="p-2 sm:p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mt-0.5">
 													<div className="flex flex-col gap-0.5 min-w-0">
-														<div className="flex items-center gap-2">
-															<span className="text-xs font-bold text-purple-200">
+														<div className="flex items-center gap-1.5">
+															<span className="text-[11px] font-bold text-purple-200">
 																{provObj.name}
 															</span>
-															<span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+															<span className="text-[8.5px] font-semibold px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
 																{provObj.badge}
 															</span>
 														</div>
-														<p className="text-[11px] text-zinc-300 leading-snug">
+														<p className="text-[10px] text-zinc-300 leading-snug">
 															{provObj.guideDesc}
 														</p>
 													</div>
@@ -948,9 +943,9 @@ export const SettingsDialog: React.FC = () => {
 														<button
 															type="button"
 															onClick={() => window.open(provObj.keyUrl, "_blank")}
-															className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border border-white/15 shadow-sm active:scale-95"
+															className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold transition-all flex items-center gap-1 cursor-pointer shrink-0 border border-white/15 shadow-sm active:scale-95"
 														>
-															<ExternalLink className="w-3 h-3 text-cyan-400" />
+															<ExternalLink className="w-2.5 h-2.5 text-cyan-400" />
 															<span>{provObj.id === "groq" ? "Get Free Groq Key" : "Get API Key"}</span>
 														</button>
 													)}
@@ -998,18 +993,18 @@ export const SettingsDialog: React.FC = () => {
 																				? "Local Ollama requires no key (leave empty)"
 																				: "Paste API Key (gsk_..., sk-..., AIzaSy..., dsk_...)"
 													}
-													className="w-full px-3 py-2 pr-9 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 font-mono transition-colors"
+													className="w-full px-2.5 py-1.5 pr-8 rounded-lg bg-black/40 border border-white/10 text-[11px] text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 font-mono transition-colors"
 												/>
 												<button
 													type="button"
 													onClick={() => setShowAiKey(!showAiKey)}
-													className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
+													className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors cursor-pointer"
 													title={showAiKey ? "Hide key" : "Show key"}
 												>
 													{showAiKey ? (
-														<EyeOff className="w-3.5 h-3.5" />
+														<EyeOff className="w-3 h-3" />
 													) : (
-														<Eye className="w-3.5 h-3.5" />
+														<Eye className="w-3 h-3" />
 													)}
 												</button>
 											</div>
@@ -1048,10 +1043,10 @@ export const SettingsDialog: React.FC = () => {
 														setIsVerifyingAi(false);
 													}
 												}}
-												className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-xs font-semibold text-white transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-md active:scale-95"
+												className="px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-[11px] font-semibold text-white transition-all cursor-pointer flex items-center gap-1 shrink-0 shadow-sm active:scale-95"
 											>
 												<Zap
-													className={`w-3.5 h-3.5 ${
+													className={`w-3 h-3 ${
 														isVerifyingAi ? "animate-spin" : ""
 													}`}
 												/>
@@ -1074,7 +1069,7 @@ export const SettingsDialog: React.FC = () => {
 															endpoint: null,
 														});
 													}}
-													className="px-2.5 py-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/10 text-xs transition-colors cursor-pointer shrink-0"
+													className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-rose-500/20 text-zinc-400 hover:text-rose-300 border border-white/10 text-[11px] transition-colors cursor-pointer shrink-0"
 													title="Disconnect and remove key"
 												>
 													Disconnect
@@ -1114,23 +1109,23 @@ export const SettingsDialog: React.FC = () => {
 										</div>
 
 										{/* Search Bar & Free Filter Switch */}
-										<div className="flex items-center gap-2">
+										<div className="flex items-center gap-1.5">
 											<div className="relative flex-1">
-												<Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+												<Search className="w-3 h-3 text-zinc-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
 												<input
 													type="text"
 													value={modelSearchQuery}
 													onChange={(e) => setModelSearchQuery(e.target.value)}
-													placeholder="Search models (e.g. llama-3.3, 8b, flash, r1)..."
-													className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 font-mono transition-colors"
+													placeholder="Search models (llama-3.3, 8b, flash, r1)..."
+													className="w-full pl-7 pr-6 py-1 rounded-lg bg-black/40 border border-white/10 text-[11px] text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 font-mono transition-colors"
 												/>
 												{modelSearchQuery && (
 													<button
 														type="button"
 														onClick={() => setModelSearchQuery("")}
-														className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+														className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
 													>
-														<X className="w-3 h-3" />
+														<X className="w-2.5 h-2.5" />
 													</button>
 												)}
 											</div>
@@ -1139,24 +1134,24 @@ export const SettingsDialog: React.FC = () => {
 											<button
 												type="button"
 												onClick={() => setShowFreeOnly(!showFreeOnly)}
-												className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 cursor-pointer shrink-0 ${
+												className={`px-2 py-1 rounded-lg text-[10px] font-semibold transition-all border flex items-center gap-1 cursor-pointer shrink-0 ${
 													showFreeOnly
 														? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm"
 														: "bg-white/5 text-zinc-400 border-white/10 hover:text-white"
 												}`}
 											>
-												<Filter className="w-3 h-3 text-emerald-400" />
+												<Filter className="w-2.5 h-2.5 text-emerald-400" />
 												<span>{showFreeOnly ? "🟢 Free Only" : "All Models"}</span>
 											</button>
 										</div>
 
 										{isLoadingModels ? (
-											<div className="p-4 rounded-xl bg-black/30 border border-white/5 flex items-center justify-center gap-2 text-zinc-300 text-xs">
-												<RefreshCw className="w-4 h-4 animate-spin text-purple-400" />
+											<div className="p-3 rounded-lg bg-black/30 border border-white/5 flex items-center justify-center gap-2 text-zinc-300 text-[11px]">
+												<RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-400" />
 												<span>Fetching live models from {selectedProvider} server...</span>
 											</div>
 										) : availableModelsList.length === 0 ? (
-											<div className="p-3.5 rounded-xl bg-black/30 border border-white/5 text-center text-zinc-400 text-xs">
+											<div className="p-2.5 rounded-lg bg-black/30 border border-white/5 text-center text-zinc-400 text-[10px]">
 												Click "Refresh Live" or connect API key to fetch server models.
 											</div>
 										) : (() => {
@@ -1167,13 +1162,13 @@ export const SettingsDialog: React.FC = () => {
 											});
 											if (filtered.length === 0) {
 												return (
-													<div className="p-3.5 rounded-xl bg-black/30 border border-white/5 text-center text-zinc-400 text-xs">
+													<div className="p-2.5 rounded-lg bg-black/30 border border-white/5 text-center text-zinc-400 text-[10px]">
 														No models match "{modelSearchQuery}" with current filters.
 													</div>
 												);
 											}
 											return (
-												<div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-40 overflow-y-auto pr-1">
 													{filtered.map((m) => {
 														const isModelActive = selectedModel === m.id;
 														return (
@@ -1186,7 +1181,7 @@ export const SettingsDialog: React.FC = () => {
 																		await setActiveAiModel(m.id);
 																	}
 																}}
-																className={`p-2 rounded-xl text-left transition-all border flex items-center justify-between gap-2 cursor-pointer ${
+																className={`p-1.5 px-2 rounded-lg text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
 																	isModelActive
 																		? "bg-purple-600/30 border-purple-500/70 text-white shadow-md ring-1 ring-purple-500/40"
 																		: "bg-white/[0.02] border-white/5 text-zinc-300 hover:bg-white/[0.06] hover:border-white/15"
@@ -1194,18 +1189,18 @@ export const SettingsDialog: React.FC = () => {
 															>
 																<div className="flex items-center gap-1.5 min-w-0">
 																	{isModelActive && (
-																		<Check className="w-3 h-3 text-purple-400 shrink-0" />
+																		<Check className="w-2.5 h-2.5 text-purple-400 shrink-0" />
 																	)}
-																	<span className={`text-[11px] font-mono truncate ${isModelActive ? "font-bold text-white" : "text-zinc-200"}`}>
+																	<span className={`text-[10px] font-mono truncate ${isModelActive ? "font-bold text-white" : "text-zinc-200"}`}>
 																		{m.id}
 																	</span>
 																</div>
 																{m.is_free ? (
-																	<span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shrink-0">
-																		FREE TIER
+																	<span className="px-1 py-0.2 rounded text-[7.5px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shrink-0">
+																		FREE
 																	</span>
 																) : (
-																	<span className="text-[8px] text-zinc-500 font-medium shrink-0">STANDARD</span>
+																	<span className="text-[7.5px] text-zinc-500 font-medium shrink-0">STD</span>
 																)}
 															</button>
 														);
@@ -1215,53 +1210,53 @@ export const SettingsDialog: React.FC = () => {
 										})()}
 
 										{/* Pro tip */}
-										<div className="text-[10px] text-zinc-400 flex items-center gap-1 pt-1">
+										<div className="text-[9.5px] text-zinc-400 flex items-center gap-1 pt-0.5">
 											<span className="text-purple-400 font-bold">💡 Tip:</span>
-											<span>Switch models anytime in chat using <code className="text-purple-300 bg-white/5 px-1 py-0.2 rounded font-mono">\model &lt;name&gt;</code> or <code className="text-purple-300 bg-white/5 px-1 py-0.2 rounded font-mono">/model &lt;name&gt;</code>.</span>
+											<span>Switch models in chat with <code className="text-purple-300 bg-white/5 px-1 rounded font-mono">\model &lt;name&gt;</code>.</span>
 										</div>
 									</div>
 
 									{/* Step 4: Autonomous Permissions & Stream Doctor Gating */}
-									<div className="flex flex-col gap-2.5 pt-2 border-t border-white/5">
+									<div className="flex flex-col gap-1.5 pt-2 border-t border-white/5">
 										<div className="flex items-center justify-between">
 											<div className="flex items-center gap-1.5">
-												<ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-												<span className="text-xs font-semibold text-zinc-200">
+												<ShieldCheck className="w-3 h-3 text-emerald-400" />
+												<span className="text-[11px] font-semibold text-zinc-200">
 													Autonomous Superpowers & Database Permissions
 												</span>
 											</div>
-											<span className="text-[10px] text-zinc-400 font-mono">
+											<span className="text-[9px] text-zinc-400 font-mono">
 												Antigravity 3-Tier Gated
 											</span>
 										</div>
-										<p className="text-[11px] text-zinc-400">
+										<p className="text-[10px] text-zinc-400">
 											Choose how much autonomy the AI Brain has to diagnose failed streams, hunt mirrors, and modify your SQLite database.
 										</p>
 
-										<div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
+										<div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 mt-0.5">
 											{/* Full Autonomous */}
 											<button
 												type="button"
 												onClick={() => setAiPermissionLevel("full_access")}
-												className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+												className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col gap-1 ${
 													(settings?.ai_permission_level ?? "full_access") === "full_access"
-														? "bg-emerald-500/15 border-emerald-500/60 shadow-lg ring-1 ring-emerald-500/30 text-white"
+														? "bg-emerald-500/15 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30 text-white"
 														: "bg-white/[0.02] border-white/5 text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
 												}`}
 											>
 												<div className="flex items-center justify-between">
-													<div className="flex items-center gap-1.5">
-														<Zap className="w-3.5 h-3.5 text-emerald-400" />
-														<span className="text-xs font-bold text-emerald-300">Full Access</span>
+													<div className="flex items-center gap-1">
+														<Zap className="w-3 h-3 text-emerald-400" />
+														<span className="text-[11px] font-bold text-emerald-300">Full Access</span>
 													</div>
 													{(settings?.ai_permission_level ?? "full_access") === "full_access" && (
-														<Check className="w-3.5 h-3.5 text-emerald-400" />
+														<Check className="w-3 h-3 text-emerald-400" />
 													)}
 												</div>
-												<p className="text-[10px] text-zinc-300 leading-relaxed">
-													Autonomous self-healing. Auto-recovers broken channels and writes directly to database without prompting.
+												<p className="text-[9.5px] text-zinc-300 leading-snug">
+													Autonomous healing. Auto-recovers broken channels and writes directly to database without prompting.
 												</p>
-												<span className="text-[9px] font-mono text-emerald-400/90 font-semibold mt-auto">
+												<span className="text-[8.5px] font-mono text-emerald-400/90 font-semibold mt-auto">
 													● Recommended
 												</span>
 											</button>
@@ -1270,25 +1265,25 @@ export const SettingsDialog: React.FC = () => {
 											<button
 												type="button"
 												onClick={() => setAiPermissionLevel("ask_permission")}
-												className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+												className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col gap-1 ${
 													settings?.ai_permission_level === "ask_permission"
-														? "bg-amber-500/15 border-amber-500/60 shadow-lg ring-1 ring-amber-500/30 text-white"
+														? "bg-amber-500/15 border-amber-500/60 shadow-md ring-1 ring-amber-500/30 text-white"
 														: "bg-white/[0.02] border-white/5 text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
 												}`}
 											>
 												<div className="flex items-center justify-between">
-													<div className="flex items-center gap-1.5">
-														<ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-														<span className="text-xs font-bold text-amber-300">Ask Permission</span>
+													<div className="flex items-center gap-1">
+														<ShieldCheck className="w-3 h-3 text-amber-400" />
+														<span className="text-[11px] font-bold text-amber-300">Ask Permission</span>
 													</div>
 													{settings?.ai_permission_level === "ask_permission" && (
-														<Check className="w-3.5 h-3.5 text-amber-400" />
+														<Check className="w-3 h-3 text-amber-400" />
 													)}
 												</div>
-												<p className="text-[10px] text-zinc-300 leading-relaxed">
-													Semi-Autonomous. Stream Doctor discovers working mirrors, but requires 1-click user confirmation before writing to DB.
+												<p className="text-[9.5px] text-zinc-300 leading-snug">
+													Semi-Autonomous. Stream Doctor finds working mirrors, but requires 1-click confirmation before writing to DB.
 												</p>
-												<span className="text-[9px] font-mono text-amber-400/90 font-semibold mt-auto">
+												<span className="text-[8.5px] font-mono text-amber-400/90 font-semibold mt-auto">
 													● Interactive
 												</span>
 											</button>
@@ -1297,25 +1292,25 @@ export const SettingsDialog: React.FC = () => {
 											<button
 												type="button"
 												onClick={() => setAiPermissionLevel("read_only")}
-												className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+												className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col gap-1 ${
 													settings?.ai_permission_level === "read_only"
-														? "bg-rose-500/15 border-rose-500/60 shadow-lg ring-1 ring-rose-500/30 text-white"
+														? "bg-rose-500/15 border-rose-500/60 shadow-md ring-1 ring-rose-500/30 text-white"
 														: "bg-white/[0.02] border-white/5 text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
 												}`}
 											>
 												<div className="flex items-center justify-between">
-													<div className="flex items-center gap-1.5">
-														<Eye className="w-3.5 h-3.5 text-rose-400" />
-														<span className="text-xs font-bold text-rose-300">Read-Only</span>
+													<div className="flex items-center gap-1">
+														<Eye className="w-3 h-3 text-rose-400" />
+														<span className="text-[11px] font-bold text-rose-300">Read-Only</span>
 													</div>
 													{settings?.ai_permission_level === "read_only" && (
-														<Check className="w-3.5 h-3.5 text-rose-400" />
+														<Check className="w-3 h-3 text-rose-400" />
 													)}
 												</div>
-												<p className="text-[10px] text-zinc-300 leading-relaxed">
-													Diagnostics Only. Database writes are locked. AI only provides telemetry, suggestions, and EPG recommendations.
+												<p className="text-[9.5px] text-zinc-300 leading-snug">
+													Diagnostics Only. Database writes locked. AI only provides telemetry, suggestions, and EPG recommendations.
 												</p>
-												<span className="text-[9px] font-mono text-rose-400/90 font-semibold mt-auto">
+												<span className="text-[8.5px] font-mono text-rose-400/90 font-semibold mt-auto">
 													● Locked
 												</span>
 											</button>
@@ -1391,30 +1386,29 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* Card 2: Custom Upstream Sources */}
-								<div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col gap-3.5">
-									<div className="flex items-center gap-3.5 min-w-0">
-										<div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 shadow-sm">
-											<Globe className="w-5 h-5" />
+								<div className="p-3 sm:p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.08] hover:border-white/[0.12] transition-colors flex flex-col gap-2.5">
+									<div className="flex items-center gap-2.5 min-w-0">
+										<div className="w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center shrink-0 shadow-sm">
+											<Globe className="w-4 h-4" />
 										</div>
 										<div className="min-w-0">
-											<h4 className="text-sm font-semibold text-white tracking-normal">
+											<h4 className="text-xs font-semibold text-white tracking-normal">
 												Custom Upstream Sources
 											</h4>
-											<p className="text-[11px] text-zinc-400 mt-0.5">
-												Add your own M3U playlist URLs for Sentinel to search &
-												heal channels
+											<p className="text-[10px] text-zinc-400 mt-0.5">
+												Add custom M3U playlist URLs for Sentinel to search & heal channels
 											</p>
 										</div>
 									</div>
 
 									{/* Add Custom Source Input */}
-									<div className="flex items-center gap-2">
+									<div className="flex items-center gap-1.5">
 										<input
 											type="url"
 											value={newSourceInput}
 											onChange={(e) => setNewSourceInput(e.target.value)}
 											placeholder="https://example.com/live.m3u8 or .m3u"
-											className="flex-1 px-3 py-2 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50 font-mono transition-colors"
+											className="flex-1 px-2.5 py-1.5 rounded-lg bg-black/40 border border-white/10 text-[10px] text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50 font-mono transition-colors"
 										/>
 										<button
 											type="button"
@@ -1429,9 +1423,9 @@ export const SettingsDialog: React.FC = () => {
 													setIsAddingSource(false);
 												}
 											}}
-											className="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-xs font-semibold text-white transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+											className="px-2.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-[10px] font-semibold text-white transition-all cursor-pointer flex items-center gap-1 shrink-0"
 										>
-											<Plus className="w-3.5 h-3.5" />
+											<Plus className="w-3 h-3" />
 											<span>Add Source</span>
 										</button>
 									</div>
@@ -1439,30 +1433,29 @@ export const SettingsDialog: React.FC = () => {
 									{/* List of Custom Sources */}
 									{settings?.custom_upstream_sources &&
 									settings.custom_upstream_sources.length > 0 ? (
-										<div className="flex flex-col gap-2 max-h-40 overflow-y-auto pr-1">
+										<div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto pr-1">
 											{settings.custom_upstream_sources.map((src) => (
 												<div
 													key={src}
-													className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex items-center justify-between gap-2 text-xs"
+													className="p-2 rounded-lg bg-black/30 border border-white/5 flex items-center justify-between gap-2 text-[10px]"
 												>
-													<span className="font-mono text-zinc-300 truncate text-[11px]">
+													<span className="font-mono text-zinc-300 truncate text-[10px]">
 														{src}
 													</span>
 													<button
 														type="button"
 														onClick={() => removeCustomSource(src)}
-														className="text-zinc-500 hover:text-rose-400 transition-colors p-1 rounded-lg hover:bg-rose-500/10 cursor-pointer shrink-0"
+														className="text-zinc-500 hover:text-rose-400 transition-colors p-0.5 rounded hover:bg-rose-500/10 cursor-pointer shrink-0"
 														title="Remove source"
 													>
-														<Trash2 className="w-3.5 h-3.5" />
+														<Trash2 className="w-3 h-3" />
 													</button>
 												</div>
 											))}
 										</div>
 									) : (
-										<div className="p-3 rounded-xl bg-black/20 border border-dashed border-white/10 text-center text-xs text-zinc-500">
-											No custom sources added. Sentinel is using built-in master
-											feeds.
+										<div className="p-2 rounded-lg bg-black/20 border border-dashed border-white/10 text-center text-[10px] text-zinc-500">
+											No custom sources added. Sentinel is using built-in master feeds.
 										</div>
 									)}
 								</div>
@@ -1471,22 +1464,21 @@ export const SettingsDialog: React.FC = () => {
 
 						{/* TAB 4: CLOUD REPOSITORY */}
 						{activeTab === "cloud" && (
-							<div className="flex flex-col gap-3">
+							<div className="flex flex-col gap-2.5">
 								{/* Cloud Repository Card */}
-								<div className="rounded-2xl p-3.5 bg-gradient-to-br from-cyan-950/30 via-blue-950/20 to-black/40 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+								<div className="rounded-xl p-3 bg-gradient-to-br from-cyan-950/30 via-blue-950/20 to-black/40 border border-cyan-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
 									<div className="flex items-center gap-2.5">
-										<div className="w-9 h-9 rounded-xl bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
-											<Cloud className="w-4.5 h-4.5" />
+										<div className="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center justify-center shrink-0">
+											<Cloud className="w-4 h-4" />
 										</div>
 										<div>
-											<h4 className="text-xs sm:text-sm font-bold text-white">
+											<h4 className="text-xs font-semibold text-white">
 												Cloud Repository Sync
 											</h4>
-											<p className="text-[11px] text-zinc-400 mt-0.5">
-												Refreshes verified live streaming channels from the
-												cloud mirror
+											<p className="text-[10px] text-zinc-400 mt-0.5">
+												Refreshes verified live streaming channels from the cloud mirror
 											</p>
-											<div className="text-[10px] text-cyan-300 font-mono mt-0.5 font-bold">
+											<div className="text-[9.5px] text-cyan-300 font-mono mt-0.5 font-bold">
 												{totalChannelsCount > 0
 													? `${totalChannelsCount.toLocaleString()} channels currently verified`
 													: "Ready to sync channels"}
@@ -1498,10 +1490,10 @@ export const SettingsDialog: React.FC = () => {
 										type="button"
 										onClick={syncCloudStreams}
 										disabled={isSyncing}
-										className="px-3.5 py-1.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-black transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-lg shadow-cyan-500/25 shrink-0 active:scale-95"
+										className="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-black text-[11px] font-bold transition-all flex items-center gap-1.5 disabled:opacity-50 cursor-pointer shadow-md shadow-cyan-500/20 shrink-0 active:scale-95"
 									>
 										<RefreshCw
-											className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
+											className={`w-3 h-3 ${isSyncing ? "animate-spin" : ""}`}
 										/>
 										<span>
 											{isSyncing ? "Syncing..." : "Sync Channels Now"}
@@ -1510,46 +1502,45 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* Cloud Mirror Health Card */}
-								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
+								<div className="rounded-xl p-3 bg-white/[0.03] border border-white/10 flex flex-col gap-2">
 									<div className="flex items-center gap-2.5">
-										<div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
-											<ShieldCheck className="w-4.5 h-4.5" />
+										<div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 flex items-center justify-center shrink-0">
+											<ShieldCheck className="w-4 h-4" />
 										</div>
 										<div>
-											<h4 className="text-xs sm:text-sm font-bold text-white">
+											<h4 className="text-xs font-semibold text-white">
 												High-Speed Cloud Resilience
 											</h4>
-											<p className="text-[11px] text-zinc-400 mt-0.5">
-												All channels are verified with automatic fallback
-												mirrors
+											<p className="text-[10px] text-zinc-400 mt-0.5">
+												All channels are verified with automatic fallback mirrors
 											</p>
 										</div>
 									</div>
 
-									<div className="grid grid-cols-3 gap-2 pt-1 text-xs">
-										<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
-											<span className="text-[9px] uppercase font-bold text-zinc-500">
+									<div className="grid grid-cols-3 gap-1.5 pt-0.5 text-xs">
+										<div className="p-1.5 rounded-lg bg-black/40 border border-white/5 flex flex-col gap-0.5">
+											<span className="text-[8.5px] uppercase font-bold text-zinc-500">
 												Live Channels
 											</span>
-											<span className="text-xs sm:text-sm font-black text-cyan-300 font-mono">
+											<span className="text-xs font-bold text-cyan-300 font-mono">
 												{totalChannelsCount > 0
 													? totalChannelsCount.toLocaleString()
 													: "8,300+"}
 											</span>
 										</div>
-										<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
-											<span className="text-[9px] uppercase font-bold text-zinc-500">
+										<div className="p-1.5 rounded-lg bg-black/40 border border-white/5 flex flex-col gap-0.5">
+											<span className="text-[8.5px] uppercase font-bold text-zinc-500">
 												Mirror Fallback
 											</span>
-											<span className="text-xs sm:text-sm font-black text-emerald-400 font-mono">
+											<span className="text-xs font-bold text-emerald-400 font-mono">
 												Multi-Server
 											</span>
 										</div>
-										<div className="p-2 rounded-xl bg-black/40 border border-white/5 flex flex-col gap-0.5">
-											<span className="text-[9px] uppercase font-bold text-zinc-500">
+										<div className="p-1.5 rounded-lg bg-black/40 border border-white/5 flex flex-col gap-0.5">
+											<span className="text-[8.5px] uppercase font-bold text-zinc-500">
 												Sync Protocol
 											</span>
-											<span className="text-xs sm:text-sm font-black text-white font-mono">
+											<span className="text-xs font-bold text-white font-mono">
 												HTTPS Cloud
 											</span>
 										</div>
@@ -1560,19 +1551,19 @@ export const SettingsDialog: React.FC = () => {
 
 						{/* TAB: SYSTEM & STARTUP */}
 						{activeTab === "system" && (
-							<div className="flex flex-col gap-2.5 max-h-[365px] overflow-y-auto pr-1 scrollbar-thin">
+							<div className="flex flex-col gap-2 max-h-[365px] overflow-y-auto pr-1 scrollbar-thin">
 								{/* Autostart Card */}
-								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-									<div className="flex items-center justify-between gap-4">
-										<div className="flex items-center gap-3">
-											<div className="w-9 h-9 rounded-xl bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
+								<div className="rounded-xl p-3 bg-white/[0.03] border border-white/10 flex flex-col gap-2">
+									<div className="flex items-center justify-between gap-3">
+										<div className="flex items-center gap-2.5">
+											<div className="w-8 h-8 rounded-lg bg-cyan-500/15 text-cyan-400 border border-cyan-500/25 flex items-center justify-center shrink-0">
 												<Power className="w-4 h-4" />
 											</div>
 											<div>
-												<h4 className="text-sm font-bold text-white flex items-center gap-2">
+												<h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
 													Start With Windows
 													<span
-														className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
+														className={`text-[8.5px] px-1.5 py-0.2 rounded-full font-bold uppercase ${
 															isLaunchAtStartup
 																? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
 																: "bg-zinc-800 text-zinc-400 border border-zinc-700"
@@ -1581,22 +1572,21 @@ export const SettingsDialog: React.FC = () => {
 														{isLaunchAtStartup ? "Enabled" : "Disabled"}
 													</span>
 												</h4>
-												<p className="text-xs text-zinc-400">
-													Automatically launch MorningTV when Windows boots or
-													restarts
+												<p className="text-[10px] text-zinc-400">
+													Automatically launch MorningTV when Windows boots or restarts
 												</p>
 											</div>
 										</div>
 										<button
 											type="button"
 											onClick={() => toggleStartupStatus(!isLaunchAtStartup)}
-											className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 ${
+											className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
 												isLaunchAtStartup ? "bg-cyan-500" : "bg-zinc-700"
 											}`}
 										>
 											<div
-												className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-													isLaunchAtStartup ? "translate-x-6" : "translate-x-0"
+												className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transition-transform ${
+													isLaunchAtStartup ? "translate-x-4.5" : "translate-x-0"
 												}`}
 											/>
 										</button>
@@ -1604,35 +1594,35 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* Tray Quick Controls Card */}
-								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-									<div className="flex items-center gap-3">
-										<div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/25 flex items-center justify-center shrink-0">
+								<div className="rounded-xl p-3 bg-white/[0.03] border border-white/10 flex flex-col gap-2">
+									<div className="flex items-center gap-2.5">
+										<div className="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 border border-purple-500/25 flex items-center justify-center shrink-0">
 											<Monitor className="w-4 h-4" />
 										</div>
 										<div>
-											<h4 className="text-sm font-bold text-white">
+											<h4 className="text-xs font-semibold text-white">
 												Windows Taskbar System Tray
 											</h4>
-											<p className="text-xs text-zinc-400">
+											<p className="text-[10px] text-zinc-400">
 												MorningTV runs quietly in the Windows Notification Area
 											</p>
 										</div>
 									</div>
 
-									<div className="grid grid-cols-2 gap-2 text-xs text-zinc-300 pt-0.5">
-										<div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
-											<span className="font-bold text-white flex items-center gap-1.5 text-xs">
+									<div className="grid grid-cols-2 gap-1.5 text-xs text-zinc-300 pt-0.5">
+										<div className="p-2 rounded-lg bg-black/30 border border-white/5 flex flex-col gap-0.5">
+											<span className="font-semibold text-white flex items-center gap-1 text-[11px]">
 												📺 Left Click Tray
 											</span>
-											<span className="text-[10px] text-zinc-400 leading-tight">
+											<span className="text-[9.5px] text-zinc-400 leading-tight">
 												Instantly show, unminimize, or focus player window.
 											</span>
 										</div>
-										<div className="p-2.5 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
-											<span className="font-bold text-white flex items-center gap-1.5 text-xs">
+										<div className="p-2 rounded-lg bg-black/30 border border-white/5 flex flex-col gap-0.5">
+											<span className="font-semibold text-white flex items-center gap-1 text-[11px]">
 												🖱️ Right Click Tray
 											</span>
-											<span className="text-[10px] text-zinc-400 leading-tight">
+											<span className="text-[9.5px] text-zinc-400 leading-tight">
 												Access Quick Menu: Autostart, GitHub, Reload, and Exit.
 											</span>
 										</div>
@@ -1640,17 +1630,17 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* 3G Data Saver & Adaptive Playback Card */}
-								<div className="rounded-2xl p-3.5 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
-									<div className="flex items-center justify-between gap-4">
-										<div className="flex items-center gap-3">
-											<div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 border border-amber-500/25 flex items-center justify-center shrink-0">
+								<div className="rounded-xl p-3 bg-white/[0.03] border border-white/10 flex flex-col gap-2">
+									<div className="flex items-center justify-between gap-3">
+										<div className="flex items-center gap-2.5">
+											<div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-400 border border-amber-500/25 flex items-center justify-center shrink-0">
 												<Zap className="w-4 h-4" />
 											</div>
 											<div>
-												<h4 className="text-sm font-bold text-white flex items-center gap-2">
+												<h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
 													Adaptive 3G / Low-Speed Data Saver
 													<span
-														className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
+														className={`text-[8.5px] px-1.5 py-0.2 rounded-full font-bold uppercase ${
 															is3GDataSaver
 																? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
 																: "bg-zinc-800 text-zinc-400 border border-zinc-700"
@@ -1659,22 +1649,21 @@ export const SettingsDialog: React.FC = () => {
 														{is3GDataSaver ? "Active" : "Auto"}
 													</span>
 												</h4>
-												<p className="text-xs text-zinc-400">
-													Locks to 360p/480p and tightens buffer under weak
-													networks (&lt;700 kbps)
+												<p className="text-[10px] text-zinc-400">
+													Locks to 360p/480p and tightens buffer under weak networks (&lt;700 kbps)
 												</p>
 											</div>
 										</div>
 										<button
 											type="button"
 											onClick={() => toggle3GDataSaver()}
-											className={`w-12 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer shrink-0 ${
+											className={`w-10 h-5.5 rounded-full transition-colors relative cursor-pointer shrink-0 ${
 												is3GDataSaver ? "bg-amber-500" : "bg-zinc-700"
 											}`}
 										>
 											<div
-												className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
-													is3GDataSaver ? "translate-x-6" : "translate-x-0"
+												className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transition-transform ${
+													is3GDataSaver ? "translate-x-4.5" : "translate-x-0"
 												}`}
 											/>
 										</button>
@@ -1682,22 +1671,21 @@ export const SettingsDialog: React.FC = () => {
 								</div>
 
 								{/* GitHub Repository Card */}
-								<div className="rounded-2xl p-3.5 bg-gradient-to-r from-blue-950/30 to-purple-950/30 border border-blue-500/20 flex items-center justify-between gap-4">
+								<div className="rounded-xl p-3 bg-gradient-to-r from-blue-950/30 to-purple-950/30 border border-blue-500/20 flex items-center justify-between gap-3">
 									<div>
-										<h4 className="text-sm font-bold text-white flex items-center gap-2">
+										<h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
 											🌐 GitHub Open Source Repository
 										</h4>
-										<p className="text-xs text-zinc-400">
-											View source code, star the project, report stream issues,
-											and check latest releases
+										<p className="text-[10px] text-zinc-400">
+											View source code, star the project, report stream issues, and check latest releases
 										</p>
 									</div>
 									<button
 										type="button"
 										onClick={openGitHubRepo}
-										className="px-3.5 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold flex items-center gap-2 border border-white/20 transition-all cursor-pointer shrink-0"
+										className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold flex items-center gap-1.5 border border-white/20 transition-all cursor-pointer shrink-0"
 									>
-										<ExternalLink className="w-3.5 h-3.5" />
+										<ExternalLink className="w-3 h-3" />
 										Open Repo
 									</button>
 								</div>
@@ -1709,22 +1697,22 @@ export const SettingsDialog: React.FC = () => {
 							<div className="flex flex-col gap-3">
 								{!isUpdateAvailable ? (
 									/* Default Clean Update Card */
-									<div className="rounded-2xl p-4 bg-white/[0.03] border border-white/10 flex flex-col gap-3">
+									<div className="rounded-xl p-3 bg-white/[0.03] border border-white/10 flex flex-col gap-2.5">
 										<div className="flex items-center justify-between gap-3">
-											<div className="flex items-center gap-3">
-												<div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center shrink-0">
+											<div className="flex items-center gap-2.5">
+												<div className="w-8 h-8 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/25 flex items-center justify-center shrink-0">
 													<Check className="w-4 h-4" />
 												</div>
 												<div>
-													<div className="flex items-center gap-2">
-														<h4 className="text-sm font-bold text-white">
+													<div className="flex items-center gap-1.5">
+														<h4 className="text-xs font-semibold text-white">
 															MorningTV Desktop
 														</h4>
-														<span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[9px] font-bold font-mono">
+														<span className="px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[8.5px] font-bold font-mono">
 															v{APP_VERSION}
 														</span>
 													</div>
-													<p className="text-xs text-zinc-400 mt-0.5">
+													<p className="text-[10px] text-zinc-400 mt-0.5">
 														{updateStatus === "checking"
 															? "Connecting to update server..."
 															: updateStatus === "upToDate"
@@ -1740,10 +1728,10 @@ export const SettingsDialog: React.FC = () => {
 												type="button"
 												onClick={() => checkForUpdates(true)}
 												disabled={isCheckingUpdate}
-												className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-zinc-200 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+												className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-[10px] font-semibold text-zinc-200 transition-all cursor-pointer disabled:opacity-50 shrink-0"
 											>
 												<RefreshCw
-													className={`w-3.5 h-3.5 ${
+													className={`w-3 h-3 ${
 														isCheckingUpdate ? "animate-spin text-cyan-400" : ""
 													}`}
 												/>
@@ -1910,76 +1898,60 @@ export const SettingsDialog: React.FC = () => {
 
 						{/* Tab: Legal & About */}
 						{activeTab === "about" && (
-							<div className="space-y-4">
+							<div className="space-y-3">
 								<div>
-									<h3 className="text-sm font-black text-white">
+									<h3 className="text-xs font-semibold text-white">
 										Legal & Compliance Notice
 									</h3>
-									<p className="text-[11px] text-zinc-400 mt-0.5">
-										Open-source architecture, stream attributions, and privacy
-										policies
+									<p className="text-[10px] text-zinc-400 mt-0.5">
+										Open-source architecture, stream attributions, and privacy policies
 									</p>
 								</div>
 
-								<div className="p-3.5 bg-black/40 border border-white/10 rounded-2xl space-y-3">
+								<div className="p-3 bg-black/40 border border-white/10 rounded-xl space-y-2.5">
 									<div className="flex items-start gap-2.5">
-										<ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
-										<div className="space-y-1.5 text-xs text-zinc-300">
-											<div className="font-bold text-white">
+										<ShieldCheck className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+										<div className="space-y-1 text-[10px] text-zinc-300">
+											<div className="font-semibold text-white text-[11px]">
 												Non-Hosting & Aggregation Policy
 											</div>
-											<p className="text-zinc-400 leading-relaxed text-[11px]">
-												MorningTV is an open-source client media player.
-												MorningTV does{" "}
-												<strong className="text-white">not</strong> host, store,
-												cache, distribute, or rebroadcast any video, audio, or
-												copyrighted stream content. All playlist items are
-												aggregated from publicly available IPTV repositories
-												maintained by the open-source community.
+											<p className="text-zinc-400 leading-relaxed text-[10px]">
+												MorningTV is an open-source client media player. MorningTV does{" "}
+												<strong className="text-white">not</strong> host, store, cache, distribute, or rebroadcast any video, audio, or copyrighted stream content. All playlist items are aggregated from publicly available IPTV repositories maintained by the open-source community.
 											</p>
 										</div>
 									</div>
 
-									<div className="flex items-start gap-2.5 pt-2.5 border-t border-white/10">
-										<Globe className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-										<div className="space-y-1.5 text-xs text-zinc-300">
-											<div className="font-bold text-white">
+									<div className="flex items-start gap-2.5 pt-2 border-t border-white/10">
+										<Globe className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+										<div className="space-y-1 text-[10px] text-zinc-300">
+											<div className="font-semibold text-white text-[11px]">
 												Third-Party Web Services & Attribution
 											</div>
-											<p className="text-zinc-400 leading-relaxed text-[11px]">
-												The embedded YouTube and JioHotstar buttons launch
-												official provider web applications directly in native
-												sandboxed webviews. MorningTV is not affiliated with,
-												endorsed by, or sponsored by YouTube, Google LLC, Jio,
-												or Star India. All trademarks and brand assets belong to
-												their respective holders.
+											<p className="text-zinc-400 leading-relaxed text-[10px]">
+												The embedded YouTube and JioHotstar buttons launch official provider web applications directly in native sandboxed webviews. MorningTV is not affiliated with, endorsed by, or sponsored by YouTube, Google LLC, Jio, or Star India. All trademarks and brand assets belong to their respective holders.
 											</p>
 										</div>
 									</div>
 
-									<div className="flex items-start gap-2.5 pt-2.5 border-t border-white/10">
-										<Zap className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-										<div className="space-y-1.5 text-xs text-zinc-300">
-											<div className="font-bold text-white">
+									<div className="flex items-start gap-2.5 pt-2 border-t border-white/10">
+										<Zap className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+										<div className="space-y-1 text-[10px] text-zinc-300">
+											<div className="font-semibold text-white text-[11px]">
 												Local Security & Privacy Guard
 											</div>
-											<p className="text-zinc-400 leading-relaxed text-[11px]">
-												MorningTV runs a hardened local Axum proxy with
-												Anti-SSRF protection, IPv4/IPv6 private range blocking,
-												and ephemeral cryptographic token authentication. Zero
-												personal tracking or viewing metrics are collected or
-												sent to external telemetry servers.
+											<p className="text-zinc-400 leading-relaxed text-[10px]">
+												MorningTV runs a hardened local Axum proxy with Anti-SSRF protection, IPv4/IPv6 private range blocking, and ephemeral cryptographic token authentication. Zero personal tracking or viewing metrics are collected or sent to external telemetry servers.
 											</p>
 										</div>
 									</div>
 								</div>
 
-								<div className="p-3 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between text-xs text-zinc-400">
+								<div className="p-2.5 bg-white/5 border border-white/10 rounded-lg flex items-center justify-between text-[10px] text-zinc-400">
 									<div>
-										<span className="font-bold text-white">License:</span> MIT
-										Open Source
+										<span className="font-semibold text-white">License:</span> MIT Open Source
 									</div>
-									<div className="font-mono text-[11px]">
+									<div className="font-mono text-[9.5px]">
 										MorningTV v{APP_VERSION} (Production Release)
 									</div>
 								</div>

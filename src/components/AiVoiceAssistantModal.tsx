@@ -19,9 +19,14 @@ import {
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
-import type { AiModelItem } from "../types";
+import type { AiModelItem, StreamHealResult } from "../types";
 import { AiAvatarPicker, type AvatarPreset } from "./ai/AiAvatarPicker";
 import { AiChatFeed, type ChatMessage } from "./ai/AiChatFeed";
+import {
+	AI_SYSTEM_COMMANDS,
+	type AiCommandItem,
+	AiCommandPalette,
+} from "./ai/AiCommandPalette";
 import { AiModelPicker } from "./ai/AiModelPicker";
 import { AiVoiceDock } from "./ai/AiVoiceDock";
 import { AiWelcomeHero } from "./ai/AiWelcomeHero";
@@ -69,6 +74,35 @@ const AVATAR_PRESETS: AvatarPreset[] = [
 
 type VoiceLanguage = "en-US" | "bn-IN" | "hi-IN";
 
+const CHAT_MEMORY_KEY = "morningtv_ai_chat_memory_v2";
+
+const getInitialMessages = (): ChatMessage[] => {
+	try {
+		if (typeof window !== "undefined" && window.localStorage) {
+			const raw = localStorage.getItem(CHAT_MEMORY_KEY);
+			if (raw) {
+				const parsed = JSON.parse(raw);
+				if (Array.isArray(parsed) && parsed.length > 0) {
+					return parsed;
+				}
+			}
+		}
+	} catch (e) {
+		console.warn("Failed to load saved chat memory:", e);
+	}
+	return [
+		{
+			id: "welcome",
+			sender: "ai",
+			text: "Hello! I am your MorningTV AI Co-Pilot. You can speak or type to switch channels, adjust volume, or search & heal expired streams from the internet.",
+			timestamp: new Date().toLocaleTimeString([], {
+				hour: "2-digit",
+				minute: "2-digit",
+			}),
+		},
+	];
+};
+
 export const AiVoiceAssistantModal: React.FC = () => {
 	const {
 		isAiAssistantOpen,
@@ -83,20 +117,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 		activeChannel,
 		volume,
 		settings,
+		showToast,
 	} = useAppStore();
 
-	const [messages, setMessages] = useState<ChatMessage[]>([
-		{
-			id: "welcome",
-			sender: "ai",
-			text: "Hello! I am your MorningTV AI Co-Pilot. You can speak or type to switch channels, adjust volume, or search & heal expired streams from the internet.",
-			timestamp: new Date().toLocaleTimeString([], {
-				hour: "2-digit",
-				minute: "2-digit",
-			}),
-		},
-	]);
-
+	const [messages, setMessages] = useState<ChatMessage[]>(getInitialMessages);
 	const [inputText, setInputText] = useState("");
 	const [isListening, setIsListening] = useState(false);
 	const [isThinking, setIsThinking] = useState(false);
@@ -110,19 +134,39 @@ export const AiVoiceAssistantModal: React.FC = () => {
 	const [showModelPicker, setShowModelPicker] = useState(false);
 	const [quickModels, setQuickModels] = useState<AiModelItem[]>([]);
 	const [isLoadingQuickModels, setIsLoadingQuickModels] = useState(false);
+	const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
+
+	const inputRef = useRef<HTMLInputElement>(null);
+
+	// Persist conversation history to local storage (up to last 100 messages)
+	useEffect(() => {
+		try {
+			if (typeof window !== "undefined" && window.localStorage) {
+				localStorage.setItem(CHAT_MEMORY_KEY, JSON.stringify(messages.slice(-100)));
+			}
+		} catch (e) {
+			console.warn("Failed to save chat memory:", e);
+		}
+	}, [messages]);
 
 	const handleClearHistory = () => {
+		try {
+			if (typeof window !== "undefined" && window.localStorage) {
+				localStorage.removeItem(CHAT_MEMORY_KEY);
+			}
+		} catch {}
 		setMessages([
 			{
 				id: "welcome",
 				sender: "ai",
-				text: "Hello! I am your MorningTV AI Co-Pilot. You can speak or type to switch channels, adjust volume, or search & heal expired streams from the internet.",
+				text: "🧹 Conversation memory cleared! What would you like to watch or do?",
 				timestamp: new Date().toLocaleTimeString([], {
 					hour: "2-digit",
 					minute: "2-digit",
 				}),
 			},
 		]);
+		showToast("🧹 Chat memory cleared", false);
 	};
 
 	const handleOpenModelPicker = async () => {
@@ -141,6 +185,67 @@ export const AiVoiceAssistantModal: React.FC = () => {
 				setQuickModels(models);
 			} finally {
 				setIsLoadingQuickModels(false);
+			}
+		}
+	};
+
+	// Command Palette Trigger & Filtering for backslash (\) and slash (/)
+	const isCommandTrigger = inputText.startsWith("\\") || inputText.startsWith("/");
+	const cleanCommandQuery = inputText.replace(/^[/\\+]/, "").trim().toLowerCase();
+
+	const filteredCommands = AI_SYSTEM_COMMANDS.filter((cmd) => {
+		if (!cleanCommandQuery) return true;
+		return (
+			cmd.trigger.toLowerCase().includes(cleanCommandQuery) ||
+			cmd.label.toLowerCase().includes(cleanCommandQuery) ||
+			cmd.syntax.toLowerCase().includes(cleanCommandQuery) ||
+			cmd.description.toLowerCase().includes(cleanCommandQuery)
+		);
+	});
+
+	useEffect(() => {
+		setSelectedCommandIndex(0);
+	}, [cleanCommandQuery]);
+
+	const handleSelectCommand = (cmd: AiCommandItem) => {
+		const triggerChar = inputText.startsWith("/") ? "/" : "\\";
+		if (cmd.hasParams) {
+			setInputText(`${triggerChar}${cmd.trigger} `);
+			setTimeout(() => inputRef.current?.focus(), 40);
+		} else {
+			setInputText("");
+			if (cmd.trigger === "clear") {
+				handleClearHistory();
+			} else if (cmd.trigger === "models") {
+				handleOpenModelPicker();
+			} else {
+				handleSendMessage(`${triggerChar}${cmd.trigger}`);
+			}
+		}
+	};
+
+	const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+		if (isCommandTrigger && filteredCommands.length > 0) {
+			if (e.key === "ArrowDown") {
+				e.preventDefault();
+				setSelectedCommandIndex((prev) => (prev + 1) % filteredCommands.length);
+				return;
+			}
+			if (e.key === "ArrowUp") {
+				e.preventDefault();
+				setSelectedCommandIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+				return;
+			}
+			if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+				if (!inputText.includes(" ") && filteredCommands[selectedCommandIndex]) {
+					e.preventDefault();
+					handleSelectCommand(filteredCommands[selectedCommandIndex]);
+					return;
+				}
+			}
+			if (e.key === "Escape") {
+				setInputText("");
+				return;
 			}
 		}
 	};
@@ -358,14 +463,175 @@ export const AiVoiceAssistantModal: React.FC = () => {
 				return;
 			}
 
-			if (cmd === "help") {
+			if (cmd === "tools" || cmd === "capabilities" || cmd === "help") {
 				const aiMsg: ChatMessage = {
 					id: (Date.now() + 1).toString(),
 					sender: "ai",
-					text: "⚡ **Available Commands:**\n\n- `\\model <name>` or `/model <name>` : Switch the active AI model\n- `\\models` or `/models` : List available live free & standard models\n- `\\heal <channel>` or `/heal <channel>` : Hunt down working streams online and update the local database\n- `\\clear` or `/clear` : Clear conversation history",
+					text: "🛠️ **MorningTV Autonomous AI Powers & Available Tools:**\n\n" +
+						"- `\\play <channel>` — Tune into any live channel (e.g. `\\play Zee Bangla HD`)\n" +
+						"- `\\hunt <channel>` — Autonomous stream hunter: Finds internet mirrors & saves to SQLite\n" +
+						"- `\\doctor <channel>` — Stream Doctor diagnostics: Verifies stream health & mirrors\n" +
+						"- `\\volume <0-100>` — Set audio volume level\n" +
+						"- `\\mute` — Toggle audio mute\n" +
+						"- `\\sleep <mins>` — Set sleep timer to automatically turn off playback\n" +
+						"- `\\remind <channel>` — Schedule auto-tune channel switch\n" +
+						"- `\\category <name>` — Filter library by category\n" +
+						"- `\\vibe <mood>` — Recommend channels matching your mood\n" +
+						"- `\\epg` — Query live TV schedule\n" +
+						"- `\\fullscreen` — Toggle cinema fullscreen mode\n" +
+						"- `\\model <name>` / `\\models` — Switch or browse live AI models\n" +
+						"- `\\clear` — Reset conversation memory",
 					timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
 				};
 				setMessages((prev) => [...prev, aiMsg]);
+				return;
+			}
+
+			if (cmd === "play") {
+				if (!arg) {
+					setMessages((prev) => [
+						...prev,
+						{
+							id: (Date.now() + 1).toString(),
+							sender: "ai",
+							text: "Please specify a channel name, e.g.: `\\play Zee Bangla HD` or `\\play Hungama`",
+							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						},
+					]);
+					return;
+				}
+				const feedback = await executeAiAction("play_channel", arg);
+				setMessages((prev) => [
+					...prev,
+					{
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: feedback || `Tuning into "${arg}"...`,
+						actionFeedback: feedback,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					},
+				]);
+				return;
+			}
+
+			if (cmd === "doctor") {
+				const target = arg || activeChannel?.name || "Zee Bangla HD";
+				setIsThinking(true);
+				try {
+					const res = await invoke<StreamHealResult>("ai_diagnose_stream", {
+						channelName: target,
+					});
+					const text = `🩺 **Stream Doctor Report for "${res.channel_name}":**\n\n` +
+						`- Status: ${res.healed ? "✅ Healed & Saved to DB" : res.requires_user_confirmation ? "🟡 Candidate Found (Confirmation Required)" : "ℹ️ Diagnostic Complete"}\n` +
+						`- Result: ${res.message}\n` +
+						(res.new_url ? `- Working Stream URL: \`${res.new_url}\`` : "");
+					setMessages((prev) => [
+						...prev,
+						{
+							id: (Date.now() + 1).toString(),
+							sender: "ai",
+							text,
+							actionFeedback: res.message,
+							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						},
+					]);
+				} catch (err) {
+					setMessages((prev) => [
+						...prev,
+						{
+							id: (Date.now() + 1).toString(),
+							sender: "ai",
+							text: `Stream Doctor check failed: ${err}`,
+							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						},
+					]);
+				} finally {
+					setIsThinking(false);
+				}
+				return;
+			}
+
+			if (cmd === "volume") {
+				const feedback = await executeAiAction("set_volume", arg);
+				setMessages((prev) => [
+					...prev,
+					{
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: feedback || `Volume set to ${arg}%`,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					},
+				]);
+				return;
+			}
+
+			if (cmd === "mute") {
+				const feedback = await executeAiAction("toggle_mute");
+				setMessages((prev) => [
+					...prev,
+					{
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: feedback || "Mute toggled",
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					},
+				]);
+				return;
+			}
+
+			if (cmd === "sleep") {
+				const feedback = await executeAiAction("sleep_timer", arg || "30");
+				setMessages((prev) => [
+					...prev,
+					{
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: feedback || `Sleep timer set for ${arg || 30} minutes`,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					},
+				]);
+				return;
+			}
+
+			if (cmd === "remind") {
+				const feedback = await executeAiAction("schedule_channel", arg);
+				setMessages((prev) => [
+					...prev,
+					{
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: feedback || `Auto-tune scheduled for ${arg}`,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					},
+				]);
+				return;
+			}
+
+			if (cmd === "category") {
+				const feedback = await executeAiAction("set_category", arg);
+				setMessages((prev) => [
+					...prev,
+					{
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: feedback || `Category filtered to "${arg}"`,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					},
+				]);
+				return;
+			}
+
+			if (cmd === "fullscreen") {
+				const feedback = await executeAiAction("toggle_fullscreen");
+				setMessages((prev) => [
+					...prev,
+					{
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: feedback || "Fullscreen toggled",
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					},
+				]);
 				return;
 			}
 		}
@@ -488,58 +754,60 @@ export const AiVoiceAssistantModal: React.FC = () => {
 			{/* Main Glassmorphic Modal Window */}
 			<div className="relative w-full max-w-2xl h-[620px] max-h-[92vh] rounded-3xl bg-[#070914]/90 border border-white/15 shadow-[0_25px_70px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden backdrop-blur-2xl ring-1 ring-white/10">
 				{/* Top Header */}
-				<div className="px-5 py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-white/[0.02]">
-					<div className="flex items-center gap-3">
-						<div
-							className={`w-8 h-8 rounded-full bg-gradient-to-tr ${currentPreset.gradient} p-0.5 shadow-md flex items-center justify-center`}
-						>
-							<Sparkles className="w-4 h-4 text-white" />
+				<div className="px-4 py-2.5 sm:px-5 sm:py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-white/[0.02] gap-2.5">
+					{/* Left: Avatar & Title info */}
+					<div className="flex items-center gap-2.5 min-w-0">
+						{/* Avatar Circle with live status indicator */}
+						<div className="relative shrink-0">
+							{aiCustomAvatarUrl ? (
+								<img
+									src={aiCustomAvatarUrl}
+									alt="AI Avatar"
+									className="w-8 h-8 rounded-full object-cover ring-2 ring-purple-500/50 shadow-md"
+								/>
+							) : (
+								<div
+									className={`w-8 h-8 rounded-full bg-gradient-to-tr ${currentPreset.gradient} p-0.5 shadow-md flex items-center justify-center`}
+								>
+									<Sparkles className="w-4 h-4 text-white" />
+								</div>
+							)}
+							<span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 border-2 border-[#070914] shadow-sm" />
 						</div>
-						<div>
-							<div className="flex items-center gap-2">
-								<h3 className="text-sm font-bold text-white tracking-wide">
-									MorningTV AI Co-Pilot
+
+						<div className="min-w-0">
+							<div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+								<h3 className="text-xs sm:text-sm font-bold text-white tracking-wide truncate">
+									MorningTV AI
 								</h3>
-								<span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-									{settings?.ai_provider || "Neural Engine"}
-								</span>
 								<button
 									type="button"
 									onClick={handleOpenModelPicker}
-									className="px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95"
+									className="px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95 shrink-0"
 									title="Click to quickly switch AI model"
 								>
-									<span className="max-w-[130px] truncate">
+									<span className="max-w-[110px] sm:max-w-[140px] truncate">
 										{settings?.ai_model || "Select Model"}
 									</span>
-									<ChevronDown className={`w-3 h-3 transition-transform ${showModelPicker ? "rotate-180" : ""}`} />
+									<ChevronDown className={`w-2.5 h-2.5 transition-transform ${showModelPicker ? "rotate-180" : ""}`} />
 								</button>
 							</div>
-							<p className="text-[10px] text-zinc-400">
+							<p className="text-[10px] text-zinc-400 truncate mt-0.5">
 								{activeChannel
-									? `Playing: ${activeChannel.name} • Volume: ${volume}%`
-									: "Voice & Semantic Playback Control"}
+									? `Playing: ${activeChannel.name} • ${volume}%`
+									: `Memory Active • ${messages.length > 1 ? `${messages.length - 1} turns` : "Ready"}`}
 							</p>
 						</div>
 					</div>
 
-					<div className="flex items-center gap-2">
-						{/* Clear Chat History (Reset Memory) */}
-						<button
-							type="button"
-							onClick={handleClearHistory}
-							className="p-1.5 rounded-xl text-zinc-400 hover:text-rose-400 bg-white/5 hover:bg-rose-500/10 border border-white/10 transition-colors cursor-pointer"
-							title="Clear conversation history (Reset Memory)"
-						>
-							<Trash2 className="w-3.5 h-3.5" />
-						</button>
-
+					{/* Right Controls: Language, Avatar, Clear Memory, Close */}
+					<div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
 						{/* Language Selector Pill */}
-						<div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-0.5 text-[10px] font-semibold text-zinc-400">
+						<div className="flex items-center bg-white/5 border border-white/10 rounded-lg p-0.5 text-[9px] font-semibold text-zinc-400">
 							<button
 								type="button"
 								onClick={() => setSelectedLang("en-US")}
-								className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+								className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
 									selectedLang === "en-US"
 										? "bg-purple-600 text-white shadow-sm"
 										: "hover:text-white"
@@ -551,7 +819,7 @@ export const AiVoiceAssistantModal: React.FC = () => {
 							<button
 								type="button"
 								onClick={() => setSelectedLang("bn-IN")}
-								className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+								className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
 									selectedLang === "bn-IN"
 										? "bg-purple-600 text-white shadow-sm"
 										: "hover:text-white"
@@ -563,7 +831,7 @@ export const AiVoiceAssistantModal: React.FC = () => {
 							<button
 								type="button"
 								onClick={() => setSelectedLang("hi-IN")}
-								className={`px-2 py-1 rounded-lg transition-colors cursor-pointer ${
+								className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
 									selectedLang === "hi-IN"
 										? "bg-purple-600 text-white shadow-sm"
 										: "hover:text-white"
@@ -574,26 +842,38 @@ export const AiVoiceAssistantModal: React.FC = () => {
 							</button>
 						</div>
 
-						{/* Avatar Customizer Button */}
+						{/* Customize Avatar Button */}
 						<button
 							type="button"
 							onClick={() => setShowAvatarSelector(!showAvatarSelector)}
-							className="px-2.5 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-zinc-300 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer"
-							title="Customize AI Persona & Avatar"
+							className={`p-1.5 rounded-lg border text-xs transition-all cursor-pointer flex items-center gap-1 ${
+								showAvatarSelector
+									? "bg-purple-600/30 text-purple-200 border-purple-500/50"
+									: "bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border-white/10"
+							}`}
+							title="Customize AI Avatar & Persona"
 						>
 							<ImageIcon className="w-3.5 h-3.5 text-purple-400" />
-							<span className="text-[11px] font-medium hidden sm:inline">
-								Avatar
-							</span>
+						</button>
+
+						{/* Clear Chat Memory Button */}
+						<button
+							type="button"
+							onClick={handleClearHistory}
+							className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 bg-white/5 hover:bg-rose-500/10 border border-white/10 transition-colors cursor-pointer"
+							title="Clear Chat Memory & Reset"
+						>
+							<Trash2 className="w-3.5 h-3.5" />
 						</button>
 
 						{/* Close Button */}
 						<button
 							type="button"
 							onClick={closeAiAssistant}
-							className="p-1.5 rounded-full text-zinc-400 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-colors cursor-pointer"
+							className="p-1.5 rounded-lg text-zinc-400 hover:text-white bg-white/5 hover:bg-white/15 border border-white/10 transition-colors cursor-pointer ml-0.5"
+							title="Close (Esc)"
 						>
-							<X className="w-4 h-4" />
+							<X className="w-3.5 h-3.5" />
 						</button>
 					</div>
 				</div>
@@ -748,13 +1028,22 @@ export const AiVoiceAssistantModal: React.FC = () => {
 					</button>
 				</div>
 
+				{/* Rich Autocomplete Floating Command Palette for Backslash and Slash */}
+				<AiCommandPalette
+					isOpen={isCommandTrigger}
+					filterQuery={inputText}
+					selectedIndex={selectedCommandIndex}
+					onSelect={handleSelectCommand}
+					onClose={() => setInputText("")}
+				/>
+
 				{/* Bottom Input & Voice Control Bar */}
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();
 						handleSendMessage();
 					}}
-					className="p-3 border-t border-white/10 bg-black/40 flex items-center gap-2.5 shrink-0"
+					className="p-3 border-t border-white/10 bg-black/40 flex items-center gap-2.5 shrink-0 relative"
 				>
 					{/* Glowing Microphone Button */}
 					<button
@@ -784,10 +1073,12 @@ export const AiVoiceAssistantModal: React.FC = () => {
 
 					{/* Text Input Field */}
 					<input
+						ref={inputRef}
 						type="text"
 						value={inputText}
 						onChange={(e) => setInputText(e.target.value)}
-						placeholder="Type message, mood, or command (\model <name>, \models, \heal <ch>)..."
+						onKeyDown={handleInputKeyDown}
+						placeholder="Type message, mood, or command (\play, \hunt, \tools, \doctor, \sleep)..."
 						className="flex-1 px-4 py-2.5 rounded-2xl bg-white/[0.05] border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 transition-colors"
 					/>
 

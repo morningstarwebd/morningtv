@@ -127,8 +127,16 @@ impl AiBrain {
         crawler::StreamCrawler::hunt_channel_stream(channel_name, custom_sources).await
     }
 
+    pub async fn deep_hunt(channel_name: &str, custom_sources: &[String]) -> crawler::DeepHuntReport {
+        crawler::StreamCrawler::deep_hunt(channel_name, custom_sources).await
+    }
+
     pub fn extract_channel_target(msg: &str) -> Option<String> {
         crawler::StreamCrawler::extract_channel_target(msg)
+    }
+
+    pub fn extract_custom_stream_intent(msg: &str) -> Option<(String, String)> {
+        crawler::StreamCrawler::extract_custom_stream_intent(msg)
     }
 
     pub async fn autonomous_channel_discovery(

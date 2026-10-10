@@ -647,16 +647,20 @@ pub async fn probe_single_url(client: &reqwest::Client, url: &str) -> ProbeResul
 
     for attempt in 0..2 {
         let t0 = Instant::now();
-        let res = client
+        let mut req = client
             .get(url)
             .header(
                 "User-Agent",
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
             )
-            .header("Range", "bytes=0-2048")
-            .header("Accept", "*/*")
-            .send()
-            .await;
+            .header("Accept", "*/*");
+
+        // Do not send Range header to .m3u8 playlists; CDNs (CloudFront, Akamai) reject range requests on playlists with 403/416
+        if !url.contains(".m3u8") && !url.contains(".m3u") {
+            req = req.header("Range", "bytes=0-2048");
+        }
+
+        let res = req.send().await;
 
         match res {
             Ok(mut resp) => {
