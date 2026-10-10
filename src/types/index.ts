@@ -74,6 +74,17 @@ export interface StreamHealResult {
 	message: string;
 }
 
+export interface AiHuntResponse {
+	success: boolean;
+	channel?: Channel | null;
+	channel_name: string;
+	searched_sources_count: number;
+	searched_repositories: string[];
+	message: string;
+	is_drm_or_paytv: boolean;
+	suggestions: string[];
+}
+
 export interface AiModelItem {
 	id: string;
 	is_free: boolean;
