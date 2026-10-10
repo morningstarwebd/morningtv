@@ -144,6 +144,7 @@ export const SettingsDialog: React.FC = () => {
 		fetchProviderModels,
 		setActiveAiModel,
 		saveAiConfiguration,
+		setAiPermissionLevel,
 	} = useAppStore();
 
 	const [activeTab, setActiveTab] = useState<TabType>("playlist");
@@ -1217,6 +1218,107 @@ export const SettingsDialog: React.FC = () => {
 										<div className="text-[10px] text-zinc-400 flex items-center gap-1 pt-1">
 											<span className="text-purple-400 font-bold">💡 Tip:</span>
 											<span>Switch models anytime in chat using <code className="text-purple-300 bg-white/5 px-1 py-0.2 rounded font-mono">\model &lt;name&gt;</code> or <code className="text-purple-300 bg-white/5 px-1 py-0.2 rounded font-mono">/model &lt;name&gt;</code>.</span>
+										</div>
+									</div>
+
+									{/* Step 4: Autonomous Permissions & Stream Doctor Gating */}
+									<div className="flex flex-col gap-2.5 pt-2 border-t border-white/5">
+										<div className="flex items-center justify-between">
+											<div className="flex items-center gap-1.5">
+												<ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+												<span className="text-xs font-semibold text-zinc-200">
+													Autonomous Superpowers & Database Permissions
+												</span>
+											</div>
+											<span className="text-[10px] text-zinc-400 font-mono">
+												Antigravity 3-Tier Gated
+											</span>
+										</div>
+										<p className="text-[11px] text-zinc-400">
+											Choose how much autonomy the AI Brain has to diagnose failed streams, hunt mirrors, and modify your SQLite database.
+										</p>
+
+										<div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-1">
+											{/* Full Autonomous */}
+											<button
+												type="button"
+												onClick={() => setAiPermissionLevel("full_access")}
+												className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+													(settings?.ai_permission_level ?? "full_access") === "full_access"
+														? "bg-emerald-500/15 border-emerald-500/60 shadow-lg ring-1 ring-emerald-500/30 text-white"
+														: "bg-white/[0.02] border-white/5 text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
+												}`}
+											>
+												<div className="flex items-center justify-between">
+													<div className="flex items-center gap-1.5">
+														<Zap className="w-3.5 h-3.5 text-emerald-400" />
+														<span className="text-xs font-bold text-emerald-300">Full Access</span>
+													</div>
+													{(settings?.ai_permission_level ?? "full_access") === "full_access" && (
+														<Check className="w-3.5 h-3.5 text-emerald-400" />
+													)}
+												</div>
+												<p className="text-[10px] text-zinc-300 leading-relaxed">
+													Autonomous self-healing. Auto-recovers broken channels and writes directly to database without prompting.
+												</p>
+												<span className="text-[9px] font-mono text-emerald-400/90 font-semibold mt-auto">
+													● Recommended
+												</span>
+											</button>
+
+											{/* Ask Permission */}
+											<button
+												type="button"
+												onClick={() => setAiPermissionLevel("ask_permission")}
+												className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+													settings?.ai_permission_level === "ask_permission"
+														? "bg-amber-500/15 border-amber-500/60 shadow-lg ring-1 ring-amber-500/30 text-white"
+														: "bg-white/[0.02] border-white/5 text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
+												}`}
+											>
+												<div className="flex items-center justify-between">
+													<div className="flex items-center gap-1.5">
+														<ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+														<span className="text-xs font-bold text-amber-300">Ask Permission</span>
+													</div>
+													{settings?.ai_permission_level === "ask_permission" && (
+														<Check className="w-3.5 h-3.5 text-amber-400" />
+													)}
+												</div>
+												<p className="text-[10px] text-zinc-300 leading-relaxed">
+													Semi-Autonomous. Stream Doctor discovers working mirrors, but requires 1-click user confirmation before writing to DB.
+												</p>
+												<span className="text-[9px] font-mono text-amber-400/90 font-semibold mt-auto">
+													● Interactive
+												</span>
+											</button>
+
+											{/* Read Only */}
+											<button
+												type="button"
+												onClick={() => setAiPermissionLevel("read_only")}
+												className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+													settings?.ai_permission_level === "read_only"
+														? "bg-rose-500/15 border-rose-500/60 shadow-lg ring-1 ring-rose-500/30 text-white"
+														: "bg-white/[0.02] border-white/5 text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
+												}`}
+											>
+												<div className="flex items-center justify-between">
+													<div className="flex items-center gap-1.5">
+														<Eye className="w-3.5 h-3.5 text-rose-400" />
+														<span className="text-xs font-bold text-rose-300">Read-Only</span>
+													</div>
+													{settings?.ai_permission_level === "read_only" && (
+														<Check className="w-3.5 h-3.5 text-rose-400" />
+													)}
+												</div>
+												<p className="text-[10px] text-zinc-300 leading-relaxed">
+													Diagnostics Only. Database writes are locked. AI only provides telemetry, suggestions, and EPG recommendations.
+												</p>
+												<span className="text-[9px] font-mono text-rose-400/90 font-semibold mt-auto">
+													● Locked
+												</span>
+											</button>
 										</div>
 									</div>
 

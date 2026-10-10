@@ -130,6 +130,7 @@ pub fn run() {
             commands::verify_ai_provider_key,
             commands::fetch_ai_provider_models,
             commands::set_active_ai_model,
+            commands::ai_diagnose_stream,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

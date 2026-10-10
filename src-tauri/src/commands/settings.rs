@@ -160,6 +160,7 @@ pub async fn ask_ai_assistant(
 #[tauri::command]
 pub async fn ai_voice_chat(
     message: String,
+    history: Option<Vec<crate::network::ai_brain::ChatHistoryItem>>,
     state: State<'_, SharedAppState>,
 ) -> Result<crate::network::ai_brain::AiChatResponse, String> {
     let (api_key, endpoint, provider, model, context) = {
@@ -199,6 +200,7 @@ pub async fn ai_voice_chat(
         provider.as_deref(),
         model.as_deref(),
         &message,
+        history.as_deref(),
         &context,
     )
     .await
@@ -304,6 +306,50 @@ pub async fn ai_hunt_and_heal(
     }
 
     Ok(None)
+}
+
+#[tauri::command]
+pub async fn ai_diagnose_stream(
+    channel_name: String,
+    state: State<'_, SharedAppState>,
+) -> Result<crate::network::ai_brain::StreamHealResult, String> {
+    let (custom_sources, permission) = {
+        let guard = state.read().await;
+        (
+            guard.settings.custom_upstream_sources.clone(),
+            guard.settings.ai_permission_level,
+        )
+    };
+
+    let result = crate::network::AiBrain::diagnose_and_heal_stream(
+        &channel_name,
+        permission,
+        &custom_sources,
+    )
+    .await;
+
+    // If autonomously healed, update in-memory and SQLite cache
+    if result.healed {
+        if let Some(ref new_url) = result.new_url {
+            let mut guard = state.write().await;
+            let repo = guard.channel_cache_repo.clone();
+            if let Some(ch) = guard.all_channels.iter_mut().find(|c| {
+                let a = c.name.to_lowercase();
+                let b = channel_name.to_lowercase();
+                a == b || a.contains(&b) || b.contains(&a)
+            }) {
+                let old = std::mem::replace(&mut ch.url, new_url.clone());
+                if !ch.fallback_urls.contains(&old) {
+                    ch.fallback_urls.insert(0, old);
+                }
+                ch.is_verified = true;
+                let _ = repo.upsert_channel(ch);
+            }
+            guard.refresh_filtered_channels();
+        }
+    }
+
+    Ok(result)
 }
 
 

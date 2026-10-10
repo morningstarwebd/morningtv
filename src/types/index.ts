@@ -61,6 +61,17 @@ export interface AppSettings {
 	ai_endpoint?: string | null;
 	ai_brain_enabled?: boolean;
 	custom_upstream_sources?: string[];
+	ai_permission_level?: AiPermissionLevel;
+}
+
+export type AiPermissionLevel = "full_access" | "ask_permission" | "read_only";
+
+export interface StreamHealResult {
+	channel_name: string;
+	healed: boolean;
+	new_url?: string | null;
+	requires_user_confirmation: boolean;
+	message: string;
 }
 
 export interface AiModelItem {

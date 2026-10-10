@@ -8,6 +8,20 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AiPermissionLevel {
+    FullAccess,    // Full Autonomous: Auto-heal & write DB directly
+    AskPermission, // Semi-Autonomous: Prompts user before writing DB
+    ReadOnly,      // Read-Only: Diagnostics only, no DB writes
+}
+
+impl Default for AiPermissionLevel {
+    fn default() -> Self {
+        Self::AskPermission
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub playlist_url: String,
@@ -35,6 +49,8 @@ pub struct AppSettings {
     pub ai_brain_enabled: bool,
     #[serde(default)]
     pub custom_upstream_sources: Vec<String>,
+    #[serde(default)]
+    pub ai_permission_level: AiPermissionLevel,
 }
 
 impl Default for AppSettings {
@@ -56,6 +72,7 @@ impl Default for AppSettings {
             ai_endpoint: None,
             ai_brain_enabled: false,
             custom_upstream_sources: Vec::new(),
+            ai_permission_level: AiPermissionLevel::default(),
         }
     }
 }

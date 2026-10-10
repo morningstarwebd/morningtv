@@ -81,6 +81,7 @@ export const VideoPlayer: React.FC = () => {
 	// 1. Failover and Mirror Cycling
 	const { tryNextFallback, resetFailover } = useStreamFailover({
 		activeChannelId: activeChannel ? String(activeChannel.id) : undefined,
+		activeChannelName: activeChannel?.name,
 		allUrls,
 		currentUrl,
 		mirrorIndex,

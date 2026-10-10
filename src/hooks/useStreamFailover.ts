@@ -4,13 +4,14 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef } from "react";
 import { useAppStore } from "../stores/appStore";
-import type { Channel, StreamHealthStatus } from "../types";
+import type { Channel, StreamHealResult, StreamHealthStatus } from "../types";
 import { createLogger } from "../utils/logger";
 
 const log = createLogger("StreamFailover");
 
 export interface StreamFailoverOptions {
 	activeChannelId?: string;
+	activeChannelName?: string;
 	allUrls: string[];
 	currentUrl: string;
 	mirrorIndex: number;
@@ -31,6 +32,7 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 } {
 	const {
 		activeChannelId,
+		activeChannelName,
 		allUrls,
 		currentUrl,
 		mirrorIndex,
@@ -98,8 +100,37 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 			useAppStore.getState().setSelectedQualityLevel(-1);
 			setMirrorIndex(nextAvailableIndex);
 		} else {
-			// Trigger JIT Self-Healing from GitHub / Backup mirrors
-			if (activeChannelId) {
+			// Trigger JIT Sentinel & Autonomous Stream Doctor
+			if (activeChannelName) {
+				invoke<StreamHealResult>("ai_diagnose_stream", {
+					channelName: activeChannelName,
+				})
+					.then((diag) => {
+						if (diag.healed && diag.new_url && diag.new_url !== currentUrl) {
+							log.info("Stream autonomously healed via AI Stream Doctor", {
+								newUrl: diag.new_url,
+							});
+							showToast(`🩺 AI Doctor: ${diag.message}`, false);
+							clearReconnectTimers();
+							failedUrlsRef.current.clear();
+							const current = useAppStore.getState().activeChannel;
+							if (current) {
+								useAppStore.getState().selectChannel({
+									...current,
+									url: diag.new_url,
+								});
+							}
+						} else if (diag.requires_user_confirmation && diag.new_url) {
+							log.info("AI Doctor found candidate stream requiring confirmation", {
+								newUrl: diag.new_url,
+							});
+							showToast(`🩺 AI Doctor found mirror: ${diag.message}`, false);
+						}
+					})
+					.catch((err) => {
+						log.warn("Stream Doctor diagnosis failed", { error: err });
+					});
+			} else if (activeChannelId) {
 				invoke<Channel | null>("heal_channel", { channelId: activeChannelId })
 					.then((healed) => {
 						if (healed?.url && healed.url !== currentUrl) {
@@ -179,6 +210,7 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 		}
 	}, [
 		activeChannelId,
+		activeChannelName,
 		allUrls,
 		currentUrl,
 		mirrorIndex,

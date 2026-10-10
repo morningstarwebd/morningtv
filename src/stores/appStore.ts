@@ -12,6 +12,7 @@ import {
 
 import type {
 	AiModelItem,
+	AiPermissionLevel,
 	AppSettings,
 	AspectRatio,
 	Channel,
@@ -230,7 +231,11 @@ interface AppState {
 		model?: string | null;
 		endpoint?: string | null;
 	}) => Promise<void>;
+	setAiPermissionLevel: (level: AiPermissionLevel) => Promise<void>;
 }
+
+let activeSleepTimer: ReturnType<typeof setTimeout> | null = null;
+let activeScheduleTimer: ReturnType<typeof setTimeout> | null = null;
 
 export const useAppStore = create<AppState>((set, get) => ({
 	allChannels: [],
@@ -734,6 +739,28 @@ export const useAppStore = create<AppState>((set, get) => ({
 		}
 	},
 
+	setAiPermissionLevel: async (level: AiPermissionLevel) => {
+		const { settings } = get();
+		if (!settings) return;
+		const next: AppSettings = {
+			...settings,
+			ai_permission_level: level,
+		};
+		set({ settings: next });
+		try {
+			await invoke("save_settings", { settings: next });
+			const label =
+				level === "full_access"
+					? "Full Autonomous (Auto-Repair & Write)"
+					: level === "ask_permission"
+					? "Semi-Autonomous (Ask Confirmation)"
+					: "Read-Only (Diagnostics Only)";
+			get().showToast(`🛡️ AI Permission: ${label}`, false);
+		} catch (err) {
+			get().showToast(`Failed to update AI permission: ${err}`, true);
+		}
+	},
+
 	selectChannel: async (channel: Channel) => {
 		const channelId = getChannelIdString(channel.id);
 		// Immediately set activeChannel and isChannelLoading: true for instant UI feedback
@@ -1132,6 +1159,48 @@ export const useAppStore = create<AppState>((set, get) => ({
 			}
 			document.exitFullscreen().catch(() => {});
 			return "Fullscreen exited";
+		}
+
+		if (action === "sleep_timer" && param) {
+			if (activeSleepTimer) {
+				clearTimeout(activeSleepTimer);
+				activeSleepTimer = null;
+			}
+			const parsed = Number.parseInt(param, 10);
+			if (!Number.isNaN(parsed) && parsed > 0) {
+				const seconds = parsed <= 480 ? parsed * 60 : parsed;
+				const minutes = Math.round(seconds / 60);
+				activeSleepTimer = setTimeout(() => {
+					const { isPlaying, stopPlayback, showToast } = get();
+					if (isPlaying) {
+						stopPlayback();
+						showToast("⏰ Sleep timer ended: Playback turned off", false);
+					}
+				}, seconds * 1000);
+				store.showToast(`⏰ Sleep timer: Playback will stop in ${minutes} minutes`, false);
+				return `Sleep timer set: Playback will stop in ${minutes} minutes`;
+			}
+			return "Invalid sleep timer duration";
+		}
+
+		if (action === "schedule_channel" && param) {
+			if (activeScheduleTimer) {
+				clearTimeout(activeScheduleTimer);
+				activeScheduleTimer = null;
+			}
+			const parts = param.split("|");
+			const targetChannel = parts[0].trim();
+			const delaySeconds = parts.length > 1 ? Number.parseInt(parts[1], 10) : 0;
+
+			if (delaySeconds && delaySeconds > 0) {
+				const delayMins = Math.round(delaySeconds / 60);
+				activeScheduleTimer = setTimeout(() => {
+					get().executeAiAction("play_channel", targetChannel);
+				}, delaySeconds * 1000);
+				store.showToast(`⏰ Scheduled auto-tune to "${targetChannel}" in ${delayMins}m`, false);
+				return `Scheduled auto-tune: Switching to "${targetChannel}" in ${delayMins} minutes`;
+			}
+			return await get().executeAiAction("play_channel", targetChannel);
 		}
 
 		return undefined;

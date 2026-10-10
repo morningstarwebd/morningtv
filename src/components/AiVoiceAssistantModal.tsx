@@ -1,32 +1,30 @@
+// src/components/AiVoiceAssistantModal.tsx
+// Modular AI Voice Assistant Modal with ChatGPT / Gemini Harness Layout
+
 import { invoke } from "@tauri-apps/api/core";
 import {
 	AlertCircle,
 	Bot,
-	Check,
 	ChevronDown,
 	Cpu,
-	Globe,
 	Image as ImageIcon,
 	Mic,
 	MicOff,
 	Send,
 	Sparkles,
+	Trash2,
 	Tv,
 	X,
-	Zap,
 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
 import type { AiModelItem } from "../types";
-
-interface ChatMessage {
-	id: string;
-	sender: "user" | "ai";
-	text: string;
-	actionFeedback?: string;
-	timestamp: string;
-}
+import { AiAvatarPicker, type AvatarPreset } from "./ai/AiAvatarPicker";
+import { AiChatFeed, type ChatMessage } from "./ai/AiChatFeed";
+import { AiModelPicker } from "./ai/AiModelPicker";
+import { AiVoiceDock } from "./ai/AiVoiceDock";
+import { AiWelcomeHero } from "./ai/AiWelcomeHero";
 
 interface AiVoiceResponse {
 	reply: string;
@@ -34,9 +32,9 @@ interface AiVoiceResponse {
 	param?: string;
 }
 
-const AVATAR_PRESETS = [
+const AVATAR_PRESETS: AvatarPreset[] = [
 	{
-		id: "nova" as const,
+		id: "nova",
 		name: "Nova (Cosmic Orb)",
 		gradient: "from-purple-500 via-indigo-500 to-pink-500",
 		shadow: "rgba(168,85,247,0.5)",
@@ -44,7 +42,7 @@ const AVATAR_PRESETS = [
 		icon: Sparkles,
 	},
 	{
-		id: "jarvis" as const,
+		id: "jarvis",
 		name: "Jarvis (Cyber AI)",
 		gradient: "from-cyan-500 via-blue-500 to-emerald-400",
 		shadow: "rgba(6,182,212,0.5)",
@@ -52,7 +50,7 @@ const AVATAR_PRESETS = [
 		icon: Cpu,
 	},
 	{
-		id: "astra" as const,
+		id: "astra",
 		name: "Astra (Nebula)",
 		gradient: "from-pink-500 via-rose-500 to-amber-400",
 		shadow: "rgba(244,63,94,0.5)",
@@ -60,10 +58,10 @@ const AVATAR_PRESETS = [
 		icon: Bot,
 	},
 	{
-		id: "retro" as const,
+		id: "retro",
 		name: "Retro (Holo TV)",
 		gradient: "from-emerald-500 via-teal-500 to-cyan-500",
-		shadow: "rgba(16,185,129,0.5)",
+		shadow: "rgba(160,185,129,0.5)",
 		accent: "#10b981",
 		icon: Tv,
 	},
@@ -112,7 +110,20 @@ export const AiVoiceAssistantModal: React.FC = () => {
 	const [showModelPicker, setShowModelPicker] = useState(false);
 	const [quickModels, setQuickModels] = useState<AiModelItem[]>([]);
 	const [isLoadingQuickModels, setIsLoadingQuickModels] = useState(false);
-	const [customUrlInput, setCustomUrlInput] = useState(aiCustomAvatarUrl);
+
+	const handleClearHistory = () => {
+		setMessages([
+			{
+				id: "welcome",
+				sender: "ai",
+				text: "Hello! I am your MorningTV AI Co-Pilot. You can speak or type to switch channels, adjust volume, or search & heal expired streams from the internet.",
+				timestamp: new Date().toLocaleTimeString([], {
+					hour: "2-digit",
+					minute: "2-digit",
+				}),
+			},
+		]);
+	};
 
 	const handleOpenModelPicker = async () => {
 		const next = !showModelPicker;
@@ -343,7 +354,7 @@ export const AiVoiceAssistantModal: React.FC = () => {
 			}
 
 			if (cmd === "clear") {
-				setMessages([]);
+				handleClearHistory();
 				return;
 			}
 
@@ -362,8 +373,18 @@ export const AiVoiceAssistantModal: React.FC = () => {
 		setIsThinking(true);
 
 		try {
+			// Multi-turn conversation history for LLM Brain context (up to last 10 turns)
+			const historyPayload = messages
+				.filter((m) => m.id !== "welcome")
+				.slice(-10)
+				.map((m) => ({
+					role: m.sender === "user" ? "user" : "assistant",
+					content: m.text,
+				}));
+
 			const response = await invoke<AiVoiceResponse>("ai_voice_chat", {
 				message: query,
+				history: historyPayload,
 			});
 
 			let actionFeedback: string | undefined;
@@ -465,7 +486,7 @@ export const AiVoiceAssistantModal: React.FC = () => {
 			/>
 
 			{/* Main Glassmorphic Modal Window */}
-			<div className="relative w-full max-w-2xl h-[590px] max-h-[92vh] rounded-3xl bg-[#070914]/90 border border-white/15 shadow-[0_25px_70px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden backdrop-blur-2xl ring-1 ring-white/10">
+			<div className="relative w-full max-w-2xl h-[620px] max-h-[92vh] rounded-3xl bg-[#070914]/90 border border-white/15 shadow-[0_25px_70px_rgba(0,0,0,0.9)] flex flex-col overflow-hidden backdrop-blur-2xl ring-1 ring-white/10">
 				{/* Top Header */}
 				<div className="px-5 py-3 border-b border-white/10 flex items-center justify-between shrink-0 bg-white/[0.02]">
 					<div className="flex items-center gap-3">
@@ -503,6 +524,16 @@ export const AiVoiceAssistantModal: React.FC = () => {
 					</div>
 
 					<div className="flex items-center gap-2">
+						{/* Clear Chat History (Reset Memory) */}
+						<button
+							type="button"
+							onClick={handleClearHistory}
+							className="p-1.5 rounded-xl text-zinc-400 hover:text-rose-400 bg-white/5 hover:bg-rose-500/10 border border-white/10 transition-colors cursor-pointer"
+							title="Clear conversation history (Reset Memory)"
+						>
+							<Trash2 className="w-3.5 h-3.5" />
+						</button>
+
 						{/* Language Selector Pill */}
 						<div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-0.5 text-[10px] font-semibold text-zinc-400">
 							<button
@@ -568,375 +599,72 @@ export const AiVoiceAssistantModal: React.FC = () => {
 				</div>
 
 				{/* Quick Model Selector Dropdown Modal */}
-				{showModelPicker && (
-					<div className="absolute top-14 left-4 right-4 z-50 p-4 rounded-2xl bg-zinc-950/95 border border-cyan-500/40 shadow-2xl backdrop-blur-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<Sparkles className="w-4 h-4 text-cyan-400" />
-								<span className="text-xs font-bold text-white">
-									Quick Switch Active Model ({settings?.ai_provider || "Provider"})
-								</span>
-							</div>
-							<button
-								type="button"
-								onClick={() => setShowModelPicker(false)}
-								className="text-zinc-400 hover:text-white cursor-pointer"
-							>
-								<X className="w-3.5 h-3.5" />
-							</button>
-						</div>
-
-						{isLoadingQuickModels ? (
-							<div className="p-5 flex items-center justify-center gap-2.5 text-xs text-zinc-300">
-								<div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
-								<span>Fetching live models from {settings?.ai_provider || "provider"}...</span>
-							</div>
-						) : quickModels.length === 0 ? (
-							<div className="p-4 text-center text-xs text-zinc-400">
-								No models found. Please configure API key in Settings or type <code className="text-cyan-300 font-mono">\models</code>.
-							</div>
-						) : (
-							<div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1">
-								{quickModels.map((m) => {
-									const isActive = settings?.ai_model === m.id;
-									return (
-										<button
-											key={m.id}
-											type="button"
-											onClick={async () => {
-												await setActiveAiModel(m.id);
-												setShowModelPicker(false);
-												setMessages((prev) => [
-													...prev,
-													{
-														id: Date.now().toString(),
-														sender: "ai",
-														text: `🤖 Model switched to "${m.id}"!`,
-														timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-													},
-												]);
-											}}
-											className={`p-2.5 rounded-xl text-left border flex items-center justify-between gap-2 transition-all cursor-pointer ${
-												isActive
-													? "bg-cyan-500/25 border-cyan-400 text-white shadow-md ring-1 ring-cyan-500/40"
-													: "bg-white/[0.03] border-white/10 text-zinc-300 hover:bg-white/[0.08]"
-											}`}
-										>
-											<div className="flex items-center gap-1.5 min-w-0">
-												{isActive && <Check className="w-3 h-3 text-cyan-400 shrink-0" />}
-												<span className={`text-[11px] font-mono truncate ${isActive ? "font-bold text-white" : ""}`}>
-													{m.id}
-												</span>
-											</div>
-											{m.is_free && (
-												<span className="px-1.5 py-0.2 rounded text-[8px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 shrink-0">
-													FREE
-												</span>
-											)}
-										</button>
-									);
-								})}
-							</div>
-						)}
-					</div>
-				)}
+				<AiModelPicker
+					isOpen={showModelPicker}
+					onClose={() => setShowModelPicker(false)}
+					quickModels={quickModels}
+					isLoading={isLoadingQuickModels}
+					activeModel={settings?.ai_model || undefined}
+					provider={settings?.ai_provider || undefined}
+					onSelectModel={async (modelId) => {
+						await setActiveAiModel(modelId);
+						setShowModelPicker(false);
+						setMessages((prev) => [
+							...prev,
+							{
+								id: Date.now().toString(),
+								sender: "ai",
+								text: `🤖 Model switched to "${modelId}"!`,
+								timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+							},
+						]);
+					}}
+				/>
 
 				{/* Avatar Selector Dropdown Modal */}
-				{showAvatarSelector && (
-					<div className="absolute top-14 left-4 right-4 z-50 p-4 rounded-2xl bg-zinc-950/95 border border-purple-500/30 shadow-2xl backdrop-blur-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
-						<div className="flex items-center justify-between">
-							<span className="text-xs font-bold text-white">
-								Select AI Persona & Avatar
-							</span>
-							<button
-								type="button"
-								onClick={() => setShowAvatarSelector(false)}
-								className="text-zinc-400 hover:text-white cursor-pointer"
-							>
-								<X className="w-3.5 h-3.5" />
-							</button>
-						</div>
+				<AiAvatarPicker
+					isOpen={showAvatarSelector}
+					onClose={() => setShowAvatarSelector(false)}
+					presets={AVATAR_PRESETS}
+					currentPresetId={aiAvatarPreset}
+					customAvatarUrl={aiCustomAvatarUrl}
+					onSelectPreset={(presetId) => {
+						setAiAvatarPreset(presetId as any);
+						setAiCustomAvatarUrl("");
+					}}
+					onApplyCustomUrl={(url) => {
+						setAiAvatarPreset("custom" as any);
+						setAiCustomAvatarUrl(url);
+						setShowAvatarSelector(false);
+					}}
+				/>
 
-						{/* Preset Avatars */}
-						<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-							{AVATAR_PRESETS.map((preset) => {
-								const Icon = preset.icon;
-								const isSelected =
-									aiAvatarPreset === preset.id && !aiCustomAvatarUrl;
-								return (
-									<button
-										key={preset.id}
-										type="button"
-										onClick={() => {
-											setAiAvatarPreset(preset.id);
-											setAiCustomAvatarUrl("");
-											setCustomUrlInput("");
-										}}
-										className={`p-2.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer ${
-											isSelected
-												? "bg-purple-500/20 border-purple-400 text-white shadow-lg"
-												: "bg-white/[0.03] border-white/5 text-zinc-400 hover:border-white/20"
-										}`}
-									>
-										<div
-											className={`w-9 h-9 rounded-full bg-gradient-to-tr ${preset.gradient} flex items-center justify-center text-white shadow-md`}
-										>
-											<Icon className="w-4.5 h-4.5" />
-										</div>
-										<span className="text-[10px] font-medium text-center">
-											{preset.name}
-										</span>
-									</button>
-								);
-							})}
-						</div>
-
-						{/* Custom Avatar URL option */}
-						<div className="flex flex-col gap-1.5 pt-2 border-t border-white/10">
-							<label
-								htmlFor="custom-avatar-url"
-								className="text-[11px] text-zinc-300 font-medium flex items-center gap-1.5"
-							>
-								<Globe className="w-3.5 h-3.5 text-cyan-400" />
-								<span>Custom Image / Profile Picture URL:</span>
-							</label>
-							<div className="flex items-center gap-2">
-								<input
-									id="custom-avatar-url"
-									type="url"
-									value={customUrlInput}
-									onChange={(e) => setCustomUrlInput(e.target.value)}
-									placeholder="https://example.com/avatar.png"
-									className="flex-1 px-3 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 font-mono"
-								/>
-								<button
-									type="button"
-									onClick={() => {
-										if (customUrlInput.trim()) {
-											setAiAvatarPreset("custom");
-											setAiCustomAvatarUrl(customUrlInput.trim());
-											setShowAvatarSelector(false);
-										}
-									}}
-									className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold cursor-pointer shrink-0"
-								>
-									Apply
-								</button>
-							</div>
-						</div>
-					</div>
-				)}
-
-				{/* Animated Dynamic Web AI Centerpiece with Highly Animated SVGs */}
-				<div className="shrink-0 py-3 flex flex-col items-center justify-center relative bg-gradient-to-b from-purple-950/20 via-transparent to-transparent border-b border-white/5">
-					<div className="relative w-36 h-36 flex items-center justify-center select-none">
-						{/* Ambient Glow Aura */}
-						<div
-							className={`absolute inset-2 rounded-full filter blur-xl transition-all duration-700 pointer-events-none ${
-								isListening
-									? "bg-cyan-500/40 scale-125 animate-pulse"
-									: isThinking
-										? "bg-purple-600/40 scale-115 animate-ping"
-										: "bg-indigo-600/20 scale-100"
-							}`}
+				{/* Main Body Content: Gemini / ChatGPT Style Layout */}
+				<div className="flex-1 min-h-0 flex flex-col overflow-hidden relative">
+					{messages.length <= 1 ? (
+						<AiWelcomeHero
+							currentPreset={currentPreset}
+							aiCustomAvatarUrl={aiCustomAvatarUrl}
+							onSendMessage={handleSendMessage}
 						/>
-
-						{/* Highly Animated Cybernetic Web3 SVG Canvas */}
-						<svg
-							className="w-full h-full pointer-events-none"
-							viewBox="0 0 160 160"
-						>
-							{/* Outer Clockwise Rotating Orbital Ring */}
-							<circle
-								cx="80"
-								cy="80"
-								r="70"
-								fill="none"
-								stroke={
-									isListening
-										? "#22d3ee"
-										: isThinking
-											? "#c084fc"
-											: "rgba(255,255,255,0.15)"
-								}
-								strokeWidth="1.5"
-								strokeDasharray="5 7"
-								className="animate-spin"
-								style={{
-									transformOrigin: "80px 80px",
-									animationDuration: isListening ? "4s" : "18s",
-								}}
-							/>
-
-							{/* Inner Counter-Rotating Tech Ring */}
-							<circle
-								cx="80"
-								cy="80"
-								r="58"
-								fill="none"
-								stroke={
-									isListening
-										? "rgba(34,211,238,0.6)"
-										: isThinking
-											? "rgba(192,132,252,0.6)"
-											: "rgba(255,255,255,0.12)"
-								}
-								strokeWidth="1.5"
-								strokeDasharray="12 16"
-								className="animate-spin"
-								style={{
-									transformOrigin: "80px 80px",
-									animationDuration: isListening ? "6s" : "24s",
-									animationDirection: "reverse",
-								}}
-							/>
-
-							{/* Responsive Ping Wave on Listening */}
-							{isListening && (
-								<circle
-									cx="80"
-									cy="80"
-									r="48"
-									fill="none"
-									stroke="#38bdf8"
-									strokeWidth="2"
-									className="animate-ping opacity-60"
-									style={{ transformOrigin: "80px 80px" }}
-								/>
-							)}
-
-							{/* Orbiting Satellite Particles */}
-							<circle
-								cx="80"
-								cy="10"
-								r="2.5"
-								fill={isListening ? "#22d3ee" : "#a855f7"}
-								className="animate-spin"
-								style={{
-									transformOrigin: "80px 80px",
-									animationDuration: "10s",
-								}}
-							/>
-							<circle
-								cx="80"
-								cy="150"
-								r="2"
-								fill={isListening ? "#38bdf8" : "#ec4899"}
-								className="animate-spin"
-								style={{
-									transformOrigin: "80px 80px",
-									animationDuration: "14s",
-									animationDirection: "reverse",
-								}}
-							/>
-						</svg>
-
-						{/* Center Profile Picture / Animated Avatar */}
-						<div
-							className={`absolute w-20 h-20 rounded-full p-1 bg-gradient-to-tr ${currentPreset.gradient} relative z-10 shadow-[0_0_25px_${currentPreset.shadow}] flex items-center justify-center overflow-hidden transition-all duration-300 ${
-								isListening
-									? "scale-105 ring-4 ring-cyan-400/60 shadow-[0_0_35px_rgba(34,211,238,0.7)]"
-									: isThinking
-										? "scale-105 ring-4 ring-purple-400/60 shadow-[0_0_35px_rgba(192,132,252,0.7)]"
-										: "hover:scale-105"
-							}`}
-						>
-							{aiCustomAvatarUrl ? (
-								<img
-									src={aiCustomAvatarUrl}
-									alt="AI Profile"
-									className="w-full h-full object-cover rounded-full"
-									onError={() => setAiCustomAvatarUrl("")}
-								/>
-							) : (
-								<div className="w-full h-full rounded-full bg-black/60 flex items-center justify-center backdrop-blur-sm">
-									<currentPreset.icon className="w-9 h-9 text-white drop-shadow-md" />
-								</div>
-							)}
-						</div>
-					</div>
-
-					{/* Responsive Audio Frequency Visualizer */}
-					<div className="flex items-center gap-1 mt-2 h-3.5">
-						{[
-							{ id: "b1", h: 40 },
-							{ id: "b2", h: 70 },
-							{ id: "b3", h: 100 },
-							{ id: "b4", h: 60 },
-							{ id: "b5", h: 85 },
-							{ id: "b6", h: 45 },
-							{ id: "b7", h: 95 },
-							{ id: "b8", h: 30 },
-						].map((bar, i) => (
-							<div
-								key={bar.id}
-								className={`w-1 rounded-full transition-all duration-150 ${
-									isListening
-										? "bg-cyan-400 animate-pulse"
-										: isThinking
-											? "bg-purple-400 animate-bounce"
-											: "bg-white/20 h-1.5"
-								}`}
-								style={{
-									height: isListening
-										? `${bar.h}%`
-										: isThinking
-											? "65%"
-											: "5px",
-									animationDelay: `${i * 75}ms`,
-								}}
-							/>
-						))}
-					</div>
-
-					<p className="text-[11px] font-medium text-zinc-400 mt-1">
-						{isListening
-							? "🎙️ Listening to voice..."
-							: isThinking
-								? "⚡ Processing request..."
-								: "Tap microphone to speak or type in chat"}
-					</p>
-
-					{transcript && (
-						<div className="mt-1 px-3 py-0.5 rounded-full bg-cyan-500/15 border border-cyan-500/30 text-xs text-cyan-300 font-medium max-w-[80%] truncate">
-							"{transcript}"
-						</div>
+					) : (
+						<AiChatFeed
+							messages={messages}
+							isThinking={isThinking}
+							currentPreset={currentPreset}
+							aiCustomAvatarUrl={aiCustomAvatarUrl}
+							messagesEndRef={messagesEndRef}
+						/>
 					)}
 				</div>
 
-				{/* Scrollable Conversation Stream */}
-				<div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-3">
-					{messages.map((m) => (
-						<div
-							key={m.id}
-							className={`flex flex-col ${
-								m.sender === "user" ? "items-end" : "items-start"
-							}`}
-						>
-							<div
-								className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs ${
-									m.sender === "user"
-										? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-br-none shadow-md"
-										: "bg-white/[0.06] border border-white/10 text-zinc-100 rounded-bl-none shadow-md"
-								}`}
-							>
-								<p className="leading-relaxed whitespace-pre-wrap">{m.text}</p>
-								{m.actionFeedback && (
-									<div className="mt-1.5 pt-1.5 border-t border-white/15 flex items-center gap-1.5 text-[11px] text-emerald-300 font-semibold">
-										<Zap className="w-3 h-3 text-emerald-400 shrink-0" />
-										<span>{m.actionFeedback}</span>
-									</div>
-								)}
-							</div>
-							<span className="text-[9px] text-zinc-500 mt-1 px-1">
-								{m.timestamp}
-							</span>
-						</div>
-					))}
-					<div ref={messagesEndRef} />
-				</div>
+				{/* Floating Soundwave Dock Banner when Voice is Active */}
+				<AiVoiceDock
+					isListening={isListening}
+					transcript={transcript}
+				/>
 
-				{/* Voice Fallback Notice Banner (shown if mic is unsupported or error occurs) */}
+				{/* Voice Fallback Notice Banner */}
 				{(!isSpeechSupported || speechErrorMessage) && (
 					<div className="px-4 py-2 bg-amber-500/10 border-t border-amber-500/20 flex items-center gap-2 text-xs text-amber-300 shrink-0">
 						<AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
@@ -947,7 +675,7 @@ export const AiVoiceAssistantModal: React.FC = () => {
 					</div>
 				)}
 
-				{/* Quick Suggestions Chips (English & Regional support) */}
+				{/* Quick Suggestions Chips */}
 				<div className="px-4 py-1.5 shrink-0 flex items-center gap-1.5 overflow-x-auto no-scrollbar border-t border-white/5 bg-black/20">
 					<button
 						type="button"
@@ -962,6 +690,13 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-zinc-300 hover:text-white whitespace-nowrap cursor-pointer transition-colors"
 					>
 						📺 Star Jalsha
+					</button>
+					<button
+						type="button"
+						onClick={() => handleSendMessage("Play Hungama")}
+						className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-zinc-300 hover:text-white whitespace-nowrap cursor-pointer transition-colors"
+					>
+						🧸 Hungama
 					</button>
 					<button
 						type="button"
@@ -1011,13 +746,6 @@ export const AiVoiceAssistantModal: React.FC = () => {
 					>
 						⚽ Sports
 					</button>
-					<button
-						type="button"
-						onClick={() => handleSendMessage("Show News channels")}
-						className="px-2.5 py-1 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-zinc-300 hover:text-white whitespace-nowrap cursor-pointer transition-colors"
-					>
-						📰 News
-					</button>
 				</div>
 
 				{/* Bottom Input & Voice Control Bar */}
@@ -1059,7 +787,7 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						type="text"
 						value={inputText}
 						onChange={(e) => setInputText(e.target.value)}
-						placeholder="Type message or command (\model <name>, \models, \heal <channel>)..."
+						placeholder="Type message, mood, or command (\model <name>, \models, \heal <ch>)..."
 						className="flex-1 px-4 py-2.5 rounded-2xl bg-white/[0.05] border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 transition-colors"
 					/>
 
