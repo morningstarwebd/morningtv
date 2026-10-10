@@ -1,32 +1,32 @@
 {
   "categories": {
-    "all": 10756,
-    "entertainment": 7745,
-    "india": 760,
-    "kids": 313,
-    "movies": 493,
-    "music": 674,
-    "news": 1054,
-    "sports": 477
+    "all": 10757,
+    "entertainment": 7738,
+    "india": 763,
+    "kids": 312,
+    "movies": 494,
+    "music": 672,
+    "news": 1059,
+    "sports": 482
   },
-  "dead_purged": 4916,
+  "dead_purged": 4915,
   "engine": "MorningTV Rust Tokio Sentinel 3.0",
-  "mirrors_healed": 2240,
+  "mirrors_healed": 2246,
   "providers": {
-    "Free-TV": 1296,
-    "IPTV-Org": 5186,
+    "Free-TV": 1298,
+    "IPTV-Org": 5194,
     "IPTV-Org Bangladesh": 1,
     "IPTV-Org Bengali": 27,
     "IPTV-Org Hindi": 25,
-    "IPTV-Org India": 592,
-    "Plex": 1889,
-    "Pluto TV": 426,
-    "Roku": 255,
+    "IPTV-Org India": 594,
+    "Plex": 1876,
+    "Pluto TV": 425,
+    "Roku": 258,
     "Samsung TV Plus": 781,
     "Tubi TV": 278
   },
   "total_raw_scanned": 22538,
   "unique_candidates": 15696,
-  "updated_at": "2026-10-10T19:26:19.309496090+00:00",
-  "verified_playable": 10756
+  "updated_at": "2026-10-10T21:37:18.067536360+00:00",
+  "verified_playable": 10757
 }
