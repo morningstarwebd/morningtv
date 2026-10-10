@@ -11,6 +11,7 @@ import {
 } from "../services/updaterService";
 
 import type {
+	AiHuntResponse,
 	AiModelItem,
 	AiPermissionLevel,
 	AppSettings,
@@ -1076,10 +1077,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 				return `Now playing "${found.name}"`;
 			}
 			try {
-				const healed = await invoke<Channel | null>("ai_hunt_and_heal", {
+				const res = await invoke<AiHuntResponse>("ai_hunt_and_heal", {
 					channelName: param,
 				});
-				if (healed) {
+				if (res && res.success && res.channel) {
+					const healed = res.channel;
 					const existingIndex = store.allChannels.findIndex(
 						(c) => getChannelIdString(c.id) === getChannelIdString(healed.id),
 					);
@@ -1113,10 +1115,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 		if (action === "hunt_stream" && param) {
 			store.showToast(`🔍 Searching upstream & internet sources for "${param}"...`, false);
 			try {
-				const healed = await invoke<Channel | null>("ai_hunt_and_heal", {
+				const res = await invoke<AiHuntResponse>("ai_hunt_and_heal", {
 					channelName: param,
 				});
-				if (healed) {
+				if (res && res.success && res.channel) {
+					const healed = res.channel;
 					const existingIndex = store.allChannels.findIndex(
 						(c) => getChannelIdString(c.id) === getChannelIdString(healed.id),
 					);
@@ -1141,9 +1144,37 @@ export const useAppStore = create<AppState>((set, get) => ({
 					await store.selectChannel(healed);
 					return `⚡ AI Recovery Successful! "${healed.name}" stream saved to database and playing now.`;
 				}
-				return `No active stream found for "${param}" across upstream sources.`;
+				return res?.message || `No active stream found for "${param}" across upstream sources.`;
 			} catch (e) {
 				return `Stream recovery error: ${e}`;
+			}
+		}
+
+		if (action === "add_channel" && param) {
+			try {
+				let channelName = "Custom Channel";
+				let streamUrl = param;
+				if (param.includes("|")) {
+					const parts = param.split("|");
+					channelName = parts[0].trim();
+					streamUrl = parts.slice(1).join("|").trim();
+				}
+				const newCh = await invoke<Channel>("add_custom_channel", {
+					name: channelName,
+					url: streamUrl,
+					group: "Custom",
+				});
+				if (newCh) {
+					set((state) => ({
+						allChannels: [newCh, ...state.allChannels],
+						channels: [newCh, ...state.channels],
+						totalChannels: state.totalChannels + 1,
+					}));
+					await store.selectChannel(newCh);
+					return `✅ Channel "${newCh.name}" added to database and playing now!`;
+				}
+			} catch (e) {
+				return `Failed to add stream: ${e}`;
 			}
 		}
 

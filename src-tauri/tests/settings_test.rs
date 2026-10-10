@@ -188,3 +188,32 @@ async fn test_ai_vibe_and_epg_and_scheduler() {
     assert_eq!(t.action_type, "sleep_timer");
     assert_eq!(t.delay_seconds, 45 * 60);
 }
+
+#[tokio::test]
+async fn test_ai_deep_hunt_and_drm_diagnosis() {
+    use app_lib::network::ai_brain::crawler::{check_known_drm_paytv, StreamCrawler};
+
+    // Pogo is correctly diagnosed as Pay-TV / DRM protected
+    let drm = check_known_drm_paytv("pogo");
+    assert!(drm.is_some());
+    let (name, desc) = drm.unwrap();
+    assert_eq!(name, "Pogo TV");
+    assert!(desc.contains("Pay-TV"));
+
+    // Channel target extractor handles pogo and /add command
+    let target = StreamCrawler::extract_channel_target("/hunt pogo");
+    assert_eq!(target, Some("Pogo".to_string()));
+
+    let target_add = StreamCrawler::extract_channel_target("/add pogo");
+    assert_eq!(target_add, Some("Pogo".to_string()));
+
+    let target_bn = StreamCrawler::extract_channel_target("pogo channel add koro");
+    assert_eq!(target_bn, Some("Pogo".to_string()));
+
+    // Custom stream intent extraction
+    let custom = StreamCrawler::extract_custom_stream_intent("add stream https://test.com/live.m3u8 for Pogo");
+    assert!(custom.is_some());
+    let (ch_name, stream_url) = custom.unwrap();
+    assert_eq!(ch_name, "Pogo");
+    assert_eq!(stream_url, "https://test.com/live.m3u8");
+}

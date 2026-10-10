@@ -430,12 +430,12 @@ export const AiVoiceAssistantModal: React.FC = () => {
 				return;
 			}
 
-			if (cmd === "heal" || cmd === "find" || cmd === "hunt") {
+			if (cmd === "heal" || cmd === "find" || cmd === "hunt" || cmd === "add") {
 				if (!arg) {
 					const aiMsg: ChatMessage = {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
-						text: "Please specify a channel name to recover, e.g.: `\\heal Zee Bangla HD`",
+						text: "Please specify a channel name, e.g.: `\\hunt Zee Bangla HD` or `\\add Hungama`",
 						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
@@ -444,11 +444,56 @@ export const AiVoiceAssistantModal: React.FC = () => {
 				setIsThinking(true);
 				try {
 					const feedback = await executeAiAction("hunt_stream", arg);
+					const isSuccess = feedback?.startsWith("⚡") || feedback?.startsWith("✅");
 					const aiMsg: ChatMessage = {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: feedback || `Searching internet for ${arg}...`,
-						actionFeedback: feedback,
+						actionFeedback: isSuccess ? "Stream Active & Playing" : undefined,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					};
+					setMessages((prev) => [...prev, aiMsg]);
+				} finally {
+					setIsThinking(false);
+				}
+				return;
+			}
+
+			if (cmd === "addstream" || cmd === "addchannel") {
+				if (!arg) {
+					const aiMsg: ChatMessage = {
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: "Please provide stream URL and channel name, e.g.: `\\addstream https://example.com/live.m3u8 for Pogo`",
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					};
+					setMessages((prev) => [...prev, aiMsg]);
+					return;
+				}
+				setIsThinking(true);
+				try {
+					let name = "Custom Channel";
+					let url = arg;
+					if (arg.includes(" for ")) {
+						const parts = arg.split(" for ");
+						url = parts[0].trim();
+						name = parts[1].trim();
+					} else if (arg.includes(" ")) {
+						const parts = arg.split(" ");
+						if (parts[0].startsWith("http")) {
+							url = parts[0];
+							name = parts.slice(1).join(" ");
+						} else {
+							name = parts[0];
+							url = parts.slice(1).join(" ");
+						}
+					}
+					const feedback = await executeAiAction("add_channel", `${name}|${url}`);
+					const aiMsg: ChatMessage = {
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: feedback || `Adding stream for ${name}...`,
+						actionFeedback: feedback?.startsWith("✅") ? "Added & Playing" : undefined,
 						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
@@ -654,14 +699,24 @@ export const AiVoiceAssistantModal: React.FC = () => {
 			});
 
 			let actionFeedback: string | undefined;
+			let mainReply = response.reply;
 			if (response.action) {
 				actionFeedback = await executeAiAction(response.action, response.param);
+				if (actionFeedback) {
+					if (response.action === "hunt_stream") {
+						mainReply = actionFeedback;
+						actionFeedback = actionFeedback.startsWith("⚡") ? "Stream Verified" : undefined;
+					} else if (response.action === "add_channel") {
+						mainReply = actionFeedback;
+						actionFeedback = "Added & Playing";
+					}
+				}
 			}
 
 			const aiMsg: ChatMessage = {
 				id: (Date.now() + 1).toString(),
 				sender: "ai",
-				text: response.reply,
+				text: mainReply,
 				actionFeedback,
 				timestamp: new Date().toLocaleTimeString([], {
 					hour: "2-digit",
