@@ -209,6 +209,49 @@ impl ChannelCacheRepository {
         Ok(())
     }
 
+    /// Upserts a channel into SQLite cache (creates if missing, updates if present)
+    pub fn upsert_channel(&self, ch: &Channel) -> StorageResult<()> {
+        let conn_arc = self.db.conn();
+        let conn = conn_arc.lock().map_err(|e| {
+            tracing::error!(error = %e, "ChannelCache DB mutex poisoned in upsert_channel");
+            StorageError::LockPoisoned(e.to_string())
+        })?;
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs() as i64;
+        let fallbacks_json = serde_json::to_string(&ch.fallback_urls).unwrap_or_else(|_| "[]".to_string());
+        conn.execute(
+            "INSERT INTO channels_cache
+             (id, name, url, group_title, logo, fallbacks, provider, http_user_agent, http_referrer, cached_at, is_verified)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+             ON CONFLICT(id) DO UPDATE SET
+                name = excluded.name,
+                url = excluded.url,
+                group_title = excluded.group_title,
+                logo = excluded.logo,
+                fallbacks = excluded.fallbacks,
+                provider = excluded.provider,
+                is_verified = excluded.is_verified,
+                cached_at = excluded.cached_at",
+            rusqlite::params![
+                ch.id.0.as_str(),
+                ch.name,
+                ch.url,
+                ch.group,
+                ch.logo,
+                fallbacks_json,
+                ch.provider,
+                ch.http_user_agent,
+                ch.http_referrer,
+                now,
+                if ch.is_verified { 1 } else { 0 },
+            ],
+        )
+        .map_err(StorageError::Sqlite)?;
+        Ok(())
+    }
+
     /// Persistent metadata: get last local ISP verification timestamp
     pub fn get_last_local_verified_at(&self) -> StorageResult<Option<String>> {
         let conn_arc = self.db.conn();

@@ -169,6 +169,14 @@ pub const UPSTREAM_PROVIDERS: &[UpstreamProvider] = &[
         is_fast_cdn: false,
         is_vip: false,
     },
+    UpstreamProvider {
+        name: "Tubi TV (Official)",
+        url: "https://raw.githubusercontent.com/BuddyChewChew/app-m3u-generator/refs/heads/main/playlists/tubi_all.m3u",
+        default_group: "Entertainment",
+        provider: "Tubi TV",
+        is_fast_cdn: true,
+        is_vip: false,
+    },
 ];
 
 pub fn is_vip_channel(name: &str, id: &str) -> bool {
@@ -248,7 +256,8 @@ pub fn matches_backup_mirror_key(channel_name: &str, tvg_id: &str, key: &str) ->
                     || norm_id == "colorsin")
         }
         "zeebangla" => {
-            norm_name.starts_with("zeebangla") || norm_id.starts_with("zeebangla")
+            let is_variant = norm_name.contains("sonar") || norm_name.contains("cinema");
+            !is_variant && (norm_name.starts_with("zeebangla") || norm_id.starts_with("zeebangla"))
         }
         "starjalsha" => {
             norm_name.starts_with("starjalsha") || norm_id.starts_with("starjalsha")
@@ -901,6 +910,37 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
+    // Guarantee canonical VIP channel entries that must never be missed even if upstream has transient naming issues
+    let zb_key = "zeebanglain".to_string();
+    if let Some(existing) = channel_map.get_mut(&zb_key) {
+        existing.name = "Zee Bangla HD (720p)".to_string();
+        existing.id = "ZeeBangla.in@HD".to_string();
+        existing.logo = "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ZEE_BANGLA_HD/images/LOGO_HD/LOGO_HD_image.png".to_string();
+        existing.provider = "IPTV-Org India".to_string();
+        existing.is_vip = true;
+        existing.is_fast_cdn = true;
+        let cdn_stream = "https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/ZeeBanglaHD.m3u8".to_string();
+        if !existing.fallbacks.contains(&existing.url) && existing.url != cdn_stream {
+            existing.fallbacks.push(existing.url.clone());
+        }
+        existing.url = cdn_stream;
+    } else {
+        channel_map.insert(
+            zb_key,
+            ChannelItem {
+                name: "Zee Bangla HD (720p)".to_string(),
+                id: "ZeeBangla.in@HD".to_string(),
+                logo: "https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ZEE_BANGLA_HD/images/LOGO_HD/LOGO_HD_image.png".to_string(),
+                group: "India".to_string(),
+                provider: "IPTV-Org India".to_string(),
+                url: "https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/ZeeBanglaHD.m3u8".to_string(),
+                fallbacks: vec!["http://103.151.60.162:2122/play/a011/index.m3u8?hls".to_string()],
+                is_fast_cdn: true,
+                is_vip: true,
+            },
+        );
+    }
+
     let raw_candidates: Vec<ChannelItem> = channel_map.into_values().collect();
     let all_candidates: Vec<ChannelItem> = raw_candidates
         .into_iter()
@@ -1048,7 +1088,15 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
                     existing.fallbacks.push(fb);
                 }
             }
-            if existing.logo.is_empty() && !ch.logo.is_empty() {
+            // Prefer canonical VIP channel name and logo over variant/sonar names
+            let ch_is_canonical_vip = (ch.is_vip || is_vip_channel(&ch.name, &ch.id)) && !ch.name.to_lowercase().contains("sonar");
+            let existing_is_variant = existing.name.to_lowercase().contains("sonar") || (!existing.is_vip && !is_vip_channel(&existing.name, &existing.id));
+            if ch_is_canonical_vip && existing_is_variant {
+                existing.name = ch.name;
+                existing.id = ch.id;
+                existing.logo = ch.logo;
+                existing.is_vip = true;
+            } else if existing.logo.is_empty() && !ch.logo.is_empty() {
                 existing.logo = ch.logo;
             }
         } else {

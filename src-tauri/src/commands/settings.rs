@@ -55,8 +55,41 @@ pub async fn test_groq_api_key(api_key: String) -> Result<String, String> {
 pub async fn verify_ai_provider_key(
     api_key: String,
     endpoint: Option<String>,
+    provider: Option<String>,
+    model: Option<String>,
 ) -> Result<crate::network::ai_brain::ProviderDetectionResult, String> {
-    crate::network::AiBrain::detect_and_verify(&api_key, endpoint.as_deref()).await
+    crate::network::AiBrain::detect_and_verify(
+        &api_key,
+        endpoint.as_deref(),
+        provider.as_deref(),
+        model.as_deref(),
+    )
+    .await
+}
+
+#[tauri::command]
+pub async fn fetch_ai_provider_models(
+    provider: String,
+    api_key: Option<String>,
+    endpoint: Option<String>,
+) -> Result<Vec<crate::network::ai_brain::AiModelItem>, String> {
+    Ok(crate::network::AiBrain::fetch_provider_models(
+        &provider,
+        api_key.as_deref(),
+        endpoint.as_deref(),
+    )
+    .await)
+}
+
+#[tauri::command]
+pub async fn set_active_ai_model(
+    model: String,
+    state: State<'_, SharedAppState>,
+) -> Result<AppSettings, String> {
+    let mut guard = state.write().await;
+    guard.settings.ai_model = Some(model);
+    guard.settings.save().map_err(|e| e.to_string())?;
+    Ok(guard.settings.clone())
 }
 
 #[tauri::command]
@@ -129,7 +162,7 @@ pub async fn ai_voice_chat(
     message: String,
     state: State<'_, SharedAppState>,
 ) -> Result<crate::network::ai_brain::AiChatResponse, String> {
-    let (api_key, endpoint, context) = {
+    let (api_key, endpoint, provider, model, context) = {
         let guard = state.read().await;
         let key = guard
             .settings
@@ -137,6 +170,8 @@ pub async fn ai_voice_chat(
             .clone()
             .or_else(|| guard.settings.groq_api_key.clone());
         let ep = guard.settings.ai_endpoint.clone();
+        let prov = guard.settings.ai_provider.clone();
+        let mdl = guard.settings.ai_model.clone();
         let cur_ch = guard
             .all_channels
             .iter()
@@ -155,12 +190,14 @@ pub async fn ai_voice_chat(
             active_category: "All".to_string(),
             channel_sample,
         };
-        (key, ep, ctx)
+        (key, ep, prov, mdl, ctx)
     };
 
     crate::network::AiBrain::chat_with_copilot(
         api_key.as_deref(),
         endpoint.as_deref(),
+        provider.as_deref(),
+        model.as_deref(),
         &message,
         &context,
     )
@@ -181,7 +218,7 @@ pub async fn ai_hunt_and_heal(
             .find(|c| {
                 let a = c.name.to_lowercase();
                 let b = channel_name.to_lowercase();
-                a.contains(&b) || b.contains(&a)
+                a == b || a.contains(&b) || b.contains(&a)
             })
             .cloned();
         let r = guard.channel_cache_repo.clone();
@@ -193,17 +230,18 @@ pub async fn ai_hunt_and_heal(
         .map(|c| c.name.clone())
         .unwrap_or_else(|| channel_name.clone());
 
-    if let Some(working_url) =
-        crate::network::AiBrain::autonomous_stream_hunt(&target_name, &custom_sources).await
-    {
-        if let Some(mut ch) = target_channel {
+    // 1. If channel already exists in database, hunt and update its stream
+    if let Some(mut ch) = target_channel {
+        if let Some(working_url) =
+            crate::network::AiBrain::autonomous_stream_hunt(&target_name, &custom_sources).await
+        {
             let old = std::mem::replace(&mut ch.url, working_url.clone());
             if !ch.fallback_urls.contains(&old) {
                 ch.fallback_urls.insert(0, old);
             }
             ch.is_verified = true;
 
-            let _ = repo.update_channel_stream(&ch.id.0, &ch.url, &ch.fallback_urls);
+            let _ = repo.upsert_channel(&ch);
 
             {
                 let mut guard = state.write().await;
@@ -215,6 +253,54 @@ pub async fn ai_hunt_and_heal(
 
             return Ok(Some(ch));
         }
+    }
+
+    // 2. Channel was missing or lost from system database! Autonomously discover and rewrite into SQLite
+    if let Some(discovered) =
+        crate::network::AiBrain::autonomous_channel_discovery(&channel_name, &custom_sources).await
+    {
+        let id_val = format!(
+            "ai_recovered_{}",
+            discovered
+                .name
+                .to_lowercase()
+                .chars()
+                .filter(|c| c.is_ascii_alphanumeric())
+                .collect::<String>()
+        );
+        let new_ch = crate::domain::Channel {
+            id: crate::domain::ChannelId(id_val),
+            name: discovered.name,
+            logo: if discovered.logo.is_empty() {
+                None
+            } else {
+                Some(discovered.logo)
+            },
+            group: if discovered.group.is_empty() {
+                "India".to_string()
+            } else {
+                discovered.group
+            },
+            url: discovered.url,
+            fallback_urls: discovered.fallbacks,
+            http_user_agent: None,
+            http_referrer: None,
+            is_favorite: false,
+            provider: Some(discovered.provider),
+            is_verified: true,
+        };
+
+        // Persist directly into SQLite cache
+        let _ = repo.upsert_channel(&new_ch);
+
+        // Prepend to in-memory state and refresh
+        {
+            let mut guard = state.write().await;
+            guard.all_channels.insert(0, new_ch.clone());
+            guard.refresh_filtered_channels();
+        }
+
+        return Ok(Some(new_ch));
     }
 
     Ok(None)

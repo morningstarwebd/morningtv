@@ -11,6 +11,7 @@ import {
 } from "../services/updaterService";
 
 import type {
+	AiModelItem,
 	AppSettings,
 	AspectRatio,
 	Channel,
@@ -214,7 +215,15 @@ interface AppState {
 	verifyAiKey: (
 		key: string,
 		endpoint?: string | null,
+		provider?: string | null,
+		model?: string | null,
 	) => Promise<ProviderDetectionResult>;
+	fetchProviderModels: (
+		provider: string,
+		apiKey?: string | null,
+		endpoint?: string | null,
+	) => Promise<AiModelItem[]>;
+	setActiveAiModel: (model: string) => Promise<void>;
 	saveAiConfiguration: (config: {
 		apiKey: string | null;
 		provider?: string | null;
@@ -647,11 +656,51 @@ export const useAppStore = create<AppState>((set, get) => ({
 		}
 	},
 
-	verifyAiKey: async (key: string, endpoint?: string | null) => {
+	verifyAiKey: async (
+		key: string,
+		endpoint?: string | null,
+		provider?: string | null,
+		model?: string | null,
+	) => {
 		return await invoke<ProviderDetectionResult>("verify_ai_provider_key", {
 			apiKey: key,
 			endpoint: endpoint || null,
+			provider: provider || null,
+			model: model || null,
 		});
+	},
+
+	fetchProviderModels: async (
+		provider: string,
+		apiKey?: string | null,
+		endpoint?: string | null,
+	) => {
+		try {
+			return await invoke<AiModelItem[]>("fetch_ai_provider_models", {
+				provider,
+				apiKey: apiKey || null,
+				endpoint: endpoint || null,
+			});
+		} catch (err) {
+			log.error("Failed to fetch provider models", { error: err });
+			return [];
+		}
+	},
+
+	setActiveAiModel: async (model: string) => {
+		const { settings } = get();
+		if (!settings) return;
+		const next: AppSettings = {
+			...settings,
+			ai_model: model,
+		};
+		set({ settings: next });
+		try {
+			await invoke("set_active_ai_model", { model });
+			get().showToast(`🤖 AI Model changed to ${model}`, false);
+		} catch (err) {
+			log.error("Failed to set active AI model", { error: err });
+		}
 	},
 
 	saveAiConfiguration: async (config: {
@@ -997,61 +1046,92 @@ export const useAppStore = create<AppState>((set, get) => ({
 			});
 			if (found) {
 				await store.selectChannel(found);
-				return `✅ "${found.name}" চালু করা হয়েছে`;
+				return `Now playing "${found.name}"`;
 			}
 			try {
 				const healed = await invoke<Channel | null>("ai_hunt_and_heal", {
 					channelName: param,
 				});
 				if (healed) {
+					const existingIndex = store.allChannels.findIndex(
+						(c) => getChannelIdString(c.id) === getChannelIdString(healed.id),
+					);
+					if (existingIndex === -1) {
+						set((state) => ({
+							allChannels: [healed, ...state.allChannels],
+							channels: [healed, ...state.channels],
+							totalChannels: state.totalChannels + 1,
+						}));
+					}
 					await store.selectChannel(healed);
-					return `⚡ ইন্টারনেট থেকে "${healed.name}" এর লাইভ স্ট্রিম উদ্ধার করে চালু করা হলো!`;
+					return `⚡ Stream recovered: "${healed.name}" fetched from internet and added to library!`;
 				}
 			} catch {}
-			return `"${param}" চ্যানেলটি পাওয়া যায়নি`;
+			return `Channel "${param}" not found`;
 		}
 
 		if (action === "set_volume" && param) {
 			const vol = Number.parseInt(param, 10);
 			if (!Number.isNaN(vol)) {
 				store.setVolume(Math.max(0, Math.min(100, vol)));
-				return `ভলিউম ${vol}% করা হলো`;
+				return `Volume set to ${vol}%`;
 			}
 		}
 
 		if (action === "toggle_mute") {
 			store.toggleMute();
-			return "মিউট স্ট্যাটাস পরিবর্তন করা হয়েছে";
+			return "Mute toggled";
 		}
 
 		if (action === "hunt_stream" && param) {
-			store.showToast(`🔍 ইন্টারনেট থেকে "${param}" এর স্ট্রিম খোঁজা হচ্ছে...`, false);
+			store.showToast(`🔍 Searching upstream & internet sources for "${param}"...`, false);
 			try {
 				const healed = await invoke<Channel | null>("ai_hunt_and_heal", {
 					channelName: param,
 				});
 				if (healed) {
+					const existingIndex = store.allChannels.findIndex(
+						(c) => getChannelIdString(c.id) === getChannelIdString(healed.id),
+					);
+					if (existingIndex === -1) {
+						set((state) => ({
+							allChannels: [healed, ...state.allChannels],
+							channels: [healed, ...state.channels],
+							totalChannels: state.totalChannels + 1,
+						}));
+					} else {
+						set((state) => ({
+							allChannels: state.allChannels.map((c, i) =>
+								i === existingIndex ? healed : c,
+							),
+							channels: state.channels.map((c) =>
+								getChannelIdString(c.id) === getChannelIdString(healed.id)
+									? healed
+									: c,
+							),
+						}));
+					}
 					await store.selectChannel(healed);
-					return `✅ "${healed.name}" এর লাইভ সিগন্যাল উদ্ধার করা হয়েছে ও সেভ করা হয়েছে!`;
+					return `⚡ AI Recovery Successful! "${healed.name}" stream saved to database and playing now.`;
 				}
-				return `"${param}" এর কোনো সক্রিয় স্ট্রিম পাওয়া যায়নি`;
+				return `No active stream found for "${param}" across upstream sources.`;
 			} catch (e) {
-				return `হিলিং করতে সমস্যা হয়েছে: ${e}`;
+				return `Stream recovery error: ${e}`;
 			}
 		}
 
 		if (action === "set_category" && param) {
 			store.setCategory(param);
-			return `ক্যাটাগরি "${param}" ফিল্টার করা হলো`;
+			return `Filtered category to "${param}"`;
 		}
 
 		if (action === "toggle_fullscreen") {
 			if (!document.fullscreenElement) {
 				document.documentElement.requestFullscreen().catch(() => {});
-				return "ফুলস্ক্রিন মোড চালু করা হলো";
+				return "Fullscreen enabled";
 			}
 			document.exitFullscreen().catch(() => {});
-			return "ফুলস্ক্রিন মোড বন্ধ করা হলো";
+			return "Fullscreen exited";
 		}
 
 		return undefined;

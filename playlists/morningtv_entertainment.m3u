@@ -158,7 +158,7 @@ https://pili-live-hls-zdzz-tv.zzxwcm.cn/zdzz-tv/nqzh.m3u8
 https://tv.vtibet.cn/live/r31M7Qa5hm7wrP.m3u8?secret=47f5fa121ef8f10f25721ccaffc647f0&time=6aca2a9a
 #EXTINF:-1 tvg-id="YachtingTV.cz@SD" tvg-name="Yachting TV (1080p)" tvg-logo="https://i.imgur.com/YxO60B1.png" group-title="Lifestyle" provider="IPTV-Org",Yachting TV (1080p)
 https://streams2.sofast.tv/vglive-sk-461164/index.m3u8
-#EXTINF:-1 tvg-id="ZeeBanglaSonar.in@SD" tvg-name="Zee Bangla Sonar (576p)" tvg-logo="https://dtil.tmsimg.com/assets/GNLZZGG00287G7K.png?lock=720x540" group-title="Entertainment" provider="IPTV-Org Bangladesh",Zee Bangla Sonar (576p)
+#EXTINF:-1 tvg-id="ZeeBangla.in@HD" tvg-name="Zee Bangla HD (720p)" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ZEE_BANGLA_HD/images/LOGO_HD/LOGO_HD_image.png" group-title="Entertainment" provider="IPTV-Org India",Zee Bangla HD (720p)
 #EXTFALLBACK: http://103.151.60.162:2122/play/a011/index.m3u8?hls
 https://raw.githubusercontent.com/amazeyourself/adaptive-streams/refs/heads/main/streams/in/YuppTV/ZeeBanglaHD.m3u8
 #EXTINF:-1 tvg-id="ZeeTV.in@SD" tvg-name="Zee TV (576p)" tvg-logo="https://xstreamcp-assets-msp.streamready.in/assets/LIVETV/LIVECHANNEL/LIVETV_LIVETVCHANNEL_ZEE_TV/images/LOGO_HD/LOGO_HD_image.png" group-title="Entertainment" provider="IPTV-Org Hindi",Zee TV (576p)

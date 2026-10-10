@@ -63,11 +63,18 @@ export interface AppSettings {
 	custom_upstream_sources?: string[];
 }
 
+export interface AiModelItem {
+	id: string;
+	is_free: boolean;
+	label: string;
+}
+
 export interface ProviderDetectionResult {
 	success: boolean;
 	provider_name: string;
 	active_model: string;
 	available_models: string[];
+	models?: AiModelItem[];
 	latency_ms: number;
 	endpoint: string;
 	message: string;

@@ -2,6 +2,8 @@ import { invoke } from "@tauri-apps/api/core";
 import {
 	AlertCircle,
 	Bot,
+	Check,
+	ChevronDown,
 	Cpu,
 	Globe,
 	Image as ImageIcon,
@@ -16,6 +18,7 @@ import {
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { useAppStore } from "../stores/appStore";
+import type { AiModelItem } from "../types";
 
 interface ChatMessage {
 	id: string;
@@ -77,6 +80,8 @@ export const AiVoiceAssistantModal: React.FC = () => {
 		setAiAvatarPreset,
 		setAiCustomAvatarUrl,
 		executeAiAction,
+		fetchProviderModels,
+		setActiveAiModel,
 		activeChannel,
 		volume,
 		settings,
@@ -104,7 +109,30 @@ export const AiVoiceAssistantModal: React.FC = () => {
 		null,
 	);
 	const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+	const [showModelPicker, setShowModelPicker] = useState(false);
+	const [quickModels, setQuickModels] = useState<AiModelItem[]>([]);
+	const [isLoadingQuickModels, setIsLoadingQuickModels] = useState(false);
 	const [customUrlInput, setCustomUrlInput] = useState(aiCustomAvatarUrl);
+
+	const handleOpenModelPicker = async () => {
+		const next = !showModelPicker;
+		setShowModelPicker(next);
+		if (showAvatarSelector) setShowAvatarSelector(false);
+		if (next && quickModels.length === 0) {
+			setIsLoadingQuickModels(true);
+			try {
+				const provider = settings?.ai_provider || "auto";
+				const models = await fetchProviderModels(
+					provider,
+					settings?.ai_api_key || null,
+					settings?.ai_endpoint || null,
+				);
+				setQuickModels(models);
+			} finally {
+				setIsLoadingQuickModels(false);
+			}
+		}
+	};
 
 	const recognitionRef = useRef<any>(null);
 	const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -196,6 +224,141 @@ export const AiVoiceAssistantModal: React.FC = () => {
 		};
 
 		setMessages((prev) => [...prev, userMsg]);
+
+		// Support both Slash (/) and Backslash (\) commands
+		const isCommand = query.startsWith("/") || query.startsWith("\\");
+		if (isCommand) {
+			const parts = query.slice(1).trim().split(/\s+/);
+			const cmd = parts[0]?.toLowerCase();
+			const arg = parts.slice(1).join(" ").trim();
+
+			if (cmd === "model") {
+				if (!arg) {
+					const aiMsg: ChatMessage = {
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: `Active Model: ${settings?.ai_model || "Default"}\n\nTo change model, type: \\model <model-name> (or /model <model-name>)\nTo see all models from provider, type: \\models`,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					};
+					setMessages((prev) => [...prev, aiMsg]);
+					return;
+				}
+
+				setIsThinking(true);
+				try {
+					await setActiveAiModel(arg);
+					const aiMsg: ChatMessage = {
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: `🤖 Model successfully changed to: "${arg}"! Subsequent queries will route through this model.`,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					};
+					setMessages((prev) => [...prev, aiMsg]);
+				} catch (err) {
+					const aiMsg: ChatMessage = {
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: `Failed to set model: ${err}`,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					};
+					setMessages((prev) => [...prev, aiMsg]);
+				} finally {
+					setIsThinking(false);
+				}
+				return;
+			}
+
+			if (cmd === "models") {
+				setIsThinking(true);
+				try {
+					const provider = settings?.ai_provider || "auto";
+					const models = await fetchProviderModels(
+						provider,
+						settings?.ai_api_key || null,
+						settings?.ai_endpoint || null,
+					);
+					if (models.length === 0) {
+						const aiMsg: ChatMessage = {
+							id: (Date.now() + 1).toString(),
+							sender: "ai",
+							text: `No models returned from ${provider}. Make sure your API key is configured in Settings.`,
+							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						};
+						setMessages((prev) => [...prev, aiMsg]);
+					} else {
+						const freeCount = models.filter((m) => m.is_free).length;
+						const modelListStr = models
+							.slice(0, 16)
+							.map((m, i) => `${i + 1}. \`${m.id}\`${m.is_free ? " 🟢 [FREE]" : ""}`)
+							.join("\n");
+
+						const aiMsg: ChatMessage = {
+							id: (Date.now() + 1).toString(),
+							sender: "ai",
+							text: `📡 Live Models for **${provider}** (${freeCount} Free Tier models available):\n\n${modelListStr}\n\n💡 Switch model anytime using: \`\\model <name>\` or \`/model <name>\``,
+							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						};
+						setMessages((prev) => [...prev, aiMsg]);
+					}
+				} catch (err) {
+					const aiMsg: ChatMessage = {
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: `Failed to fetch models: ${err}`,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					};
+					setMessages((prev) => [...prev, aiMsg]);
+				} finally {
+					setIsThinking(false);
+				}
+				return;
+			}
+
+			if (cmd === "heal" || cmd === "find" || cmd === "hunt") {
+				if (!arg) {
+					const aiMsg: ChatMessage = {
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: "Please specify a channel name to recover, e.g.: `\\heal Zee Bangla HD`",
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					};
+					setMessages((prev) => [...prev, aiMsg]);
+					return;
+				}
+				setIsThinking(true);
+				try {
+					const feedback = await executeAiAction("hunt_stream", arg);
+					const aiMsg: ChatMessage = {
+						id: (Date.now() + 1).toString(),
+						sender: "ai",
+						text: feedback || `Searching internet for ${arg}...`,
+						actionFeedback: feedback,
+						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					};
+					setMessages((prev) => [...prev, aiMsg]);
+				} finally {
+					setIsThinking(false);
+				}
+				return;
+			}
+
+			if (cmd === "clear") {
+				setMessages([]);
+				return;
+			}
+
+			if (cmd === "help") {
+				const aiMsg: ChatMessage = {
+					id: (Date.now() + 1).toString(),
+					sender: "ai",
+					text: "⚡ **Available Commands:**\n\n- `\\model <name>` or `/model <name>` : Switch the active AI model\n- `\\models` or `/models` : List available live free & standard models\n- `\\heal <channel>` or `/heal <channel>` : Hunt down working streams online and update the local database\n- `\\clear` or `/clear` : Clear conversation history",
+					timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+				};
+				setMessages((prev) => [...prev, aiMsg]);
+				return;
+			}
+		}
+
 		setIsThinking(true);
 
 		try {
@@ -319,6 +482,17 @@ export const AiVoiceAssistantModal: React.FC = () => {
 								<span className="px-2 py-0.5 text-[9px] font-bold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
 									{settings?.ai_provider || "Neural Engine"}
 								</span>
+								<button
+									type="button"
+									onClick={handleOpenModelPicker}
+									className="px-2 py-0.5 text-[9px] font-mono font-bold rounded-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 flex items-center gap-1 transition-all cursor-pointer shadow-sm active:scale-95"
+									title="Click to quickly switch AI model"
+								>
+									<span className="max-w-[130px] truncate">
+										{settings?.ai_model || "Select Model"}
+									</span>
+									<ChevronDown className={`w-3 h-3 transition-transform ${showModelPicker ? "rotate-180" : ""}`} />
+								</button>
 							</div>
 							<p className="text-[10px] text-zinc-400">
 								{activeChannel
@@ -339,7 +513,7 @@ export const AiVoiceAssistantModal: React.FC = () => {
 										? "bg-purple-600 text-white shadow-sm"
 										: "hover:text-white"
 								}`}
-								title="English (US) default"
+								title="English (US)"
 							>
 								EN
 							</button>
@@ -351,9 +525,9 @@ export const AiVoiceAssistantModal: React.FC = () => {
 										? "bg-purple-600 text-white shadow-sm"
 										: "hover:text-white"
 								}`}
-								title="বাংলা (ভারত)"
+								title="Bengali (India)"
 							>
-								বাংলা
+								BN
 							</button>
 							<button
 								type="button"
@@ -363,9 +537,9 @@ export const AiVoiceAssistantModal: React.FC = () => {
 										? "bg-purple-600 text-white shadow-sm"
 										: "hover:text-white"
 								}`}
-								title="हिंदी"
+								title="Hindi (India)"
 							>
-								हिंदी
+								HI
 							</button>
 						</div>
 
@@ -392,6 +566,80 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						</button>
 					</div>
 				</div>
+
+				{/* Quick Model Selector Dropdown Modal */}
+				{showModelPicker && (
+					<div className="absolute top-14 left-4 right-4 z-50 p-4 rounded-2xl bg-zinc-950/95 border border-cyan-500/40 shadow-2xl backdrop-blur-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center gap-2">
+								<Sparkles className="w-4 h-4 text-cyan-400" />
+								<span className="text-xs font-bold text-white">
+									Quick Switch Active Model ({settings?.ai_provider || "Provider"})
+								</span>
+							</div>
+							<button
+								type="button"
+								onClick={() => setShowModelPicker(false)}
+								className="text-zinc-400 hover:text-white cursor-pointer"
+							>
+								<X className="w-3.5 h-3.5" />
+							</button>
+						</div>
+
+						{isLoadingQuickModels ? (
+							<div className="p-5 flex items-center justify-center gap-2.5 text-xs text-zinc-300">
+								<div className="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin" />
+								<span>Fetching live models from {settings?.ai_provider || "provider"}...</span>
+							</div>
+						) : quickModels.length === 0 ? (
+							<div className="p-4 text-center text-xs text-zinc-400">
+								No models found. Please configure API key in Settings or type <code className="text-cyan-300 font-mono">\models</code>.
+							</div>
+						) : (
+							<div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1">
+								{quickModels.map((m) => {
+									const isActive = settings?.ai_model === m.id;
+									return (
+										<button
+											key={m.id}
+											type="button"
+											onClick={async () => {
+												await setActiveAiModel(m.id);
+												setShowModelPicker(false);
+												setMessages((prev) => [
+													...prev,
+													{
+														id: Date.now().toString(),
+														sender: "ai",
+														text: `🤖 Model switched to "${m.id}"!`,
+														timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+													},
+												]);
+											}}
+											className={`p-2.5 rounded-xl text-left border flex items-center justify-between gap-2 transition-all cursor-pointer ${
+												isActive
+													? "bg-cyan-500/25 border-cyan-400 text-white shadow-md ring-1 ring-cyan-500/40"
+													: "bg-white/[0.03] border-white/10 text-zinc-300 hover:bg-white/[0.08]"
+											}`}
+										>
+											<div className="flex items-center gap-1.5 min-w-0">
+												{isActive && <Check className="w-3 h-3 text-cyan-400 shrink-0" />}
+												<span className={`text-[11px] font-mono truncate ${isActive ? "font-bold text-white" : ""}`}>
+													{m.id}
+												</span>
+											</div>
+											{m.is_free && (
+												<span className="px-1.5 py-0.2 rounded text-[8px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 shrink-0">
+													FREE
+												</span>
+											)}
+										</button>
+									);
+								})}
+							</div>
+						)}
+					</div>
+				)}
 
 				{/* Avatar Selector Dropdown Modal */}
 				{showAvatarSelector && (
@@ -738,7 +986,23 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						}
 						className="px-2.5 py-1 rounded-full bg-purple-500/15 hover:bg-purple-500/25 border border-purple-500/30 text-[10px] text-purple-300 whitespace-nowrap cursor-pointer transition-colors"
 					>
-						⚡ Hunt & Heal Stream
+						⚡ Hunt Stream
+					</button>
+					<button
+						type="button"
+						onClick={() => handleSendMessage("\\models")}
+						className="px-2.5 py-1 rounded-full bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-[10px] text-cyan-300 font-mono whitespace-nowrap cursor-pointer transition-colors"
+						title="List available AI models"
+					>
+						\models
+					</button>
+					<button
+						type="button"
+						onClick={() => handleSendMessage("\\heal Zee Bangla HD")}
+						className="px-2.5 py-1 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-[10px] text-emerald-300 font-mono whitespace-nowrap cursor-pointer transition-colors"
+						title="Recover lost Zee Bangla HD stream from internet into database"
+					>
+						\heal Zee Bangla HD
 					</button>
 					<button
 						type="button"
@@ -795,7 +1059,7 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						type="text"
 						value={inputText}
 						onChange={(e) => setInputText(e.target.value)}
-						placeholder="Speak or type (e.g. Play Zee Bangla, Volume 40%, Hunt stream)..."
+						placeholder="Type message or command (\model <name>, \models, \heal <channel>)..."
 						className="flex-1 px-4 py-2.5 rounded-2xl bg-white/[0.05] border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 transition-colors"
 					/>
 

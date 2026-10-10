@@ -6,12 +6,14 @@ import {
 	ExternalLink,
 	Eye,
 	EyeOff,
+	Filter,
 	Globe,
 	Key,
 	Monitor,
 	Plus,
 	Power,
 	RefreshCw,
+	Search,
 	ShieldCheck,
 	Sparkles,
 	Trash2,
@@ -24,8 +26,74 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
-import { APP_VERSION } from "../types";
+import { APP_VERSION, type AiModelItem } from "../types";
 import { MorningTVLogo } from "./MorningTVLogo";
+
+const AI_PROVIDERS = [
+	{
+		id: "auto",
+		name: "Auto-Detect",
+		desc: "Key signature based auto-router",
+		badge: "Smart",
+		keyHint: "Detects provider automatically from key prefix (gsk_, AIzaSy, sk-...)",
+		keyUrl: "",
+		guideDesc: "Enter any provider's API key. MorningTV will automatically detect and configure the neural endpoint.",
+	},
+	{
+		id: "groq",
+		name: "Groq LPU (Meta Llama)",
+		desc: "Llama 3.3 70B & 3.1 8B (Sub-second)",
+		badge: "100% Free",
+		keyHint: "Free API keys available instantly at console.groq.com",
+		keyUrl: "https://console.groq.com/keys",
+		guideDesc: "Groq LPUs deliver sub-second inference for Meta Llama 3.3 70B & 3.1 8B on their free tier with zero credit card required.",
+	},
+	{
+		id: "gemini",
+		name: "Google Gemini",
+		desc: "Gemini 2.0 Flash / 1.5 Flash",
+		badge: "Free Tier",
+		keyHint: "Free API keys available at aistudio.google.com",
+		keyUrl: "https://aistudio.google.com/app/apikey",
+		guideDesc: "Google AI Studio provides generous free tier quotas for Gemini 2.0 Flash & Gemini 1.5 Flash.",
+	},
+	{
+		id: "openrouter",
+		name: "OpenRouter",
+		desc: "Multi-Provider Gateway & :free models",
+		badge: "Free & Paid",
+		keyHint: "Access free and premium models at openrouter.ai",
+		keyUrl: "https://openrouter.ai/keys",
+		guideDesc: "Access hundreds of open-source models, including popular free-tier models via OpenRouter.",
+	},
+	{
+		id: "deepseek",
+		name: "DeepSeek",
+		desc: "DeepSeek V3 & R1 Reasoner",
+		badge: "Low Cost",
+		keyHint: "Cost-effective reasoning at platform.deepseek.com",
+		keyUrl: "https://platform.deepseek.com/api_keys",
+		guideDesc: "High-performance coding and reasoning powered by DeepSeek V3 and DeepSeek R1.",
+	},
+	{
+		id: "openai",
+		name: "OpenAI",
+		desc: "GPT-4o Mini & GPT-4o Omni",
+		badge: "Commercial",
+		keyHint: "Pay-as-you-go keys at platform.openai.com",
+		keyUrl: "https://platform.openai.com/api-keys",
+		guideDesc: "Official OpenAI access for state-of-the-art GPT-4o Mini and GPT-4o Omni reasoning.",
+	},
+	{
+		id: "ollama",
+		name: "Ollama (Local AI)",
+		desc: "Offline models on localhost:11434",
+		badge: "100% Free Offline",
+		keyHint: "Runs 100% locally on your PC without internet or API key",
+		keyUrl: "https://ollama.com",
+		guideDesc: "Runs completely offline and private on your local PC. Requires Ollama running on localhost:11434.",
+	},
+];
 
 type TabType =
 	| "playlist"
@@ -73,11 +141,19 @@ export const SettingsDialog: React.FC = () => {
 		addCustomSource,
 		removeCustomSource,
 		verifyAiKey,
+		fetchProviderModels,
+		setActiveAiModel,
 		saveAiConfiguration,
 	} = useAppStore();
 
 	const [activeTab, setActiveTab] = useState<TabType>("playlist");
 	const [isFetchingGitHub, setIsFetchingGitHub] = useState(false);
+	const [selectedProvider, setSelectedProvider] = useState<string>("auto");
+	const [selectedModel, setSelectedModel] = useState<string>("");
+	const [availableModelsList, setAvailableModelsList] = useState<AiModelItem[]>([]);
+	const [isLoadingModels, setIsLoadingModels] = useState(false);
+	const [modelSearchQuery, setModelSearchQuery] = useState("");
+	const [showFreeOnly, setShowFreeOnly] = useState(false);
 	const [aiKeyInput, setAiKeyInput] = useState("");
 	const [aiEndpointInput, setAiEndpointInput] = useState("");
 	const [showAiKey, setShowAiKey] = useState(false);
@@ -93,12 +169,50 @@ export const SettingsDialog: React.FC = () => {
 	const [newSourceInput, setNewSourceInput] = useState("");
 	const [isAddingSource, setIsAddingSource] = useState(false);
 
+	const loadModelsForProvider = async (
+		prov: string,
+		key?: string,
+		ep?: string,
+	) => {
+		setIsLoadingModels(true);
+		try {
+			const list = await fetchProviderModels(
+				prov,
+				key !== undefined ? key : aiKeyInput,
+				ep !== undefined ? ep : aiEndpointInput,
+			);
+			setAvailableModelsList(list);
+			if (list.length > 0) {
+				setSelectedModel((prev) => {
+					if (prev && list.some((m) => m.id === prev)) return prev;
+					const freeOne = list.find((m) => m.is_free);
+					return freeOne ? freeOne.id : list[0].id;
+				});
+			}
+		} finally {
+			setIsLoadingModels(false);
+		}
+	};
+
 	useEffect(() => {
 		const key = settings?.ai_api_key || settings?.groq_api_key || "";
 		setAiKeyInput(key);
 		if (settings?.ai_endpoint) {
 			setAiEndpointInput(settings.ai_endpoint);
 			setShowEndpointField(true);
+		}
+		if (settings?.ai_provider) {
+			const p = settings.ai_provider.toLowerCase();
+			if (p.includes("groq")) setSelectedProvider("groq");
+			else if (p.includes("gemini") || p.includes("google")) setSelectedProvider("gemini");
+			else if (p.includes("openrouter")) setSelectedProvider("openrouter");
+			else if (p.includes("deepseek")) setSelectedProvider("deepseek");
+			else if (p.includes("openai")) setSelectedProvider("openai");
+			else if (p.includes("ollama") || p.includes("local")) setSelectedProvider("ollama");
+			else setSelectedProvider("auto");
+		}
+		if (settings?.ai_model) {
+			setSelectedModel(settings.ai_model);
 		}
 		if (settings?.ai_provider && key) {
 			setAiVerifyResult({
@@ -108,6 +222,8 @@ export const SettingsDialog: React.FC = () => {
 				message: `Connected: ${settings.ai_provider}${settings.ai_model ? ` (${settings.ai_model})` : ""}`,
 			});
 		}
+		const activeProv = settings?.ai_provider || "auto";
+		loadModelsForProvider(activeProv, key, settings?.ai_endpoint || undefined);
 	}, [
 		settings?.ai_api_key,
 		settings?.groq_api_key,
@@ -750,19 +866,112 @@ export const SettingsDialog: React.FC = () => {
 										</button>
 									</div>
 
-									{/* API Key Input Section */}
+									{/* Step 1: Select AI Provider */}
+									<div className="flex flex-col gap-2 pt-2 border-t border-white/5">
+										<div className="flex items-center justify-between">
+											<span className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
+												<Cpu className="w-3.5 h-3.5 text-purple-400" />
+												<span>AI Provider</span>
+											</span>
+											<span className="text-[10px] text-zinc-400">
+												Choose provider to fetch live models
+											</span>
+										</div>
+
+										<div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+											{AI_PROVIDERS.map((prov) => {
+												const isSelected = selectedProvider === prov.id;
+												return (
+													<button
+														key={prov.id}
+														type="button"
+														onClick={() => {
+															setSelectedProvider(prov.id);
+															if (prov.id === "ollama") {
+																setShowEndpointField(true);
+																if (!aiEndpointInput) {
+																	setAiEndpointInput("http://localhost:11434/v1");
+																}
+															}
+															loadModelsForProvider(
+																prov.id,
+																aiKeyInput,
+																prov.id === "ollama" ? (aiEndpointInput || "http://localhost:11434/v1") : aiEndpointInput,
+															);
+														}}
+														className={`p-2.5 rounded-xl text-left transition-all border flex flex-col gap-1 cursor-pointer relative ${
+															isSelected
+																? "bg-purple-600/20 border-purple-500/60 shadow-[0_0_15px_rgba(168,85,247,0.15)] ring-1 ring-purple-500/40"
+																: "bg-white/[0.02] border-white/5 hover:bg-white/[0.05] hover:border-white/10"
+														}`}
+													>
+														<div className="flex items-center justify-between gap-1">
+															<span className={`text-[11px] font-bold ${isSelected ? "text-white" : "text-zinc-200"}`}>
+																{prov.name}
+															</span>
+															<span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${
+																prov.badge.includes("Free") || prov.badge.includes("100%")
+																	? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+																	: "bg-white/10 text-zinc-400"
+															}`}>
+																{prov.badge}
+															</span>
+														</div>
+														<span className="text-[9px] text-zinc-400 line-clamp-1">
+															{prov.desc}
+														</span>
+													</button>
+												);
+											})}
+										</div>
+
+										{/* Selected Provider Guidance Box */}
+										{(() => {
+											const provObj = AI_PROVIDERS.find((p) => p.id === selectedProvider) || AI_PROVIDERS[0];
+											return (
+												<div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 mt-1">
+													<div className="flex flex-col gap-0.5 min-w-0">
+														<div className="flex items-center gap-2">
+															<span className="text-xs font-bold text-purple-200">
+																{provObj.name}
+															</span>
+															<span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+																{provObj.badge}
+															</span>
+														</div>
+														<p className="text-[11px] text-zinc-300 leading-snug">
+															{provObj.guideDesc}
+														</p>
+													</div>
+													{provObj.keyUrl && (
+														<button
+															type="button"
+															onClick={() => window.open(provObj.keyUrl, "_blank")}
+															className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 border border-white/15 shadow-sm active:scale-95"
+														>
+															<ExternalLink className="w-3 h-3 text-cyan-400" />
+															<span>{provObj.id === "groq" ? "Get Free Groq Key" : "Get API Key"}</span>
+														</button>
+													)}
+												</div>
+											);
+										})()}
+									</div>
+
+									{/* Step 2: API Key Input Section */}
 									<div className="flex flex-col gap-2 pt-2 border-t border-white/5">
 										<div className="flex items-center justify-between">
 											<label
 												htmlFor="universal-ai-key-input"
-												className="text-xs font-medium text-zinc-300 flex items-center gap-1.5"
+												className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5"
 											>
 												<Key className="w-3.5 h-3.5 text-purple-400" />
-												<span>Universal AI API Key</span>
+												<span>API Key</span>
 											</label>
 											<span className="text-[10px] text-zinc-400">
-												Auto-detects Groq, OpenAI, Gemini, Claude, OpenRouter,
-												DeepSeek
+												{selectedProvider === "ollama"
+													? "Ollama is 100% free & offline (no key needed)"
+													: "Encrypted & stored locally on your device"}
 											</span>
 										</div>
 
@@ -773,7 +982,21 @@ export const SettingsDialog: React.FC = () => {
 													type={showAiKey ? "text" : "password"}
 													value={aiKeyInput}
 													onChange={(e) => setAiKeyInput(e.target.value)}
-													placeholder="Paste any API Key (gsk_..., sk-..., AIzaSy..., dsk_...)"
+													placeholder={
+														selectedProvider === "groq"
+															? "Paste Groq API Key (gsk_...) - 100% Free Rate Limits"
+															: selectedProvider === "gemini"
+																? "Paste Google Gemini API Key (AIzaSy...) - Free Flash Tier"
+																: selectedProvider === "openrouter"
+																	? "Paste OpenRouter API Key (sk-or-...) - Has :free models"
+																	: selectedProvider === "deepseek"
+																		? "Paste DeepSeek API Key (dsk_... or sk-...)"
+																		: selectedProvider === "openai"
+																			? "Paste OpenAI API Key (sk-proj-... / sk-...)"
+																			: selectedProvider === "ollama"
+																				? "Local Ollama requires no key (leave empty)"
+																				: "Paste API Key (gsk_..., sk-..., AIzaSy..., dsk_...)"
+													}
 													className="w-full px-3 py-2 pr-9 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500/50 font-mono transition-colors"
 												/>
 												<button
@@ -793,7 +1016,7 @@ export const SettingsDialog: React.FC = () => {
 											{/* Verify & Connect Button */}
 											<button
 												type="button"
-												disabled={isVerifyingAi || !aiKeyInput.trim()}
+												disabled={isVerifyingAi || (!aiKeyInput.trim() && selectedProvider !== "ollama")}
 												onClick={async () => {
 													setIsVerifyingAi(true);
 													setAiVerifyResult(null);
@@ -801,15 +1024,19 @@ export const SettingsDialog: React.FC = () => {
 														const res = await verifyAiKey(
 															aiKeyInput.trim(),
 															aiEndpointInput.trim() || null,
+															selectedProvider,
+															selectedModel || null,
 														);
 														setAiVerifyResult(res);
 														if (res.success) {
 															await saveAiConfiguration({
-																apiKey: aiKeyInput.trim(),
-																provider: res.provider_name,
-																model: res.active_model,
+																apiKey: aiKeyInput.trim() || (selectedProvider === "ollama" ? "local" : null),
+																provider: res.provider_name || selectedProvider,
+																model: selectedModel || res.active_model,
 																endpoint: res.endpoint,
 															});
+															// Refresh models with verified connection
+															loadModelsForProvider(selectedProvider, aiKeyInput, aiEndpointInput);
 														}
 													} catch (err) {
 														setAiVerifyResult({
@@ -820,7 +1047,7 @@ export const SettingsDialog: React.FC = () => {
 														setIsVerifyingAi(false);
 													}
 												}}
-												className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-xs font-semibold text-white transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-md"
+												className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-xs font-semibold text-white transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-md active:scale-95"
 											>
 												<Zap
 													className={`w-3.5 h-3.5 ${
@@ -828,7 +1055,7 @@ export const SettingsDialog: React.FC = () => {
 													}`}
 												/>
 												<span>
-													{isVerifyingAi ? "Detecting..." : "Verify & Connect"}
+													{isVerifyingAi ? "Connecting..." : "Verify & Connect"}
 												</span>
 											</button>
 
@@ -853,8 +1080,148 @@ export const SettingsDialog: React.FC = () => {
 												</button>
 											)}
 										</div>
+									</div>
 
-										{/* Custom Endpoint Option Toggle */}
+									{/* Step 3: Live Model Picker from Provider Server */}
+									<div className="flex flex-col gap-2.5 pt-2 border-t border-white/5">
+										<div className="flex items-center justify-between">
+											<div className="flex items-center gap-1.5">
+												<Sparkles className="w-3.5 h-3.5 text-cyan-400" />
+												<span className="text-xs font-semibold text-zinc-200">
+													Available Live Models
+												</span>
+												<span className="text-[10px] text-zinc-400 font-mono">
+													({(() => {
+														const list = availableModelsList.filter((m) => {
+															const matchesSearch = !modelSearchQuery.trim() || m.id.toLowerCase().includes(modelSearchQuery.toLowerCase());
+															const matchesFree = !showFreeOnly || m.is_free;
+															return matchesSearch && matchesFree;
+														});
+														return `${list.length} of ${availableModelsList.length}`;
+													})()})
+												</span>
+											</div>
+											<button
+												type="button"
+												onClick={() => loadModelsForProvider(selectedProvider)}
+												disabled={isLoadingModels}
+												className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
+											>
+												<RefreshCw className={`w-3 h-3 ${isLoadingModels ? "animate-spin" : ""}`} />
+												<span>{isLoadingModels ? "Fetching..." : "Refresh Live"}</span>
+											</button>
+										</div>
+
+										{/* Search Bar & Free Filter Switch */}
+										<div className="flex items-center gap-2">
+											<div className="relative flex-1">
+												<Search className="w-3.5 h-3.5 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+												<input
+													type="text"
+													value={modelSearchQuery}
+													onChange={(e) => setModelSearchQuery(e.target.value)}
+													placeholder="Search models (e.g. llama-3.3, 8b, flash, r1)..."
+													className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-purple-500 font-mono transition-colors"
+												/>
+												{modelSearchQuery && (
+													<button
+														type="button"
+														onClick={() => setModelSearchQuery("")}
+														className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+													>
+														<X className="w-3 h-3" />
+													</button>
+												)}
+											</div>
+
+											{/* Free Tier Filter Button */}
+											<button
+												type="button"
+												onClick={() => setShowFreeOnly(!showFreeOnly)}
+												className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all border flex items-center gap-1.5 cursor-pointer shrink-0 ${
+													showFreeOnly
+														? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm"
+														: "bg-white/5 text-zinc-400 border-white/10 hover:text-white"
+												}`}
+											>
+												<Filter className="w-3 h-3 text-emerald-400" />
+												<span>{showFreeOnly ? "🟢 Free Only" : "All Models"}</span>
+											</button>
+										</div>
+
+										{isLoadingModels ? (
+											<div className="p-4 rounded-xl bg-black/30 border border-white/5 flex items-center justify-center gap-2 text-zinc-300 text-xs">
+												<RefreshCw className="w-4 h-4 animate-spin text-purple-400" />
+												<span>Fetching live models from {selectedProvider} server...</span>
+											</div>
+										) : availableModelsList.length === 0 ? (
+											<div className="p-3.5 rounded-xl bg-black/30 border border-white/5 text-center text-zinc-400 text-xs">
+												Click "Refresh Live" or connect API key to fetch server models.
+											</div>
+										) : (() => {
+											const filtered = availableModelsList.filter((m) => {
+												const matchesSearch = !modelSearchQuery.trim() || m.id.toLowerCase().includes(modelSearchQuery.toLowerCase());
+												const matchesFree = !showFreeOnly || m.is_free;
+												return matchesSearch && matchesFree;
+											});
+											if (filtered.length === 0) {
+												return (
+													<div className="p-3.5 rounded-xl bg-black/30 border border-white/5 text-center text-zinc-400 text-xs">
+														No models match "{modelSearchQuery}" with current filters.
+													</div>
+												);
+											}
+											return (
+												<div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-48 overflow-y-auto pr-1">
+													{filtered.map((m) => {
+														const isModelActive = selectedModel === m.id;
+														return (
+															<button
+																key={m.id}
+																type="button"
+																onClick={async () => {
+																	setSelectedModel(m.id);
+																	if (settings?.ai_api_key || settings?.groq_api_key) {
+																		await setActiveAiModel(m.id);
+																	}
+																}}
+																className={`p-2 rounded-xl text-left transition-all border flex items-center justify-between gap-2 cursor-pointer ${
+																	isModelActive
+																		? "bg-purple-600/30 border-purple-500/70 text-white shadow-md ring-1 ring-purple-500/40"
+																		: "bg-white/[0.02] border-white/5 text-zinc-300 hover:bg-white/[0.06] hover:border-white/15"
+																}`}
+															>
+																<div className="flex items-center gap-1.5 min-w-0">
+																	{isModelActive && (
+																		<Check className="w-3 h-3 text-purple-400 shrink-0" />
+																	)}
+																	<span className={`text-[11px] font-mono truncate ${isModelActive ? "font-bold text-white" : "text-zinc-200"}`}>
+																		{m.id}
+																	</span>
+																</div>
+																{m.is_free ? (
+																	<span className="px-1.5 py-0.5 rounded text-[8px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shrink-0">
+																		FREE TIER
+																	</span>
+																) : (
+																	<span className="text-[8px] text-zinc-500 font-medium shrink-0">STANDARD</span>
+																)}
+															</button>
+														);
+													})}
+												</div>
+											);
+										})()}
+
+										{/* Pro tip */}
+										<div className="text-[10px] text-zinc-400 flex items-center gap-1 pt-1">
+											<span className="text-purple-400 font-bold">💡 Tip:</span>
+											<span>Switch models anytime in chat using <code className="text-purple-300 bg-white/5 px-1 py-0.2 rounded font-mono">\model &lt;name&gt;</code> or <code className="text-purple-300 bg-white/5 px-1 py-0.2 rounded font-mono">/model &lt;name&gt;</code>.</span>
+										</div>
+									</div>
+
+									{/* Advanced Custom Endpoint & Verification Result */}
+									<div className="flex flex-col gap-2 pt-1 border-t border-white/5">
 										<div className="pt-1">
 											<button
 												type="button"
