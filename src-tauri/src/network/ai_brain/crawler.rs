@@ -472,6 +472,47 @@ impl StreamCrawler {
     /// Intelligently parses target channel name from user prompt in Bengali or English
     pub fn extract_channel_target(msg: &str) -> Option<String> {
         let clean = msg.trim();
+        let lower = clean.to_lowercase();
+
+        // Check canonical channel dictionary first
+        if lower.contains("pogo") || lower.contains("পোগো") {
+            return Some("Pogo".to_string());
+        }
+        if lower.contains("জি বাংলা") || lower.contains("zee bangla") {
+            if lower.contains("এইচডি") || lower.contains("hd") {
+                return Some("Zee Bangla HD (720p)".to_string());
+            }
+            return Some("Zee Bangla".to_string());
+        }
+        if lower.contains("স্টার জলসা") || lower.contains("star jalsha") {
+            return Some("Star Jalsha".to_string());
+        }
+        if lower.contains("কালার্স বাংলা") || lower.contains("কালারস বাংলা") || lower.contains("colors bangla") {
+            return Some("Colors Bangla".to_string());
+        }
+        if lower.contains("সনি আট") || lower.contains("সনি ৮") || lower.contains("sony aath") {
+            return Some("Sony Aath".to_string());
+        }
+        if lower.contains("সনি ম্যাক্স") || lower.contains("sony max") {
+            return Some("Sony Max".to_string());
+        }
+        if lower.contains("কালার্স এইচডি") || lower.contains("কালারস এইচডি") || lower.contains("colors hd") {
+            return Some("Colors HD".to_string());
+        }
+        if lower.contains("হুগামা")
+            || lower.contains("হাঙ্গামা")
+            || lower.contains("hugama")
+            || lower.contains("hungama")
+        {
+            return Some("Hungama".to_string());
+        }
+        if lower.contains("কার্টুন নেটওয়ার্ক") || lower.contains("cartoon network") {
+            return Some("Cartoon Network".to_string());
+        }
+        if lower.contains("সনি ইয়ে") || lower.contains("sony yay") {
+            return Some("Sony YAY!".to_string());
+        }
+
         if clean.starts_with("/heal ")
             || clean.starts_with("\\heal ")
             || clean.starts_with("/hunt ")
@@ -492,45 +533,6 @@ impl StreamCrawler {
             if !target.is_empty() {
                 return Some(target.to_string());
             }
-        }
-
-        let lower = clean.to_lowercase();
-        if lower.contains("pogo") || lower.contains("পোগো") {
-            return Some("Pogo".to_string());
-        }
-        if lower.contains("জি বাংলা") {
-            if lower.contains("এইচডি") || lower.contains("hd") {
-                return Some("Zee Bangla HD (720p)".to_string());
-            }
-            return Some("Zee Bangla".to_string());
-        }
-        if lower.contains("স্টার জলসা") {
-            return Some("Star Jalsha".to_string());
-        }
-        if lower.contains("কালার্স বাংলা") || lower.contains("কালারস বাংলা") {
-            return Some("Colors Bangla".to_string());
-        }
-        if lower.contains("সনি আট") || lower.contains("সনি ৮") {
-            return Some("Sony Aath".to_string());
-        }
-        if lower.contains("সনি ম্যাক্স") {
-            return Some("Sony Max".to_string());
-        }
-        if lower.contains("কালার্স এইচডি") || lower.contains("কালারস এইচডি") {
-            return Some("Colors HD".to_string());
-        }
-        if lower.contains("হুগামা")
-            || lower.contains("হাঙ্গামা")
-            || lower.contains("hugama")
-            || lower.contains("hungama")
-        {
-            return Some("Hungama".to_string());
-        }
-        if lower.contains("কার্টুন নেটওয়ার্ক") || lower.contains("cartoon network") {
-            return Some("Cartoon Network".to_string());
-        }
-        if lower.contains("সনি ইয়ে") || lower.contains("sony yay") {
-            return Some("Sony YAY!".to_string());
         }
 
         let stopwords = [
@@ -593,31 +595,47 @@ impl StreamCrawler {
         let url_end = after_url.find(char::is_whitespace).unwrap_or(after_url.len());
         let stream_url = &after_url[..url_end];
 
-        let mut name = clean[..url_start].trim().to_string();
-        if name.is_empty() && clean.len() > url_start + url_end {
-            name = clean[url_start + url_end..].trim().to_string();
-        }
+        let prefix = clean[..url_start].trim();
+        let suffix = clean[url_start + url_end..].trim();
 
-        let stopwords = [
-            "add channel",
-            "add stream",
-            "add",
-            "channel",
-            "stream",
-            "for",
-            "named",
-            "নতুন চ্যানেল",
-            "অ্যাড করো",
-            "যোগ করো",
-        ];
-        for s in stopwords {
-            name = name.replace(s, " ");
-        }
-        let name = name.split_whitespace().collect::<Vec<_>>().join(" ");
-        let final_name = if name.is_empty() {
-            "Custom Channel".to_string()
+        let clean_part = |s: &str| -> String {
+            let stopwords = [
+                "add channel",
+                "addstream",
+                "add stream",
+                "add",
+                "stream",
+                "for",
+                "named",
+                "নতুন চ্যানেল",
+                "অ্যাড করো",
+                "যোগ করো",
+            ];
+            let mut t = s.to_string();
+            for word in &stopwords {
+                while let Some(pos) = t.to_lowercase().find(word) {
+                    t.replace_range(pos..pos + word.len(), " ");
+                }
+            }
+            t.chars()
+                .filter(|c| *c != ':' && *c != '-' && *c != '"' && *c != '\'')
+                .collect::<String>()
+                .split_whitespace()
+                .collect::<Vec<_>>()
+                .join(" ")
+        };
+
+        let pref_cleaned = clean_part(prefix);
+        let suff_cleaned = clean_part(suffix);
+
+        let final_name = if !suff_cleaned.is_empty() && pref_cleaned.is_empty() {
+            suff_cleaned
+        } else if !pref_cleaned.is_empty() && suff_cleaned.is_empty() {
+            pref_cleaned
+        } else if !pref_cleaned.is_empty() && !suff_cleaned.is_empty() {
+            format!("{} {}", pref_cleaned, suff_cleaned)
         } else {
-            name
+            "Custom Channel".to_string()
         };
 
         Some((final_name, stream_url.to_string()))

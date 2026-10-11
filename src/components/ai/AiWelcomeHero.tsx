@@ -48,7 +48,8 @@ export const AiWelcomeHero: React.FC<AiWelcomeHeroProps> = ({
 				MorningTV AI Co-Pilot
 			</h2>
 			<p className="text-xs text-zinc-400 max-w-md mx-auto mb-6 leading-relaxed">
-				Multilingual AI brain with live tool execution. Switch channels, heal lost streams into database, or ask any question.
+				Multilingual AI brain with live tool execution. Switch channels, heal
+				lost streams into database, or ask any question.
 			</p>
 
 			{/* Prompt Suggestion Cards (2x2 Grid) */}

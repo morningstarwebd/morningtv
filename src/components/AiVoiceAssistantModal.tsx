@@ -142,7 +142,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 	useEffect(() => {
 		try {
 			if (typeof window !== "undefined" && window.localStorage) {
-				localStorage.setItem(CHAT_MEMORY_KEY, JSON.stringify(messages.slice(-100)));
+				localStorage.setItem(
+					CHAT_MEMORY_KEY,
+					JSON.stringify(messages.slice(-100)),
+				);
 			}
 		} catch (e) {
 			console.warn("Failed to save chat memory:", e);
@@ -190,8 +193,12 @@ export const AiVoiceAssistantModal: React.FC = () => {
 	};
 
 	// Command Palette Trigger & Filtering for backslash (\) and slash (/)
-	const isCommandTrigger = inputText.startsWith("\\") || inputText.startsWith("/");
-	const cleanCommandQuery = inputText.replace(/^[/\\+]/, "").trim().toLowerCase();
+	const isCommandTrigger =
+		inputText.startsWith("\\") || inputText.startsWith("/");
+	const cleanCommandQuery = inputText
+		.replace(/^[/\\+]/, "")
+		.trim()
+		.toLowerCase();
 
 	const filteredCommands = AI_SYSTEM_COMMANDS.filter((cmd) => {
 		if (!cleanCommandQuery) return true;
@@ -233,11 +240,17 @@ export const AiVoiceAssistantModal: React.FC = () => {
 			}
 			if (e.key === "ArrowUp") {
 				e.preventDefault();
-				setSelectedCommandIndex((prev) => (prev - 1 + filteredCommands.length) % filteredCommands.length);
+				setSelectedCommandIndex(
+					(prev) =>
+						(prev - 1 + filteredCommands.length) % filteredCommands.length,
+				);
 				return;
 			}
 			if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
-				if (!inputText.includes(" ") && filteredCommands[selectedCommandIndex]) {
+				if (
+					!inputText.includes(" ") &&
+					filteredCommands[selectedCommandIndex]
+				) {
 					e.preventDefault();
 					handleSelectCommand(filteredCommands[selectedCommandIndex]);
 					return;
@@ -354,7 +367,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: `Active Model: ${settings?.ai_model || "Default"}\n\nTo change model, type: \\model <model-name> (or /model <model-name>)\nTo see all models from provider, type: \\models`,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
 					return;
@@ -367,7 +383,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: `🤖 Model successfully changed to: "${arg}"! Subsequent queries will route through this model.`,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
 				} catch (err) {
@@ -375,7 +394,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: `Failed to set model: ${err}`,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
 				} finally {
@@ -398,21 +420,30 @@ export const AiVoiceAssistantModal: React.FC = () => {
 							id: (Date.now() + 1).toString(),
 							sender: "ai",
 							text: `No models returned from ${provider}. Make sure your API key is configured in Settings.`,
-							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+							timestamp: new Date().toLocaleTimeString([], {
+								hour: "2-digit",
+								minute: "2-digit",
+							}),
 						};
 						setMessages((prev) => [...prev, aiMsg]);
 					} else {
 						const freeCount = models.filter((m) => m.is_free).length;
 						const modelListStr = models
 							.slice(0, 16)
-							.map((m, i) => `${i + 1}. \`${m.id}\`${m.is_free ? " 🟢 [FREE]" : ""}`)
+							.map(
+								(m, i) =>
+									`${i + 1}. \`${m.id}\`${m.is_free ? " 🟢 [FREE]" : ""}`,
+							)
 							.join("\n");
 
 						const aiMsg: ChatMessage = {
 							id: (Date.now() + 1).toString(),
 							sender: "ai",
 							text: `📡 Live Models for **${provider}** (${freeCount} Free Tier models available):\n\n${modelListStr}\n\n💡 Switch model anytime using: \`\\model <name>\` or \`/model <name>\``,
-							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+							timestamp: new Date().toLocaleTimeString([], {
+								hour: "2-digit",
+								minute: "2-digit",
+							}),
 						};
 						setMessages((prev) => [...prev, aiMsg]);
 					}
@@ -421,7 +452,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: `Failed to fetch models: ${err}`,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
 				} finally {
@@ -436,7 +470,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: "Please specify a channel name, e.g.: `\\hunt Zee Bangla HD` or `\\add Hungama`",
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
 					return;
@@ -444,13 +481,17 @@ export const AiVoiceAssistantModal: React.FC = () => {
 				setIsThinking(true);
 				try {
 					const feedback = await executeAiAction("hunt_stream", arg);
-					const isSuccess = feedback?.startsWith("⚡") || feedback?.startsWith("✅");
+					const isSuccess =
+						feedback?.startsWith("⚡") || feedback?.startsWith("✅");
 					const aiMsg: ChatMessage = {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: feedback || `Searching internet for ${arg}...`,
 						actionFeedback: isSuccess ? "Stream Active & Playing" : undefined,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
 				} finally {
@@ -465,7 +506,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: "Please provide stream URL and channel name, e.g.: `\\addstream https://example.com/live.m3u8 for Pogo`",
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
 					return;
@@ -488,13 +532,21 @@ export const AiVoiceAssistantModal: React.FC = () => {
 							url = parts.slice(1).join(" ");
 						}
 					}
-					const feedback = await executeAiAction("add_channel", `${name}|${url}`);
+					const feedback = await executeAiAction(
+						"add_channel",
+						`${name}|${url}`,
+					);
 					const aiMsg: ChatMessage = {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: feedback || `Adding stream for ${name}...`,
-						actionFeedback: feedback?.startsWith("✅") ? "Added & Playing" : undefined,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						actionFeedback: feedback?.startsWith("✅")
+							? "Added & Playing"
+							: undefined,
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					};
 					setMessages((prev) => [...prev, aiMsg]);
 				} finally {
@@ -512,7 +564,8 @@ export const AiVoiceAssistantModal: React.FC = () => {
 				const aiMsg: ChatMessage = {
 					id: (Date.now() + 1).toString(),
 					sender: "ai",
-					text: "🛠️ **MorningTV Autonomous AI Powers & Available Tools:**\n\n" +
+					text:
+						"🛠️ **MorningTV Autonomous AI Powers & Available Tools:**\n\n" +
 						"- `\\play <channel>` — Tune into any live channel (e.g. `\\play Zee Bangla HD`)\n" +
 						"- `\\hunt <channel>` — Autonomous stream hunter: Finds internet mirrors & saves to SQLite\n" +
 						"- `\\doctor <channel>` — Stream Doctor diagnostics: Verifies stream health & mirrors\n" +
@@ -526,7 +579,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						"- `\\fullscreen` — Toggle cinema fullscreen mode\n" +
 						"- `\\model <name>` / `\\models` — Switch or browse live AI models\n" +
 						"- `\\clear` — Reset conversation memory",
-					timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+					timestamp: new Date().toLocaleTimeString([], {
+						hour: "2-digit",
+						minute: "2-digit",
+					}),
 				};
 				setMessages((prev) => [...prev, aiMsg]);
 				return;
@@ -540,7 +596,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 							id: (Date.now() + 1).toString(),
 							sender: "ai",
 							text: "Please specify a channel name, e.g.: `\\play Zee Bangla HD` or `\\play Hungama`",
-							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+							timestamp: new Date().toLocaleTimeString([], {
+								hour: "2-digit",
+								minute: "2-digit",
+							}),
 						},
 					]);
 					return;
@@ -553,7 +612,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						sender: "ai",
 						text: feedback || `Tuning into "${arg}"...`,
 						actionFeedback: feedback,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					},
 				]);
 				return;
@@ -566,7 +628,8 @@ export const AiVoiceAssistantModal: React.FC = () => {
 					const res = await invoke<StreamHealResult>("ai_diagnose_stream", {
 						channelName: target,
 					});
-					const text = `🩺 **Stream Doctor Report for "${res.channel_name}":**\n\n` +
+					const text =
+						`🩺 **Stream Doctor Report for "${res.channel_name}":**\n\n` +
 						`- Status: ${res.healed ? "✅ Healed & Saved to DB" : res.requires_user_confirmation ? "🟡 Candidate Found (Confirmation Required)" : "ℹ️ Diagnostic Complete"}\n` +
 						`- Result: ${res.message}\n` +
 						(res.new_url ? `- Working Stream URL: \`${res.new_url}\`` : "");
@@ -577,7 +640,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 							sender: "ai",
 							text,
 							actionFeedback: res.message,
-							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+							timestamp: new Date().toLocaleTimeString([], {
+								hour: "2-digit",
+								minute: "2-digit",
+							}),
 						},
 					]);
 				} catch (err) {
@@ -587,7 +653,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 							id: (Date.now() + 1).toString(),
 							sender: "ai",
 							text: `Stream Doctor check failed: ${err}`,
-							timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+							timestamp: new Date().toLocaleTimeString([], {
+								hour: "2-digit",
+								minute: "2-digit",
+							}),
 						},
 					]);
 				} finally {
@@ -604,7 +673,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: feedback || `Volume set to ${arg}%`,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					},
 				]);
 				return;
@@ -618,7 +690,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: feedback || "Mute toggled",
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					},
 				]);
 				return;
@@ -632,7 +707,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: feedback || `Sleep timer set for ${arg || 30} minutes`,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					},
 				]);
 				return;
@@ -646,7 +724,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: feedback || `Auto-tune scheduled for ${arg}`,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					},
 				]);
 				return;
@@ -660,7 +741,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: feedback || `Category filtered to "${arg}"`,
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					},
 				]);
 				return;
@@ -674,7 +758,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 						id: (Date.now() + 1).toString(),
 						sender: "ai",
 						text: feedback || "Fullscreen toggled",
-						timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+						timestamp: new Date().toLocaleTimeString([], {
+							hour: "2-digit",
+							minute: "2-digit",
+						}),
 					},
 				]);
 				return;
@@ -705,7 +792,9 @@ export const AiVoiceAssistantModal: React.FC = () => {
 				if (actionFeedback) {
 					if (response.action === "hunt_stream") {
 						mainReply = actionFeedback;
-						actionFeedback = actionFeedback.startsWith("⚡") ? "Stream Verified" : undefined;
+						actionFeedback = actionFeedback.startsWith("⚡")
+							? "Stream Verified"
+							: undefined;
 					} else if (response.action === "add_channel") {
 						mainReply = actionFeedback;
 						actionFeedback = "Added & Playing";
@@ -844,7 +933,9 @@ export const AiVoiceAssistantModal: React.FC = () => {
 									<span className="max-w-[110px] sm:max-w-[140px] truncate">
 										{settings?.ai_model || "Select Model"}
 									</span>
-									<ChevronDown className={`w-2.5 h-2.5 transition-transform ${showModelPicker ? "rotate-180" : ""}`} />
+									<ChevronDown
+										className={`w-2.5 h-2.5 transition-transform ${showModelPicker ? "rotate-180" : ""}`}
+									/>
 								</button>
 							</div>
 							<p className="text-[10px] text-zinc-400 truncate mt-0.5">
@@ -950,7 +1041,10 @@ export const AiVoiceAssistantModal: React.FC = () => {
 								id: Date.now().toString(),
 								sender: "ai",
 								text: `🤖 Model switched to "${modelId}"!`,
-								timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+								timestamp: new Date().toLocaleTimeString([], {
+									hour: "2-digit",
+									minute: "2-digit",
+								}),
 							},
 						]);
 					}}
@@ -994,10 +1088,7 @@ export const AiVoiceAssistantModal: React.FC = () => {
 				</div>
 
 				{/* Floating Soundwave Dock Banner when Voice is Active */}
-				<AiVoiceDock
-					isListening={isListening}
-					transcript={transcript}
-				/>
+				<AiVoiceDock isListening={isListening} transcript={transcript} />
 
 				{/* Voice Fallback Notice Banner */}
 				{(!isSpeechSupported || speechErrorMessage) && (

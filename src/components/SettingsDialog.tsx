@@ -26,7 +26,7 @@ import {
 import type React from "react";
 import { useEffect, useState } from "react";
 import { useAppStore } from "../stores/appStore";
-import { APP_VERSION, type AiModelItem } from "../types";
+import { type AiModelItem, APP_VERSION } from "../types";
 import { MorningTVLogo } from "./MorningTVLogo";
 
 const AI_PROVIDERS = [
@@ -35,9 +35,11 @@ const AI_PROVIDERS = [
 		name: "Auto-Detect",
 		desc: "Key signature based auto-router",
 		badge: "Smart",
-		keyHint: "Detects provider automatically from key prefix (gsk_, AIzaSy, sk-...)",
+		keyHint:
+			"Detects provider automatically from key prefix (gsk_, AIzaSy, sk-...)",
 		keyUrl: "",
-		guideDesc: "Enter any provider's API key. MorningTV will automatically detect and configure the neural endpoint.",
+		guideDesc:
+			"Enter any provider's API key. MorningTV will automatically detect and configure the neural endpoint.",
 	},
 	{
 		id: "groq",
@@ -46,7 +48,8 @@ const AI_PROVIDERS = [
 		badge: "100% Free",
 		keyHint: "Free API keys available instantly at console.groq.com",
 		keyUrl: "https://console.groq.com/keys",
-		guideDesc: "Groq LPUs deliver sub-second inference for Meta Llama 3.3 70B & 3.1 8B on their free tier with zero credit card required.",
+		guideDesc:
+			"Groq LPUs deliver sub-second inference for Meta Llama 3.3 70B & 3.1 8B on their free tier with zero credit card required.",
 	},
 	{
 		id: "gemini",
@@ -55,7 +58,8 @@ const AI_PROVIDERS = [
 		badge: "Free Tier",
 		keyHint: "Free API keys available at aistudio.google.com",
 		keyUrl: "https://aistudio.google.com/app/apikey",
-		guideDesc: "Google AI Studio provides generous free tier quotas for Gemini 2.0 Flash & Gemini 1.5 Flash.",
+		guideDesc:
+			"Google AI Studio provides generous free tier quotas for Gemini 2.0 Flash & Gemini 1.5 Flash.",
 	},
 	{
 		id: "openrouter",
@@ -64,7 +68,8 @@ const AI_PROVIDERS = [
 		badge: "Free & Paid",
 		keyHint: "Access free and premium models at openrouter.ai",
 		keyUrl: "https://openrouter.ai/keys",
-		guideDesc: "Access hundreds of open-source models, including popular free-tier models via OpenRouter.",
+		guideDesc:
+			"Access hundreds of open-source models, including popular free-tier models via OpenRouter.",
 	},
 	{
 		id: "deepseek",
@@ -73,7 +78,8 @@ const AI_PROVIDERS = [
 		badge: "Low Cost",
 		keyHint: "Cost-effective reasoning at platform.deepseek.com",
 		keyUrl: "https://platform.deepseek.com/api_keys",
-		guideDesc: "High-performance coding and reasoning powered by DeepSeek V3 and DeepSeek R1.",
+		guideDesc:
+			"High-performance coding and reasoning powered by DeepSeek V3 and DeepSeek R1.",
 	},
 	{
 		id: "openai",
@@ -82,7 +88,8 @@ const AI_PROVIDERS = [
 		badge: "Commercial",
 		keyHint: "Pay-as-you-go keys at platform.openai.com",
 		keyUrl: "https://platform.openai.com/api-keys",
-		guideDesc: "Official OpenAI access for state-of-the-art GPT-4o Mini and GPT-4o Omni reasoning.",
+		guideDesc:
+			"Official OpenAI access for state-of-the-art GPT-4o Mini and GPT-4o Omni reasoning.",
 	},
 	{
 		id: "ollama",
@@ -91,7 +98,8 @@ const AI_PROVIDERS = [
 		badge: "100% Free Offline",
 		keyHint: "Runs 100% locally on your PC without internet or API key",
 		keyUrl: "https://ollama.com",
-		guideDesc: "Runs completely offline and private on your local PC. Requires Ollama running on localhost:11434.",
+		guideDesc:
+			"Runs completely offline and private on your local PC. Requires Ollama running on localhost:11434.",
 	},
 ];
 
@@ -151,7 +159,9 @@ export const SettingsDialog: React.FC = () => {
 	const [isFetchingGitHub, setIsFetchingGitHub] = useState(false);
 	const [selectedProvider, setSelectedProvider] = useState<string>("auto");
 	const [selectedModel, setSelectedModel] = useState<string>("");
-	const [availableModelsList, setAvailableModelsList] = useState<AiModelItem[]>([]);
+	const [availableModelsList, setAvailableModelsList] = useState<AiModelItem[]>(
+		[],
+	);
 	const [isLoadingModels, setIsLoadingModels] = useState(false);
 	const [modelSearchQuery, setModelSearchQuery] = useState("");
 	const [showFreeOnly, setShowFreeOnly] = useState(false);
@@ -205,11 +215,13 @@ export const SettingsDialog: React.FC = () => {
 		if (settings?.ai_provider) {
 			const p = settings.ai_provider.toLowerCase();
 			if (p.includes("groq")) setSelectedProvider("groq");
-			else if (p.includes("gemini") || p.includes("google")) setSelectedProvider("gemini");
+			else if (p.includes("gemini") || p.includes("google"))
+				setSelectedProvider("gemini");
 			else if (p.includes("openrouter")) setSelectedProvider("openrouter");
 			else if (p.includes("deepseek")) setSelectedProvider("deepseek");
 			else if (p.includes("openai")) setSelectedProvider("openai");
-			else if (p.includes("ollama") || p.includes("local")) setSelectedProvider("ollama");
+			else if (p.includes("ollama") || p.includes("local"))
+				setSelectedProvider("ollama");
 			else setSelectedProvider("auto");
 		}
 		if (settings?.ai_model) {
@@ -547,7 +559,8 @@ export const SettingsDialog: React.FC = () => {
 													Local ISP Stream Verification
 												</h4>
 												<p className="text-[10px] text-zinc-400 mt-0.5">
-													Audits live streams on your connection and auto-promotes backup mirrors
+													Audits live streams on your connection and
+													auto-promotes backup mirrors
 												</p>
 											</div>
 										</div>
@@ -559,9 +572,7 @@ export const SettingsDialog: React.FC = () => {
 											className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 active:scale-95 text-white text-[11px] font-semibold transition-all flex items-center gap-1.5 disabled:opacity-40 cursor-pointer shadow-sm shrink-0"
 										>
 											<RefreshCw
-												className={`w-3 h-3 ${
-													isSyncing ? "animate-spin" : ""
-												}`}
+												className={`w-3 h-3 ${isSyncing ? "animate-spin" : ""}`}
 											/>
 											<span>
 												{isSyncing
@@ -687,7 +698,8 @@ export const SettingsDialog: React.FC = () => {
 													Ambilight Ambient Glow
 												</h4>
 												<p className="text-[10px] text-zinc-400 mt-0.5">
-													Projects dynamic ambient colors on the wall behind the player
+													Projects dynamic ambient colors on the wall behind the
+													player
 												</p>
 											</div>
 										</div>
@@ -744,7 +756,8 @@ export const SettingsDialog: React.FC = () => {
 												</span>
 											</div>
 											<p className="text-[10px] text-zinc-400 mt-0.5">
-												Deep background buffering and automated failover keep playback smooth without freezing
+												Deep background buffering and automated failover keep
+												playback smooth without freezing
 											</p>
 										</div>
 									</div>
@@ -778,7 +791,8 @@ export const SettingsDialog: React.FC = () => {
 													)}
 												</div>
 												<p className="text-[10px] text-zinc-400 mt-0.5">
-													Balances loudness variations between channels so switching never hurts your ears
+													Balances loudness variations between channels so
+													switching never hurts your ears
 												</p>
 											</div>
 										</div>
@@ -837,7 +851,8 @@ export const SettingsDialog: React.FC = () => {
 													</span>
 												</div>
 												<p className="text-[10px] text-zinc-400 mt-0.5">
-													Multi-model voice copilot, semantic channel navigation & autonomous stream healing
+													Multi-model voice copilot, semantic channel navigation
+													& autonomous stream healing
 												</p>
 											</div>
 										</div>
@@ -886,13 +901,18 @@ export const SettingsDialog: React.FC = () => {
 															if (prov.id === "ollama") {
 																setShowEndpointField(true);
 																if (!aiEndpointInput) {
-																	setAiEndpointInput("http://localhost:11434/v1");
+																	setAiEndpointInput(
+																		"http://localhost:11434/v1",
+																	);
 																}
 															}
 															loadModelsForProvider(
 																prov.id,
 																aiKeyInput,
-																prov.id === "ollama" ? (aiEndpointInput || "http://localhost:11434/v1") : aiEndpointInput,
+																prov.id === "ollama"
+																	? aiEndpointInput ||
+																			"http://localhost:11434/v1"
+																	: aiEndpointInput,
 															);
 														}}
 														className={`p-2 rounded-lg text-left transition-all border flex flex-col gap-0.5 cursor-pointer relative ${
@@ -902,14 +922,19 @@ export const SettingsDialog: React.FC = () => {
 														}`}
 													>
 														<div className="flex items-center justify-between gap-1">
-															<span className={`text-[10px] font-bold ${isSelected ? "text-white" : "text-zinc-200"}`}>
+															<span
+																className={`text-[10px] font-bold ${isSelected ? "text-white" : "text-zinc-200"}`}
+															>
 																{prov.name}
 															</span>
-															<span className={`text-[7.5px] font-bold px-1 py-0.2 rounded ${
-																prov.badge.includes("Free") || prov.badge.includes("100%")
-																	? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-																	: "bg-white/10 text-zinc-400"
-															}`}>
+															<span
+																className={`text-[7.5px] font-bold px-1 py-0.2 rounded ${
+																	prov.badge.includes("Free") ||
+																	prov.badge.includes("100%")
+																		? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+																		: "bg-white/10 text-zinc-400"
+																}`}
+															>
 																{prov.badge}
 															</span>
 														</div>
@@ -923,7 +948,9 @@ export const SettingsDialog: React.FC = () => {
 
 										{/* Selected Provider Guidance Box */}
 										{(() => {
-											const provObj = AI_PROVIDERS.find((p) => p.id === selectedProvider) || AI_PROVIDERS[0];
+											const provObj =
+												AI_PROVIDERS.find((p) => p.id === selectedProvider) ||
+												AI_PROVIDERS[0];
 											return (
 												<div className="p-2 sm:p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mt-0.5">
 													<div className="flex flex-col gap-0.5 min-w-0">
@@ -942,11 +969,17 @@ export const SettingsDialog: React.FC = () => {
 													{provObj.keyUrl && (
 														<button
 															type="button"
-															onClick={() => window.open(provObj.keyUrl, "_blank")}
+															onClick={() =>
+																window.open(provObj.keyUrl, "_blank")
+															}
 															className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[10px] font-semibold transition-all flex items-center gap-1 cursor-pointer shrink-0 border border-white/15 shadow-sm active:scale-95"
 														>
 															<ExternalLink className="w-2.5 h-2.5 text-cyan-400" />
-															<span>{provObj.id === "groq" ? "Get Free Groq Key" : "Get API Key"}</span>
+															<span>
+																{provObj.id === "groq"
+																	? "Get Free Groq Key"
+																	: "Get API Key"}
+															</span>
 														</button>
 													)}
 												</div>
@@ -1012,7 +1045,10 @@ export const SettingsDialog: React.FC = () => {
 											{/* Verify & Connect Button */}
 											<button
 												type="button"
-												disabled={isVerifyingAi || (!aiKeyInput.trim() && selectedProvider !== "ollama")}
+												disabled={
+													isVerifyingAi ||
+													(!aiKeyInput.trim() && selectedProvider !== "ollama")
+												}
 												onClick={async () => {
 													setIsVerifyingAi(true);
 													setAiVerifyResult(null);
@@ -1026,13 +1062,21 @@ export const SettingsDialog: React.FC = () => {
 														setAiVerifyResult(res);
 														if (res.success) {
 															await saveAiConfiguration({
-																apiKey: aiKeyInput.trim() || (selectedProvider === "ollama" ? "local" : null),
+																apiKey:
+																	aiKeyInput.trim() ||
+																	(selectedProvider === "ollama"
+																		? "local"
+																		: null),
 																provider: res.provider_name || selectedProvider,
 																model: selectedModel || res.active_model,
 																endpoint: res.endpoint,
 															});
 															// Refresh models with verified connection
-															loadModelsForProvider(selectedProvider, aiKeyInput, aiEndpointInput);
+															loadModelsForProvider(
+																selectedProvider,
+																aiKeyInput,
+																aiEndpointInput,
+															);
 														}
 													} catch (err) {
 														setAiVerifyResult({
@@ -1089,7 +1133,11 @@ export const SettingsDialog: React.FC = () => {
 												<span className="text-[10px] text-zinc-400 font-mono">
 													({(() => {
 														const list = availableModelsList.filter((m) => {
-															const matchesSearch = !modelSearchQuery.trim() || m.id.toLowerCase().includes(modelSearchQuery.toLowerCase());
+															const matchesSearch =
+																!modelSearchQuery.trim() ||
+																m.id
+																	.toLowerCase()
+																	.includes(modelSearchQuery.toLowerCase());
 															const matchesFree = !showFreeOnly || m.is_free;
 															return matchesSearch && matchesFree;
 														});
@@ -1103,8 +1151,12 @@ export const SettingsDialog: React.FC = () => {
 												disabled={isLoadingModels}
 												className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 flex items-center gap-1 cursor-pointer transition-colors"
 											>
-												<RefreshCw className={`w-3 h-3 ${isLoadingModels ? "animate-spin" : ""}`} />
-												<span>{isLoadingModels ? "Fetching..." : "Refresh Live"}</span>
+												<RefreshCw
+													className={`w-3 h-3 ${isLoadingModels ? "animate-spin" : ""}`}
+												/>
+												<span>
+													{isLoadingModels ? "Fetching..." : "Refresh Live"}
+												</span>
 											</button>
 										</div>
 
@@ -1141,78 +1193,103 @@ export const SettingsDialog: React.FC = () => {
 												}`}
 											>
 												<Filter className="w-2.5 h-2.5 text-emerald-400" />
-												<span>{showFreeOnly ? "🟢 Free Only" : "All Models"}</span>
+												<span>
+													{showFreeOnly ? "🟢 Free Only" : "All Models"}
+												</span>
 											</button>
 										</div>
 
 										{isLoadingModels ? (
 											<div className="p-3 rounded-lg bg-black/30 border border-white/5 flex items-center justify-center gap-2 text-zinc-300 text-[11px]">
 												<RefreshCw className="w-3.5 h-3.5 animate-spin text-purple-400" />
-												<span>Fetching live models from {selectedProvider} server...</span>
+												<span>
+													Fetching live models from {selectedProvider} server...
+												</span>
 											</div>
 										) : availableModelsList.length === 0 ? (
 											<div className="p-2.5 rounded-lg bg-black/30 border border-white/5 text-center text-zinc-400 text-[10px]">
-												Click "Refresh Live" or connect API key to fetch server models.
+												Click "Refresh Live" or connect API key to fetch server
+												models.
 											</div>
-										) : (() => {
-											const filtered = availableModelsList.filter((m) => {
-												const matchesSearch = !modelSearchQuery.trim() || m.id.toLowerCase().includes(modelSearchQuery.toLowerCase());
-												const matchesFree = !showFreeOnly || m.is_free;
-												return matchesSearch && matchesFree;
-											});
-											if (filtered.length === 0) {
+										) : (
+											(() => {
+												const filtered = availableModelsList.filter((m) => {
+													const matchesSearch =
+														!modelSearchQuery.trim() ||
+														m.id
+															.toLowerCase()
+															.includes(modelSearchQuery.toLowerCase());
+													const matchesFree = !showFreeOnly || m.is_free;
+													return matchesSearch && matchesFree;
+												});
+												if (filtered.length === 0) {
+													return (
+														<div className="p-2.5 rounded-lg bg-black/30 border border-white/5 text-center text-zinc-400 text-[10px]">
+															No models match "{modelSearchQuery}" with current
+															filters.
+														</div>
+													);
+												}
 												return (
-													<div className="p-2.5 rounded-lg bg-black/30 border border-white/5 text-center text-zinc-400 text-[10px]">
-														No models match "{modelSearchQuery}" with current filters.
+													<div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-40 overflow-y-auto pr-1">
+														{filtered.map((m) => {
+															const isModelActive = selectedModel === m.id;
+															return (
+																<button
+																	key={m.id}
+																	type="button"
+																	onClick={async () => {
+																		setSelectedModel(m.id);
+																		if (
+																			settings?.ai_api_key ||
+																			settings?.groq_api_key
+																		) {
+																			await setActiveAiModel(m.id);
+																		}
+																	}}
+																	className={`p-1.5 px-2 rounded-lg text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
+																		isModelActive
+																			? "bg-purple-600/30 border-purple-500/70 text-white shadow-md ring-1 ring-purple-500/40"
+																			: "bg-white/[0.02] border-white/5 text-zinc-300 hover:bg-white/[0.06] hover:border-white/15"
+																	}`}
+																>
+																	<div className="flex items-center gap-1.5 min-w-0">
+																		{isModelActive && (
+																			<Check className="w-2.5 h-2.5 text-purple-400 shrink-0" />
+																		)}
+																		<span
+																			className={`text-[10px] font-mono truncate ${isModelActive ? "font-bold text-white" : "text-zinc-200"}`}
+																		>
+																			{m.id}
+																		</span>
+																	</div>
+																	{m.is_free ? (
+																		<span className="px-1 py-0.2 rounded text-[7.5px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shrink-0">
+																			FREE
+																		</span>
+																	) : (
+																		<span className="text-[7.5px] text-zinc-500 font-medium shrink-0">
+																			STD
+																		</span>
+																	)}
+																</button>
+															);
+														})}
 													</div>
 												);
-											}
-											return (
-												<div className="grid grid-cols-1 sm:grid-cols-2 gap-1 max-h-40 overflow-y-auto pr-1">
-													{filtered.map((m) => {
-														const isModelActive = selectedModel === m.id;
-														return (
-															<button
-																key={m.id}
-																type="button"
-																onClick={async () => {
-																	setSelectedModel(m.id);
-																	if (settings?.ai_api_key || settings?.groq_api_key) {
-																		await setActiveAiModel(m.id);
-																	}
-																}}
-																className={`p-1.5 px-2 rounded-lg text-left transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
-																	isModelActive
-																		? "bg-purple-600/30 border-purple-500/70 text-white shadow-md ring-1 ring-purple-500/40"
-																		: "bg-white/[0.02] border-white/5 text-zinc-300 hover:bg-white/[0.06] hover:border-white/15"
-																}`}
-															>
-																<div className="flex items-center gap-1.5 min-w-0">
-																	{isModelActive && (
-																		<Check className="w-2.5 h-2.5 text-purple-400 shrink-0" />
-																	)}
-																	<span className={`text-[10px] font-mono truncate ${isModelActive ? "font-bold text-white" : "text-zinc-200"}`}>
-																		{m.id}
-																	</span>
-																</div>
-																{m.is_free ? (
-																	<span className="px-1 py-0.2 rounded text-[7.5px] font-extrabold bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shrink-0">
-																		FREE
-																	</span>
-																) : (
-																	<span className="text-[7.5px] text-zinc-500 font-medium shrink-0">STD</span>
-																)}
-															</button>
-														);
-													})}
-												</div>
-											);
-										})()}
+											})()
+										)}
 
 										{/* Pro tip */}
 										<div className="text-[9.5px] text-zinc-400 flex items-center gap-1 pt-0.5">
 											<span className="text-purple-400 font-bold">💡 Tip:</span>
-											<span>Switch models in chat with <code className="text-purple-300 bg-white/5 px-1 rounded font-mono">\model &lt;name&gt;</code>.</span>
+											<span>
+												Switch models in chat with{" "}
+												<code className="text-purple-300 bg-white/5 px-1 rounded font-mono">
+													\model &lt;name&gt;
+												</code>
+												.
+											</span>
 										</div>
 									</div>
 
@@ -1230,7 +1307,9 @@ export const SettingsDialog: React.FC = () => {
 											</span>
 										</div>
 										<p className="text-[10px] text-zinc-400">
-											Choose how much autonomy the AI Brain has to diagnose failed streams, hunt mirrors, and modify your SQLite database.
+											Choose how much autonomy the AI Brain has to diagnose
+											failed streams, hunt mirrors, and modify your SQLite
+											database.
 										</p>
 
 										<div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 mt-0.5">
@@ -1239,7 +1318,8 @@ export const SettingsDialog: React.FC = () => {
 												type="button"
 												onClick={() => setAiPermissionLevel("full_access")}
 												className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer flex flex-col gap-1 ${
-													(settings?.ai_permission_level ?? "full_access") === "full_access"
+													(settings?.ai_permission_level ?? "full_access") ===
+													"full_access"
 														? "bg-emerald-500/15 border-emerald-500/60 shadow-md ring-1 ring-emerald-500/30 text-white"
 														: "bg-white/[0.02] border-white/5 text-zinc-400 hover:bg-white/[0.05] hover:text-zinc-200"
 												}`}
@@ -1247,14 +1327,18 @@ export const SettingsDialog: React.FC = () => {
 												<div className="flex items-center justify-between">
 													<div className="flex items-center gap-1">
 														<Zap className="w-3 h-3 text-emerald-400" />
-														<span className="text-[11px] font-bold text-emerald-300">Full Access</span>
+														<span className="text-[11px] font-bold text-emerald-300">
+															Full Access
+														</span>
 													</div>
-													{(settings?.ai_permission_level ?? "full_access") === "full_access" && (
+													{(settings?.ai_permission_level ?? "full_access") ===
+														"full_access" && (
 														<Check className="w-3 h-3 text-emerald-400" />
 													)}
 												</div>
 												<p className="text-[9.5px] text-zinc-300 leading-snug">
-													Autonomous healing. Auto-recovers broken channels and writes directly to database without prompting.
+													Autonomous healing. Auto-recovers broken channels and
+													writes directly to database without prompting.
 												</p>
 												<span className="text-[8.5px] font-mono text-emerald-400/90 font-semibold mt-auto">
 													● Recommended
@@ -1274,14 +1358,19 @@ export const SettingsDialog: React.FC = () => {
 												<div className="flex items-center justify-between">
 													<div className="flex items-center gap-1">
 														<ShieldCheck className="w-3 h-3 text-amber-400" />
-														<span className="text-[11px] font-bold text-amber-300">Ask Permission</span>
+														<span className="text-[11px] font-bold text-amber-300">
+															Ask Permission
+														</span>
 													</div>
-													{settings?.ai_permission_level === "ask_permission" && (
+													{settings?.ai_permission_level ===
+														"ask_permission" && (
 														<Check className="w-3 h-3 text-amber-400" />
 													)}
 												</div>
 												<p className="text-[9.5px] text-zinc-300 leading-snug">
-													Semi-Autonomous. Stream Doctor finds working mirrors, but requires 1-click confirmation before writing to DB.
+													Semi-Autonomous. Stream Doctor finds working mirrors,
+													but requires 1-click confirmation before writing to
+													DB.
 												</p>
 												<span className="text-[8.5px] font-mono text-amber-400/90 font-semibold mt-auto">
 													● Interactive
@@ -1301,14 +1390,18 @@ export const SettingsDialog: React.FC = () => {
 												<div className="flex items-center justify-between">
 													<div className="flex items-center gap-1">
 														<Eye className="w-3 h-3 text-rose-400" />
-														<span className="text-[11px] font-bold text-rose-300">Read-Only</span>
+														<span className="text-[11px] font-bold text-rose-300">
+															Read-Only
+														</span>
 													</div>
 													{settings?.ai_permission_level === "read_only" && (
 														<Check className="w-3 h-3 text-rose-400" />
 													)}
 												</div>
 												<p className="text-[9.5px] text-zinc-300 leading-snug">
-													Diagnostics Only. Database writes locked. AI only provides telemetry, suggestions, and EPG recommendations.
+													Diagnostics Only. Database writes locked. AI only
+													provides telemetry, suggestions, and EPG
+													recommendations.
 												</p>
 												<span className="text-[8.5px] font-mono text-rose-400/90 font-semibold mt-auto">
 													● Locked
@@ -1396,7 +1489,8 @@ export const SettingsDialog: React.FC = () => {
 												Custom Upstream Sources
 											</h4>
 											<p className="text-[10px] text-zinc-400 mt-0.5">
-												Add custom M3U playlist URLs for Sentinel to search & heal channels
+												Add custom M3U playlist URLs for Sentinel to search &
+												heal channels
 											</p>
 										</div>
 									</div>
@@ -1455,7 +1549,8 @@ export const SettingsDialog: React.FC = () => {
 										</div>
 									) : (
 										<div className="p-2 rounded-lg bg-black/20 border border-dashed border-white/10 text-center text-[10px] text-zinc-500">
-											No custom sources added. Sentinel is using built-in master feeds.
+											No custom sources added. Sentinel is using built-in master
+											feeds.
 										</div>
 									)}
 								</div>
@@ -1476,7 +1571,8 @@ export const SettingsDialog: React.FC = () => {
 												Cloud Repository Sync
 											</h4>
 											<p className="text-[10px] text-zinc-400 mt-0.5">
-												Refreshes verified live streaming channels from the cloud mirror
+												Refreshes verified live streaming channels from the
+												cloud mirror
 											</p>
 											<div className="text-[9.5px] text-cyan-300 font-mono mt-0.5 font-bold">
 												{totalChannelsCount > 0
@@ -1512,7 +1608,8 @@ export const SettingsDialog: React.FC = () => {
 												High-Speed Cloud Resilience
 											</h4>
 											<p className="text-[10px] text-zinc-400 mt-0.5">
-												All channels are verified with automatic fallback mirrors
+												All channels are verified with automatic fallback
+												mirrors
 											</p>
 										</div>
 									</div>
@@ -1573,7 +1670,8 @@ export const SettingsDialog: React.FC = () => {
 													</span>
 												</h4>
 												<p className="text-[10px] text-zinc-400">
-													Automatically launch MorningTV when Windows boots or restarts
+													Automatically launch MorningTV when Windows boots or
+													restarts
 												</p>
 											</div>
 										</div>
@@ -1586,7 +1684,9 @@ export const SettingsDialog: React.FC = () => {
 										>
 											<div
 												className={`w-4.5 h-4.5 rounded-full bg-white shadow-md transition-transform ${
-													isLaunchAtStartup ? "translate-x-4.5" : "translate-x-0"
+													isLaunchAtStartup
+														? "translate-x-4.5"
+														: "translate-x-0"
 												}`}
 											/>
 										</button>
@@ -1650,7 +1750,8 @@ export const SettingsDialog: React.FC = () => {
 													</span>
 												</h4>
 												<p className="text-[10px] text-zinc-400">
-													Locks to 360p/480p and tightens buffer under weak networks (&lt;700 kbps)
+													Locks to 360p/480p and tightens buffer under weak
+													networks (&lt;700 kbps)
 												</p>
 											</div>
 										</div>
@@ -1677,7 +1778,8 @@ export const SettingsDialog: React.FC = () => {
 											🌐 GitHub Open Source Repository
 										</h4>
 										<p className="text-[10px] text-zinc-400">
-											View source code, star the project, report stream issues, and check latest releases
+											View source code, star the project, report stream issues,
+											and check latest releases
 										</p>
 									</div>
 									<button
@@ -1904,7 +2006,8 @@ export const SettingsDialog: React.FC = () => {
 										Legal & Compliance Notice
 									</h3>
 									<p className="text-[10px] text-zinc-400 mt-0.5">
-										Open-source architecture, stream attributions, and privacy policies
+										Open-source architecture, stream attributions, and privacy
+										policies
 									</p>
 								</div>
 
@@ -1916,8 +2019,13 @@ export const SettingsDialog: React.FC = () => {
 												Non-Hosting & Aggregation Policy
 											</div>
 											<p className="text-zinc-400 leading-relaxed text-[10px]">
-												MorningTV is an open-source client media player. MorningTV does{" "}
-												<strong className="text-white">not</strong> host, store, cache, distribute, or rebroadcast any video, audio, or copyrighted stream content. All playlist items are aggregated from publicly available IPTV repositories maintained by the open-source community.
+												MorningTV is an open-source client media player.
+												MorningTV does{" "}
+												<strong className="text-white">not</strong> host, store,
+												cache, distribute, or rebroadcast any video, audio, or
+												copyrighted stream content. All playlist items are
+												aggregated from publicly available IPTV repositories
+												maintained by the open-source community.
 											</p>
 										</div>
 									</div>
@@ -1929,7 +2037,12 @@ export const SettingsDialog: React.FC = () => {
 												Third-Party Web Services & Attribution
 											</div>
 											<p className="text-zinc-400 leading-relaxed text-[10px]">
-												The embedded YouTube and JioHotstar buttons launch official provider web applications directly in native sandboxed webviews. MorningTV is not affiliated with, endorsed by, or sponsored by YouTube, Google LLC, Jio, or Star India. All trademarks and brand assets belong to their respective holders.
+												The embedded YouTube and JioHotstar buttons launch
+												official provider web applications directly in native
+												sandboxed webviews. MorningTV is not affiliated with,
+												endorsed by, or sponsored by YouTube, Google LLC, Jio,
+												or Star India. All trademarks and brand assets belong to
+												their respective holders.
 											</p>
 										</div>
 									</div>
@@ -1941,7 +2054,11 @@ export const SettingsDialog: React.FC = () => {
 												Local Security & Privacy Guard
 											</div>
 											<p className="text-zinc-400 leading-relaxed text-[10px]">
-												MorningTV runs a hardened local Axum proxy with Anti-SSRF protection, IPv4/IPv6 private range blocking, and ephemeral cryptographic token authentication. Zero personal tracking or viewing metrics are collected or sent to external telemetry servers.
+												MorningTV runs a hardened local Axum proxy with
+												Anti-SSRF protection, IPv4/IPv6 private range blocking,
+												and ephemeral cryptographic token authentication. Zero
+												personal tracking or viewing metrics are collected or
+												sent to external telemetry servers.
 											</p>
 										</div>
 									</div>
@@ -1949,7 +2066,8 @@ export const SettingsDialog: React.FC = () => {
 
 								<div className="p-2.5 bg-white/5 border border-white/10 rounded-lg flex items-center justify-between text-[10px] text-zinc-400">
 									<div>
-										<span className="font-semibold text-white">License:</span> MIT Open Source
+										<span className="font-semibold text-white">License:</span>{" "}
+										MIT Open Source
 									</div>
 									<div className="font-mono text-[9.5px]">
 										MorningTV v{APP_VERSION} (Production Release)

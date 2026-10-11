@@ -754,8 +754,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 				level === "full_access"
 					? "Full Autonomous (Auto-Repair & Write)"
 					: level === "ask_permission"
-					? "Semi-Autonomous (Ask Confirmation)"
-					: "Read-Only (Diagnostics Only)";
+						? "Semi-Autonomous (Ask Confirmation)"
+						: "Read-Only (Diagnostics Only)";
 			get().showToast(`🛡️ AI Permission: ${label}`, false);
 		} catch (err) {
 			get().showToast(`Failed to update AI permission: ${err}`, true);
@@ -1080,7 +1080,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 				const res = await invoke<AiHuntResponse>("ai_hunt_and_heal", {
 					channelName: param,
 				});
-				if (res && res.success && res.channel) {
+				if (res?.success && res.channel) {
 					const healed = res.channel;
 					const existingIndex = store.allChannels.findIndex(
 						(c) => getChannelIdString(c.id) === getChannelIdString(healed.id),
@@ -1113,12 +1113,15 @@ export const useAppStore = create<AppState>((set, get) => ({
 		}
 
 		if (action === "hunt_stream" && param) {
-			store.showToast(`🔍 Searching upstream & internet sources for "${param}"...`, false);
+			store.showToast(
+				`🔍 Searching upstream & internet sources for "${param}"...`,
+				false,
+			);
 			try {
 				const res = await invoke<AiHuntResponse>("ai_hunt_and_heal", {
 					channelName: param,
 				});
-				if (res && res.success && res.channel) {
+				if (res?.success && res.channel) {
 					const healed = res.channel;
 					const existingIndex = store.allChannels.findIndex(
 						(c) => getChannelIdString(c.id) === getChannelIdString(healed.id),
@@ -1144,7 +1147,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 					await store.selectChannel(healed);
 					return `⚡ AI Recovery Successful! "${healed.name}" stream saved to database and playing now.`;
 				}
-				return res?.message || `No active stream found for "${param}" across upstream sources.`;
+				return (
+					res?.message ||
+					`No active stream found for "${param}" across upstream sources.`
+				);
 			} catch (e) {
 				return `Stream recovery error: ${e}`;
 			}
@@ -1208,7 +1214,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 						showToast("⏰ Sleep timer ended: Playback turned off", false);
 					}
 				}, seconds * 1000);
-				store.showToast(`⏰ Sleep timer: Playback will stop in ${minutes} minutes`, false);
+				store.showToast(
+					`⏰ Sleep timer: Playback will stop in ${minutes} minutes`,
+					false,
+				);
 				return `Sleep timer set: Playback will stop in ${minutes} minutes`;
 			}
 			return "Invalid sleep timer duration";
@@ -1228,7 +1237,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 				activeScheduleTimer = setTimeout(() => {
 					get().executeAiAction("play_channel", targetChannel);
 				}, delaySeconds * 1000);
-				store.showToast(`⏰ Scheduled auto-tune to "${targetChannel}" in ${delayMins}m`, false);
+				store.showToast(
+					`⏰ Scheduled auto-tune to "${targetChannel}" in ${delayMins}m`,
+					false,
+				);
 				return `Scheduled auto-tune: Switching to "${targetChannel}" in ${delayMins} minutes`;
 			}
 			return await get().executeAiAction("play_channel", targetChannel);

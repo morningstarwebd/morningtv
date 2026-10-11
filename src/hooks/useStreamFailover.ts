@@ -121,9 +121,12 @@ export function useStreamFailover(options: StreamFailoverOptions): {
 								});
 							}
 						} else if (diag.requires_user_confirmation && diag.new_url) {
-							log.info("AI Doctor found candidate stream requiring confirmation", {
-								newUrl: diag.new_url,
-							});
+							log.info(
+								"AI Doctor found candidate stream requiring confirmation",
+								{
+									newUrl: diag.new_url,
+								},
+							);
 							showToast(`🩺 AI Doctor found mirror: ${diag.message}`, false);
 						}
 					})

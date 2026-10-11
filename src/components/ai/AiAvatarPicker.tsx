@@ -56,8 +56,7 @@ export const AiAvatarPicker: React.FC<AiAvatarPickerProps> = ({
 			<div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
 				{presets.map((preset) => {
 					const Icon = preset.icon;
-					const isSelected =
-						currentPresetId === preset.id && !customAvatarUrl;
+					const isSelected = currentPresetId === preset.id && !customAvatarUrl;
 					return (
 						<button
 							key={preset.id}

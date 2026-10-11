@@ -51,7 +51,8 @@ export const AI_SYSTEM_COMMANDS: AiCommandItem[] = [
 		trigger: "hunt",
 		syntax: "\\hunt <channel>",
 		label: "Stream Hunter & Healer",
-		description: "Autonomous hunter: Finds working mirrors online & saves to SQLite",
+		description:
+			"Autonomous hunter: Finds working mirrors online & saves to SQLite",
 		category: "healing",
 		icon: Zap,
 		hasParams: true,
@@ -62,7 +63,8 @@ export const AI_SYSTEM_COMMANDS: AiCommandItem[] = [
 		trigger: "add",
 		syntax: "\\add <channel>",
 		label: "Add Channel from Internet",
-		description: "Deep checkup across GitHub & upstream IPTV to find & add channel",
+		description:
+			"Deep checkup across GitHub & upstream IPTV to find & add channel",
 		category: "healing",
 		icon: Plus,
 		hasParams: true,
@@ -106,7 +108,8 @@ export const AI_SYSTEM_COMMANDS: AiCommandItem[] = [
 		trigger: "models",
 		syntax: "\\models",
 		label: "Browse AI Models",
-		description: "Open live model picker to browse Groq, Gemini & Ollama models",
+		description:
+			"Open live model picker to browse Groq, Gemini & Ollama models",
 		category: "system",
 		icon: Cpu,
 		hasParams: false,
@@ -117,7 +120,8 @@ export const AI_SYSTEM_COMMANDS: AiCommandItem[] = [
 		trigger: "model",
 		syntax: "\\model <name>",
 		label: "Switch AI Model",
-		description: "Quickly switch active model (e.g. \\model llama-3.3-70b-versatile)",
+		description:
+			"Quickly switch active model (e.g. \\model llama-3.3-70b-versatile)",
 		category: "system",
 		icon: Cpu,
 		hasParams: true,
@@ -172,7 +176,8 @@ export const AI_SYSTEM_COMMANDS: AiCommandItem[] = [
 		trigger: "category",
 		syntax: "\\category <name>",
 		label: "Filter Category",
-		description: "Filter channels by category (Sports, News, Movies, Kids, etc.)",
+		description:
+			"Filter channels by category (Sports, News, Movies, Kids, etc.)",
 		category: "playback",
 		icon: Folder,
 		hasParams: true,
@@ -183,7 +188,8 @@ export const AI_SYSTEM_COMMANDS: AiCommandItem[] = [
 		trigger: "vibe",
 		syntax: "\\vibe <mood>",
 		label: "Mood & Vibe Match",
-		description: "Suggest channels matching your mood (relax, action, laugh, comedy)",
+		description:
+			"Suggest channels matching your mood (relax, action, laugh, comedy)",
 		category: "tools",
 		icon: Sparkles,
 		hasParams: true,
@@ -242,7 +248,10 @@ export const AiCommandPalette: React.FC<AiCommandPaletteProps> = ({
 	const listRef = useRef<HTMLDivElement>(null);
 
 	// Filter commands based on typed query after backslash or slash
-	const cleanQuery = filterQuery.replace(/^[/\\+]/, "").trim().toLowerCase();
+	const cleanQuery = filterQuery
+		.replace(/^[/\\+]/, "")
+		.trim()
+		.toLowerCase();
 	const filtered = AI_SYSTEM_COMMANDS.filter((cmd) => {
 		if (!cleanQuery) return true;
 		return (
